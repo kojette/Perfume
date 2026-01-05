@@ -1,5 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Noto+Serif+KR:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Noto+Serif+KR:wght@300;400;500;600&display=swap');
 
 :root {
-  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
+}
+
+.font-display {
+  font-family: 'Cinzel', 'Noto Serif KR', serif;
 }
