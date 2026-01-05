@@ -13,10 +13,10 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <h3 className="font-display text-2xl tracking-[0.4em] mb-4 text-[#c9a961]">
-              OLYMPUS
+              AION
             </h3>
             <p className="text-sm text-muted-foreground italic leading-relaxed">
-              신들의 향기를 담은<br />
+              영원한 그들의 향을 담은<br />
               하이엔드 프래그런스<br />
               <span className="text-[#c9a961] not-italic tracking-[0.2em] block mt-3">Since 1847</span>
             </p>
