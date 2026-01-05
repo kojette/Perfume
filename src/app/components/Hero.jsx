@@ -1,16 +1,42 @@
+import { useState, useEffect } from 'react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { CornerOrnament } from './Ornament';
 
+import img11 from "../../assets/11.png";
+import img12 from "../../assets/12.jpg";
+import img13 from "../../assets/13.jpg";
+
 export function Hero() {
+  const images = [img11, img12, img13];
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIdx((prevIdx) => (prevIdx + 1) % images.length);
+    }, 5000); 
+
+    return () => clearInterval(timer);
+  }, [images.length]);
+
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <ImageWithFallback
-          src="https://images.unsplash.com/photo-1559385301-0187cb6eff46?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBsaWZlc3R5bGV8ZW58MXx8fHwxNzY2OTIwMTUwfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-          alt="Luxury lifestyle"
-          className="w-full h-full object-cover"
-        />
+      {/* Background Images with Cross-fade */}
+      <div className="absolute inset-0 z-0 bg-[#2a2620]">
+        {images.map((img, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-[3000ms] ease-in-out ${
+              index === currentIdx ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <ImageWithFallback
+              src={img}
+              alt={`Background ${index}`}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ))}
+        {/* Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#2a2620]/60 via-[#2a2620]/40 to-[#2a2620]/60" />
       </div>
 
@@ -22,7 +48,6 @@ export function Hero() {
       
       {/* Content */}
       <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
-        {/* Top ornament */}
         <div className="flex items-center justify-center mb-8">
           <div className="h-[1px] w-20 bg-gradient-to-r from-transparent to-[#c9a961]"></div>
           <div className="mx-4 text-[#c9a961] text-xl">✦</div>
@@ -41,7 +66,6 @@ export function Hero() {
           영원한 그들의 향을 담다
         </p>
 
-        {/* Bottom ornament */}
         <div className="flex items-center justify-center my-8">
           <div className="h-[1px] w-16 bg-gradient-to-r from-transparent to-[#c9a961]"></div>
           <div className="mx-3 text-[#c9a961] text-sm">❖</div>
