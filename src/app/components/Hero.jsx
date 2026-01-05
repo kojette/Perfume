@@ -34,11 +34,11 @@ export function Hero() {
         </div>
         
         <h1 className="font-display text-6xl md:text-8xl lg:text-9xl tracking-[0.3em] mb-6 text-white drop-shadow-lg">
-          OLYMPUS
+          AION
         </h1>
         
         <p className="text-lg md:text-xl tracking-[0.3em] mb-4 text-[#e8dcc8] italic">
-          신들의 향기를 담다
+          영원한 그들의 향을 담다
         </p>
 
         {/* Bottom ornament */}

@@ -23,16 +23,28 @@ export function Header() {
               {menuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
             <h1 className="font-display text-2xl tracking-[0.4em] text-[#c9a961]">
-              OLYMPUS
+              AION
             </h1>
           </div>
 
-          <nav className="hidden lg:flex items-center gap-8 tracking-[0.2em] text-sm">
-            <a href="#" className="hover:text-[#c9a961] transition-colors italic">컬렉션</a>
-            <a href="#" className="hover:text-[#c9a961] transition-colors italic">시그니처</a>
-            <a href="#" className="hover:text-[#c9a961] transition-colors italic">스토리</a>
-            <a href="#" className="hover:text-[#c9a961] transition-colors italic">매장</a>
-          </nav>
+          <a href="/collections" className="hover:text-[#c9a961] transition-colors italic">
+              컬렉션
+            </a>
+            <a href="/signature" className="hover:text-[#c9a961] transition-colors italic">
+              시그니처
+            </a>
+            <a href="/recommend" className="hover:text-[#c9a961] transition-colors italic">
+              추천
+            </a>
+            <a href="/custom" className="hover:text-[#c9a961] transition-colors italic">
+              커스터마이징
+            </a>
+            <a href="/story" className="hover:text-[#c9a961] transition-colors italic">
+              스토리
+            </a>
+            <a href="/store" className="hover:text-[#c9a961] transition-colors italic">
+              매장
+            </a>
 
           <div className="flex items-center gap-4">
             <button className="p-2 hover:text-[#c9a961] transition-colors">
@@ -46,16 +58,6 @@ export function Header() {
             </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {menuOpen && (
-          <nav className="lg:hidden pt-6 pb-2 flex flex-col gap-4 tracking-[0.2em] text-sm border-t border-[#c9a961]/20 mt-4">
-            <a href="#" className="hover:text-[#c9a961] transition-colors italic">컬렉션</a>
-            <a href="#" className="hover:text-[#c9a961] transition-colors italic">시그니처</a>
-            <a href="#" className="hover:text-[#c9a961] transition-colors italic">스토리</a>
-            <a href="#" className="hover:text-[#c9a961] transition-colors italic">매장</a>
-          </nav>
-        )}
       </div>
     </header>
   );
