@@ -6,7 +6,7 @@ import { FeaturedProducts } from "./components/FeaturedProducts";
 import { About } from "./components/About";
 import { Newsletter } from "./components/Newsletter";
 import { Footer } from "./components/Footer";
-import { Recommend } from "./components/pages/Recommend";
+import Recommend from "./components/pages/Recommend";
 
 export default function App() {
   return (
