@@ -1,8 +1,24 @@
-import { ShoppingBag, Heart, Search, Menu, X } from 'lucide-react';
+import { ShoppingBag, Heart, Search, Menu, X, User } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // 페이지 이동 
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // 임시로그인 상태
+  // 나중에 백엔드랑 연결 후 값 변경
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // 로그인 되었을 경우 마이페이지로 이동
+  // 로그인 되지 않았을 경우 로그인 페이지로 이동
+  const handleUserClick = () => {
+    if(isLoggedIn) {
+      navigate('/mypage');
+    } else{
+      navigate('/login');
+    }
+  };
 
   return (
     <header className="fixed top-0 w-full z-50 bg-[#faf8f3]/98 backdrop-blur-sm border-b border-[#c9a961]/20">
@@ -22,7 +38,8 @@ export function Header() {
             >
               {menuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
-            <h1 className="font-display text-2xl tracking-[0.4em] text-[#c9a961]">
+            <h1 className="font-display text-2xl tracking-[0.4em] text-[#c9a961] cursor-pointer"
+              onClick = { () => navigate('/')}>
               AION
             </h1>
           </div>
@@ -49,6 +66,12 @@ export function Header() {
           <div className="flex items-center gap-4">
             <button className="p-2 hover:text-[#c9a961] transition-colors">
               <Search size={20} />
+            </button>
+            <button 
+              onClick={handleUserClick}
+              className="p-2 hover:text-[#c9a961] transition-colors"
+              title="내 계정">
+                <User size={20} />
             </button>
             <button className="p-2 hover:text-[#c9a961] transition-colors">
               <Heart size={20} />
