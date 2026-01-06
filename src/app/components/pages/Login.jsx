@@ -9,9 +9,21 @@ const Login = () => {
 
     const handleLogin = (e) => {
         e.preventDefault();
-        // 나중에 POST /api/auth/login API를 여기서 호출
-        console.log("로그인 시도:", {email, password});
-        // 로그인 기능은 백엔드 연결 후 활성화
+        
+        // 목업 계정
+        const mockUser = {
+            email: 'test@test.com',
+            password: 'password1234'
+        };
+
+        if(email === mockUser.email && password === mockUser.password){
+            alert("환영합니다!");
+            navigate('/');
+        
+        } else{
+            alert("이메일 또는 비밀번호가 일치하지 않습니다.");
+        }
+
     };
 
     return (
