@@ -7,6 +7,7 @@ import { About } from "./components/About";
 import { Newsletter } from "./components/Newsletter";
 import { Footer } from "./components/Footer";
 import Recommend from "./components/pages/Recommend";
+import Login from './components/pages/Login';
 
 export default function App() {
   return (
@@ -29,6 +30,8 @@ export default function App() {
             />
 
             <Route path="/recommend" element={<Recommend />} />
+            
+            <Route path='/login' element={<Login />} />
           </Routes>
         </main>
 
