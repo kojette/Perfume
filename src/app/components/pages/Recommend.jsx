@@ -174,6 +174,63 @@ export default function Recommend() {
           </p>
         </div>
 
+        {/* Quick Theme Recommendations */}
+        <div className="mb-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <button
+            onClick={() => setSelectedTags(['남성'])}
+            className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all"
+          >
+            <div className="text-2xl mb-2">👔</div>
+            <div className="text-sm font-semibold tracking-wider text-[#2a2620] mb-1">남성</div>
+            <div className="text-[10px] text-[#8b8278] italic">Men</div>
+          </button>
+
+          <button
+            onClick={() => setSelectedTags(['여성'])}
+            className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all"
+          >
+            <div className="text-2xl mb-2">👗</div>
+            <div className="text-sm font-semibold tracking-wider text-[#2a2620] mb-1">여성</div>
+            <div className="text-[10px] text-[#8b8278] italic">Women</div>
+          </button>
+
+          <button
+            onClick={() => setSelectedTags(['데이트'])}
+            className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all"
+          >
+            <div className="text-2xl mb-2">💕</div>
+            <div className="text-sm font-semibold tracking-wider text-[#2a2620] mb-1">데이트</div>
+            <div className="text-[10px] text-[#8b8278] italic">Date</div>
+          </button>
+
+          <button
+            onClick={() => setSelectedTags(['청량한'])}
+            className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all"
+          >
+            <div className="text-2xl mb-2">🌿</div>
+            <div className="text-sm font-semibold tracking-wider text-[#2a2620] mb-1">청량한</div>
+            <div className="text-[10px] text-[#8b8278] italic">Fresh</div>
+          </button>
+
+          <button
+            onClick={() => setSearchTerm('플로럴')}
+            className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all"
+          >
+            <div className="text-2xl mb-2">🌸</div>
+            <div className="text-sm font-semibold tracking-wider text-[#2a2620] mb-1">봄/여름</div>
+            <div className="text-[10px] text-[#8b8278] italic">Spring/Summer</div>
+          </button>
+
+          <button
+            onClick={() => setSearchTerm('우디')}
+            className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all"
+          >
+            <div className="text-2xl mb-2">🍂</div>
+            <div className="text-sm font-semibold tracking-wider text-[#2a2620] mb-1">가을/겨울</div>
+            <div className="text-[10px] text-[#8b8278] italic">Fall/Winter</div>
+          </button>
+        </div>
+
         {/* Search Row */}
         <div className="mb-8 flex flex-col md:flex-row gap-4 items-stretch">
           <input
