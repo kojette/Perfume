@@ -18,7 +18,10 @@ const Login = () => {
 
         if(email === mockUser.email && password === mockUser.password){
             alert("환영합니다!");
+            // 브라우저에 로그인 정보 저장
+            localStorage.setItem('isLoggedIn', 'true');
             navigate('/');
+            window.location.reload();
         
         } else{
             alert("이메일 또는 비밀번호가 일치하지 않습니다.");

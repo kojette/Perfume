@@ -6,9 +6,7 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-  // 임시로그인 상태
-  // 나중에 백엔드랑 연결 후 값 변경
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
   // 로그인 되었을 경우 마이페이지로 이동
   // 로그인 되지 않았을 경우 로그인 페이지로 이동
