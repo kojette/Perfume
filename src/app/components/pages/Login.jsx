@@ -20,6 +20,8 @@ const Login = () => {
             alert("환영합니다!");
             // 브라우저에 로그인 정보 저장
             localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('userEmail', email);
+            localStorage.setItem('userName', '홍길동');
             navigate('/');
             window.location.reload();
         
