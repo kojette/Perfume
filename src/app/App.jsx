@@ -8,6 +8,7 @@ import { Newsletter } from "./components/Newsletter";
 import { Footer } from "./components/Footer";
 import Recommend from "./components/pages/Recommend";
 import Login from './components/pages/Login';
+import Signup from './components/pages/Signup';
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="/recommend" element={<Recommend />} />
             
             <Route path='/login' element={<Login />} />
+            <Route path='/signup' element={<Signup />} />
           </Routes>
         </main>
 
