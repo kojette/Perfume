@@ -13,15 +13,25 @@ const Login = () => {
         // 목업 계정
         const mockUser = {
             email: 'test@test.com',
-            password: 'password1234'
+            password: 'password1234',
+            name: '홍길동',
+            phone: '010-1234-5678',
+            gender: 'male',
+            birth: '1999-05-20'
         };
 
         if(email === mockUser.email && password === mockUser.password){
             alert("환영합니다!");
-            // 브라우저에 로그인 정보 저장
+            // 로그인 상태
             localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userName', '홍길동');
+
+            // 회원 정보 저장 (ProfileEdit / Mypage에서 사용)
+            localStorage.setItem('userEmail', mockUser.email);
+            localStorage.setItem('userName', mockUser.name);
+            localStorage.setItem('userPhone', mockUser.phone);
+            localStorage.setItem('userGender', mockUser.gender);
+            localStorage.setItem('userBirth', mockUser.birth);
+           
             navigate('/');
             window.location.reload();
         
@@ -83,7 +93,10 @@ const Login = () => {
                         >
                             계정 생성하기
                         </button>
-                        <button className = "text-[10px] tracking-[0.2em] text-[#8b8278] hover:text-[#c9a961] transition-colors italic">
+                        <button
+                        onClick={() => navigate('/find-password')}
+                        className="text-[10px] tracking-[0.2em] text-[#8b8278] hover:text-[#c9a961] transition-colors"
+                        >
                             비밀번호 찾기
                         </button>
                 </div>

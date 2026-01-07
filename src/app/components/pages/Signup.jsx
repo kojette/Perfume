@@ -22,8 +22,21 @@ const Signup = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!isPasswordMatch) return alert("비밀번호가 일치하지 않습니다.");
-        // 나머지 유효성 검사
+        // 1️. 비밀번호 확인
+        if (!isPasswordMatch) {
+            return alert("비밀번호가 일치하지 않습니다.");
+        }
+
+        // 2️. 약관 동의 확인
+        if (!formData.agreeAll) {
+            return alert("필수 약관에 동의해주세요.");
+        }
+
+        // 3️. 가입 성공 (목업)
+        localStorage.setItem("userName", formData.name);
+        localStorage.setItem("userEmail", formData.email);
+        localStorage.setItem("userPassword", formData.password);
+        
         alert(`${formData.name}님, 가입을 축하합니다!`);
         navigate('/login');
     };

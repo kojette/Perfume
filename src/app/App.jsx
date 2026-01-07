@@ -10,6 +10,9 @@ import Recommend from "./components/pages/Recommend";
 import Login from './components/pages/Login';
 import Signup from './components/pages/Signup';
 import Mypage from './components/pages/Mypage';
+import FindPassword from './components/pages/FindPassword';
+import ProfileEdit from './components/pages/ProfileEdit';
+import ResetPassword from './components/pages/ResetPassword';
 
 export default function App() {
   return (
@@ -35,6 +38,10 @@ export default function App() {
               <Route path='/login' element={<Login />} />
               <Route path='/signup' element={<Signup />} />
               <Route path="/mypage" element={<Mypage />} />
+              <Route path="/find-password" element={<FindPassword />} />
+              <Route path="/profile/edit"  element={<ProfileEdit />}/>
+              <Route path="/reset-password" element={<ResetPassword />} />
+
           </Routes>
         </main>
 

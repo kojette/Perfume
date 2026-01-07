@@ -10,12 +10,20 @@ const Mypage = () => {
 
     const handleLogout = () => {
         localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('userName');
         alert("로그아웃 되었습니다.");
         navigate('/');
         window.location.reload();
     };
+
+    const handleDeleteAccount = () => {
+        if (window.confirm("정말 탈퇴하시겠습니까?")) {
+            localStorage.clear();
+            alert("회원 탈퇴가 완료되었습니다.");
+            navigate('/');
+            window.location.reload();
+        }
+    };
+
 
     return (
         <div className="min-h-screen bg-[#faf8f3] pt-44 pb-20 px-10">
@@ -39,6 +47,14 @@ const Mypage = () => {
                             className="mt-12 w-full py-4 border border-[#c9a961] text-[#c9a961] text-[10px] tracking-[0.2em] hover:bg-[#c9a961] hover:text-white transition-all duration-500 italic">
                             SIGN OUT
                         </button>
+
+                        <button
+                        onClick={handleDeleteAccount}
+                        className="mt-4 w-full py-3 text-red-500 text-[10px] tracking-[0.2em] underline"
+                        >
+                            DELETE ACCOUNT
+                        </button>
+
                     </nav>
                 </aside>
 
@@ -53,7 +69,13 @@ const Mypage = () => {
                         <div className="space-y-6 bg-white p-8 border border-[#c9a961]/10 shadow-sm">
                             <div className="flex justify-between items-end border-b border-[#c9a961]/20 pb-2">
                                 <h3 className="text-[11px] font-bold tracking-[0.1em] text-[#2a2620]">PROFILE</h3>
-                                <button className="text-[9px] text-[#c9a961] underline italic">VIEW ALL</button>
+                                <button
+                                className="text-[9px] text-[#c9a961] underline italic"
+                                onClick={() => navigate('/profile/edit')}
+                                >
+                                    VIEW ALL
+                                </button>
+
                             </div>
                             <div className="text-[12px] leading-relaxed text-[#555] space-y-2">
                                 <p><span className="text-[#8b8278] mr-2">Name:</span> {userName}</p>
