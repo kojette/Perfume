@@ -87,3 +87,8 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+  assets:
+    - assets/11.png
+    - assets/12.jpg
+    - assets/13.jpg
+# 이미지 사용 허용 메세지(위)

@@ -9,6 +9,33 @@ class MainHomePage extends StatefulWidget {
 }
 
 class _MainHomePageState extends State<MainHomePage> {
+  // 메인 비주얼 이미지 리스트
+  final List<String> _heroImages = [
+    'assets/11.png',
+    'assets/12.jpg',
+    'assets/13.jpg',
+  ];
+  int _currentImageIndex = 0;
+
+    @override
+  void initState() {
+    super.initState();
+    _startImageRotation();
+  }
+
+  void _startImageRotation() {
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 5));
+      if (!mounted) return false;
+      setState(() {
+        _currentImageIndex =
+            (_currentImageIndex + 1) % _heroImages.length;
+      });
+      return true;
+    });
+  }// 여기까지 홈 이미지 관련 메서드
+
+
   // 현재 어떤 탭이 눌렸는지 기억하는 변수
   int _selectedIndex = 2; // 기본값은 '홈' (0:메뉴, 1:검색, 2:홈, 3:하트, 4:사람)
 
@@ -63,17 +90,79 @@ class _MainHomePageState extends State<MainHomePage> {
     );
   }
 
+  Widget _buildHeroSection() {// 프론트와 동일한 홈 화면을 위함.
+    return SizedBox(
+      height: 400,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 🖼 Background Images (Cross-fade)
+          ...List.generate(_heroImages.length, (index) {
+            return AnimatedOpacity(
+              opacity: index == _currentImageIndex ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 3000),
+              curve: Curves.easeInOut,
+              child: Image.asset(
+                _heroImages[index],
+                fit: BoxFit.cover,
+              ),
+            );
+          }),
+
+          // 🌫 Overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF2A2620).withOpacity(0.6),
+                  const Color(0xFF2A2620).withOpacity(0.4),
+                  const Color(0xFF2A2620).withOpacity(0.6),
+                ],
+              ),
+            ),
+          ),
+
+          // ✨ 중앙 텍스트
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text(
+                  'ESSENCE OF DIVINE',
+                  style: TextStyle(
+                    color: Color(0xFFC9A961),
+                    letterSpacing: 4,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'AION',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 48,
+                    letterSpacing: 8,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 홈 화면 본문 (기존 웹 스타일 디자인)
   Widget _buildHomeBody() {
     return SingleChildScrollView(
       child: Column(
         children: [
-          Container(
-            height: 400,
-            width: double.infinity,
-            color: const Color(0xFFF2F2F2),
-            child: const Center(child: Text('Main Visual Image')),
-          ),
+          _buildHeroSection(),
           const SizedBox(height: 50),
           const Text('FOR YOU', style: TextStyle(fontSize: 18, letterSpacing: 4, fontWeight: FontWeight.w300)),
           const SizedBox(height: 30),
