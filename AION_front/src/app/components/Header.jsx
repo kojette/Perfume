@@ -42,7 +42,8 @@ export function Header() {
             </h1>
           </div>
 
-          <a href="/collections" className="hover:text-[#c9a961] transition-colors italic">
+          <nav className="hidden lg:flex items-center gap-8 text-[13px] tracking-[0.2em] text-[#2a2620]">
+            <a href="/collections" className="hover:text-[#c9a961] transition-colors italic">
               컬렉션
             </a>
             <a href="/signature" className="hover:text-[#c9a961] transition-colors italic">
@@ -60,6 +61,10 @@ export function Header() {
             <a href="/store" className="hover:text-[#c9a961] transition-colors italic">
               매장
             </a>
+            <a href="/customer/inquiry" className="hover:text-[#c9a961] transition-colors italic">
+              고객센터
+            </a>
+          </nav>
 
           <div className="flex items-center gap-4">
             <button className="p-2 hover:text-[#c9a961] transition-colors">
@@ -79,6 +84,33 @@ export function Header() {
             </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {menuOpen && (
+          <nav className="lg:hidden mt-6 pt-6 border-t border-[#c9a961]/20 flex flex-col gap-4 text-[13px] tracking-[0.2em] text-[#2a2620]">
+            <a href="/collections" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
+              컬렉션
+            </a>
+            <a href="/signature" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
+              시그니처
+            </a>
+            <a href="/recommend" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
+              추천
+            </a>
+            <a href="/custom" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
+              커스터마이징
+            </a>
+            <a href="/story" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
+              스토리
+            </a>
+            <a href="/store" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
+              매장
+            </a>
+            <a href="/customer/inquiry" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
+              고객센터
+            </a>
+          </nav>
+        )}
       </div>
     </header>
   );
