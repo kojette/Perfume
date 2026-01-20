@@ -24,10 +24,43 @@ const Signup = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // 이름 확인
+        if(!formData.name.trim()){
+            return alert("이름을 입력해주세요.");
+        }
+
+        // 이메일 확인
+        if(!formData.email.trim()){
+            return alert("이메일 주소를 입력해주세요.");
+        }
+
+        //비밀번호 확인
+        if(!formData.password){
+            return alert("비밀번호를 입력해주세요.");
+        }
+        if(formData.password.length < 8){
+            return alert("비밀번호는 8자 이상이어야 합니다.");
+        }
         
-        // 비밀번호 확인
+        // 비밀번호 일치 확인
         if (!isPasswordMatch) {
             return alert("비밀번호가 일치하지 않습니다.");
+        }
+
+        // 전화번호 확인
+        if(!formData.phone.trim()){
+            return alert("전화번호를 입력해주세요.");
+        }
+
+        // 성별 확인
+        if(!formData.gender){
+            return alert("성별을 선택해주세요.");
+        }
+
+        // 생년월일 확인
+        if(!formData.birthYear||!formData.birthMonth||!formData.birthDay){
+            return alert("생년월일을 입력해주세요.");
         }
 
         // 약관 동의 확인
@@ -43,6 +76,18 @@ const Signup = () => {
                 ? `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`
                 : null;
 
+            const {data: existingUser, error: checkError} = await supabase
+                .from('Users')
+                .select('email')
+                .eq('email', formData.email)
+                .maybeSingle();
+
+            if(existingUser) {
+                setLoading(false);
+                return alert("이미 가입되어 있는 계정입니다. 로그인 페이지를 이용해주세요.");
+            }
+
+        
             const {data, error} = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
@@ -55,10 +100,17 @@ const Signup = () => {
                     }
                 }
             });
+            
 
             if (error) {
                 console.error('가입 에러:', error);
-                alert(`가입 실패: ${error.message}`);
+
+                if(error.message.includes("User already registered")){
+                    alert("이미 가입되어 있는 계정입니다. 로그인 페이지를 이용해주세요.");
+                }
+                else{
+                    alert(`가입 실패: ${error.message}`);
+                }
                 return;
             }
 
