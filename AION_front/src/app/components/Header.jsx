@@ -19,7 +19,7 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-[#faf8f3]/98 backdrop-blur-sm border-b border-[#c9a961]/20">
+    <header className="w-full bg-[#faf8f3]/98 backdrop-blur-sm border-b border-[#c9a961]/20">
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Top decorative line */}
         <div className="flex items-center justify-center mb-4">

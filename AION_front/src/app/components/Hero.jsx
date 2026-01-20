@@ -33,7 +33,7 @@ const isAdmin = window.location.pathname.startsWith("/admin");
   }, [images.length]);
 
   return (
-    <section className="relative h-screen flex items-center justify-center overflow-hidden pt-24">
+    <section className="relative h-screen flex items-center justify-center overflow-hidden">
       {/* ================= 배경 이미지 ================= */}
       <div className="absolute inset-0 z-0 bg-[#2a2620]">
         {images.map((img, index) => (

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
 import { Header } from "./components/Header";
+import { EventBanner } from "./components/EventBanner"; // 추가(규)
 import { Hero } from "./components/Hero";
 import { FeaturedProducts } from "./components/FeaturedProducts";
 import { About } from "./components/About";
@@ -26,39 +27,43 @@ function AppLayout() {
 
   return (
     <>
-      <Header />
+      <div className="fixed top-0 w-full z-50">
+        <Header />
+        <EventBanner />
+      </div>
 
       {/* Hero는 조건부 공통 렌더 */}
-      {(isHome || isAdmin) && <Hero isAdmin={isAdmin} />}
+      <div className="pt-[160px]">
+        {(isHome || isAdmin) && <Hero isAdmin={isAdmin} />}
 
-      <main>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <>
-                <FeaturedProducts />
-                <About />
-                <Newsletter />
-              </>
-            }
-          />
+        <main>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <>
+                  <FeaturedProducts />
+                  <About />
+                  <Newsletter />
+                </>
+              }
+            />
 
-          <Route path="/recommend" element={<Recommend />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/mypage" element={<Mypage />} />
-          <Route path="/find-password" element={<FindPassword />} />
-          <Route path="/profile/edit" element={<ProfileEdit />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/recommend" element={<Recommend />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/mypage" element={<Mypage />} />
+            <Route path="/find-password" element={<FindPassword />} />
+            <Route path="/profile/edit" element={<ProfileEdit />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* 고객센터 */}
-          <Route path="/customer/inquiry" element={<CustomerInquiry />} />
-          <Route path="/admin/support" element={<CustomerSupport />} />
-          <Route path="/faq" element={<FAQ />} />
-        </Routes>
-      </main>
-
+            {/* 고객센터 */}
+            <Route path="/customer/inquiry" element={<CustomerInquiry />} />
+            <Route path="/admin/support" element={<CustomerSupport />} />
+            <Route path="/faq" element={<FAQ />} />
+          </Routes>
+        </main>
+      </div>
       <Footer />
     </>
   );
