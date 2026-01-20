@@ -1,42 +1,57 @@
 import React, {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {Ornament} from '../Ornament';
+import {supabase} from '../../supabaseClient';
 
 const Login = () => {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        
-        // 목업 계정
-        const mockUser = {
-            email: 'test@test.com',
-            password: 'password1234',
-            name: '홍길동',
-            phone: '010-1234-5678',
-            gender: 'male',
-            birth: '1999-05-20'
-        };
+        setLoading(true);
 
-        if(email === mockUser.email && password === mockUser.password){
-            alert("환영합니다!");
-            // 로그인 상태
+        try {
+            const {data, error} = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if(error) {
+                console.error('로그인 에러:', error);
+                alert('이메일 또는 비밀번호가 일치하지 않습니다.');
+                return;
+            }
+
+            const {data: userData, error: userError} = await supabase
+                .from('Users')
+                .select('*')
+                .eq('email', email)
+                .single();
+
+            if(userError){
+                console.error('사용자 정보 조회 에러:', userError);
+                alert('환영합니다!');
+                navigate('/');
+            }
+
             localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('userEmail', userData.email);
+            localStorage.setItem('userName', userData.name);
+            localStorage.setItem('userPhone', userData.phone);
+            localStorage.setItem('userGender', userData.gender);
+            localStorage.setItem('userBirth', userData.birth);
 
-            // 회원 정보 저장 (ProfileEdit / Mypage에서 사용)
-            localStorage.setItem('userEmail', mockUser.email);
-            localStorage.setItem('userName', mockUser.name);
-            localStorage.setItem('userPhone', mockUser.phone);
-            localStorage.setItem('userGender', mockUser.gender);
-            localStorage.setItem('userBirth', mockUser.birth);
-           
+            alert(`${userData.name}님, 환영합니다!`);
             navigate('/');
             window.location.reload();
-        
-        } else{
-            alert("이메일 또는 비밀번호가 일치하지 않습니다.");
+        } catch(err){
+            console.error('예상치 못한 에러:', err);
+            alert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
+        } finally{
+            setLoading(false);
         }
 
     };
@@ -49,7 +64,7 @@ const Login = () => {
                 <div className="text-center mb-10">
                     <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">AUTHENTICATION</div>
                     <Ornament className="mb-6" />
-                    <h2 className="font-display text-3xl tracking-[0.2em] text-[#2a2620]">로그인</h2>
+                    
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-8">
