@@ -18,6 +18,7 @@ import ResetPassword from "./components/pages/ResetPassword";
 import CustomerInquiry from "./components/pages/CustomerInquiry";
 import CustomerSupport from "./components/pages/CustomerSupport";
 import FAQ from "./components/pages/FAQ";
+import PerfumeManagement from './components/pages/PerfumeManagement';
 
 function AppLayout() {
   const location = useLocation();
@@ -60,6 +61,7 @@ function AppLayout() {
             {/* 고객센터 */}
             <Route path="/customer/inquiry" element={<CustomerInquiry />} />
             <Route path="/admin/support" element={<CustomerSupport />} />
+            <Route path="/admin/perfumes" element={<PerfumeManagement />} />
             <Route path="/faq" element={<FAQ />} />
           </Routes>
         </main>
