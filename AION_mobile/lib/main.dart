@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 // 아래 경로는 프로젝트 이름이 aion_app일 때 기준입니다!
 import 'package:aion_perfume_app/screens/start_screen.dart'; 
-
+import 'package:aion_perfume_app/screens/home_screen.dart';
 void main() => runApp(const AionApp());
 
 class AionApp extends StatelessWidget {

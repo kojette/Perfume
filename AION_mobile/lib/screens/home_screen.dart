@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'package:aion_perfume_app/screens/login_screen.dart';//마이페이지
+import 'package:aion_perfume_app/screens/mypage_screen.dart';
+
+import 'package:aion_perfume_app/widgets/about_section.dart';       // 홈
+import 'package:aion_perfume_app/widgets/newsletter_section.dart';
+
+
+import 'package:shared_preferences/shared_preferences.dart';
+
 // 1. StatefulWidget으로 시작해야 클릭 시 화면이 바뀝니다!
 class MainHomePage extends StatefulWidget {
   const MainHomePage({super.key});
@@ -17,7 +26,7 @@ class _MainHomePageState extends State<MainHomePage> {
   ];
   int _currentImageIndex = 0;
 
-    @override
+  @override
   void initState() {
     super.initState();
     _startImageRotation();
@@ -28,57 +37,78 @@ class _MainHomePageState extends State<MainHomePage> {
       await Future.delayed(const Duration(seconds: 5));
       if (!mounted) return false;
       setState(() {
-        _currentImageIndex =
-            (_currentImageIndex + 1) % _heroImages.length;
+        _currentImageIndex = (_currentImageIndex + 1) % _heroImages.length;
       });
       return true;
     });
-  }// 여기까지 홈 이미지 관련 메서드
-
+  } // 여기까지 홈 이미지 관련 메서드
 
   // 현재 어떤 탭이 눌렸는지 기억하는 변수
   int _selectedIndex = 2; // 기본값은 '홈' (0:메뉴, 1:검색, 2:홈, 3:하트, 4:사람)
 
   // 탭을 누를 때 실행되는 함수
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+  void _onItemTapped(int index) async {
+    if (index == 4) {
+      // MY 버튼 클릭 시
+      final prefs = await SharedPreferences.getInstance();
+      final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      
+      if (mounted) {
+        if (isLoggedIn) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MyPageScreen()),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        }
+      }
+    } else {
+      // 다른 탭 클릭 시
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  } // 👈 여기에 중괄호 추가!
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('A I O N', 
-          style: TextStyle(color: Colors.black, fontSize: 16, letterSpacing: 5)),
+        title: const Text(
+          'A I O N',
+          style: TextStyle(color: Colors.black, fontSize: 16, letterSpacing: 5),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
-      
+
       // 📺 인덱스에 따라 다른 화면을 보여줌
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          const Center(child: Text('MENU PAGE')),      // 0
-          const Center(child: Text('SEARCH PAGE')),    // 1
-          _buildHomeBody(),                            // 2 (홈 본문)
-          const Center(child: Text('LIKE PAGE')),      // 3
-          const Center(child: Text('MY PAGE')),        // 4
+          const Center(child: Text('MENU PAGE')), // 0
+          const Center(child: Text('SEARCH PAGE')), // 1
+          _buildHomeBody(), // 2 (홈 본문)
+          const Center(child: Text('LIKE PAGE')), // 3
+          const Center(child: Text('MY PAGE')), // 4
         ],
       ),
 
-      // ✨ 하단 네비게이션 바 설정 (여기가 핵심!)
+      // ✨ 하단 네비게이션 바 설정
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // 아이콘 5개일 때 아이콘 위치 고정
+        type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: Colors.black,     // 선택된 아이콘 검정색
-        unselectedItemColor: Colors.grey,    // 선택 안된 건 회색
-        showSelectedLabels: false,           // 텍스트 숨김 (럭셔리 감성)
+        selectedItemColor: Colors.black,
+        unselectedItemColor: Colors.grey,
+        showSelectedLabels: false,
         showUnselectedLabels: false,
-        currentIndex: _selectedIndex,        // 현재 눌린 위치 표시
-        onTap: _onItemTapped,                // 클릭 이벤트 연결
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
@@ -90,7 +120,7 @@ class _MainHomePageState extends State<MainHomePage> {
     );
   }
 
-  Widget _buildHeroSection() {// 프론트와 동일한 홈 화면을 위함.
+  Widget _buildHeroSection() {
     return SizedBox(
       height: 400,
       width: double.infinity,
@@ -164,10 +194,23 @@ class _MainHomePageState extends State<MainHomePage> {
         children: [
           _buildHeroSection(),
           const SizedBox(height: 50),
-          const Text('FOR YOU', style: TextStyle(fontSize: 18, letterSpacing: 4, fontWeight: FontWeight.w300)),
+          const Text(
+            'FOR YOU',
+            style: TextStyle(
+              fontSize: 18,
+              letterSpacing: 4,
+              fontWeight: FontWeight.w300,
+            ),
+          ),
           const SizedBox(height: 30),
           _buildHorizontalList(),
-          const SizedBox(height: 100), // 하단 바에 가려지지 않게 여유 공간
+          const SizedBox(height: 60),
+          
+          // 👇 이 두 줄이 있어야 합니다
+          const AboutSection(),
+          const NewsletterSection(),
+          
+          const SizedBox(height: 100),
         ],
       ),
     );
