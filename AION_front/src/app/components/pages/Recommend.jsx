@@ -161,7 +161,7 @@ export default function Recommend() {
   }, [searchTerm, selectedTags, sortBy]);
 
   return (
-    <main className="min-h-screen bg-[#faf8f3] pt-32 px-6 pb-20">
+    <main className="min-h-screen bg-[#faf8f3] pt-16 px-6 pb-20">
       <div className="max-w-5xl mx-auto">
 
         {/* Title */}

@@ -7,6 +7,7 @@ import { FeaturedProducts } from "./components/FeaturedProducts";
 import { About } from "./components/About";
 import { Newsletter } from "./components/Newsletter";
 import { Footer } from "./components/Footer";
+import ScrollToTop from './components/ScrollToTop';
 
 import Recommend from "./components/pages/Recommend";
 import Login from "./components/pages/Login";
@@ -19,6 +20,7 @@ import CustomerInquiry from "./components/pages/CustomerInquiry";
 import CustomerSupport from "./components/pages/CustomerSupport";
 import FAQ from "./components/pages/FAQ";
 import PerfumeManagement from './components/pages/PerfumeManagement';
+import Store from './components/pages/Store';
 
 // 새로 추가된 관리자 페이지
 import AnnouncementManagement from './components/pages/AnnouncementManagement';
@@ -61,6 +63,7 @@ function AppLayout() {
             <Route path="/find-password" element={<FindPassword />} />
             <Route path="/profile/edit" element={<ProfileEdit />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/store" element={<Store />} />
 
             {/* 고객센터 */}
             <Route path="/customer/inquiry" element={<CustomerInquiry />} />
@@ -83,6 +86,7 @@ function AppLayout() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <div className="min-h-screen">
         <AppLayout />
       </div>

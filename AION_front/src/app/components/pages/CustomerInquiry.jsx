@@ -141,7 +141,7 @@ const CustomerInquiry = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f3] pt-40 pb-20 px-6">
+    <div className="min-h-screen bg-[#faf8f3] pt-16 pb-20 px-6">
       <div className="max-w-5xl mx-auto">
         
         {/* Header */}

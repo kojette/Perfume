@@ -20,7 +20,7 @@ export function Header() {
 
   return (
     <>
-      <header className="w-full bg-[#faf8f3]/98 backdrop-blur-sm border-b border-[#c9a961]/20">
+      <header className="relative z-[100] w-full bg-[#faf8f3]/98 backdrop-blur-sm border-b border-[#c9a961]/20">
         <div className="max-w-7xl mx-auto px-6 py-6">
           {/* Top decorative line */}
           <div className="flex items-center justify-center mb-4">
@@ -32,8 +32,9 @@ export function Header() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
               <button 
-                className="lg:hidden text-[#c9a961]"
+                className="lg:hidden text-[#c9a961] p-2 cursor-pointer hover:opacity-70 transition-opacity"
                 onClick={() => setMenuOpen(!menuOpen)}
+                style = {{ pointerEvents: 'auto' }}
               >
                 {menuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
@@ -68,13 +69,13 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:text-[#c9a961] transition-colors">
+              <button className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
                 <Search size={20} />
               </button>
               {/* 공지/이벤트 확성기 아이콘 */}
               <button 
                 onClick={() => setNotificationOpen(true)}
-                className="p-2 hover:text-[#c9a961] transition-colors relative"
+                className="p-2 hover:text-[#c9a961] transition-colors relative cursor-pointer"
                 title="공지사항 & 이벤트"
               >
                 <Megaphone size={20} />
@@ -83,14 +84,14 @@ export function Header() {
               </button>
               <button 
                 onClick={handleUserClick}
-                className="p-2 hover:text-[#c9a961] transition-colors"
+                className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer"
                 title="내 계정">
                   <User size={20} />
               </button>
-              <button className="p-2 hover:text-[#c9a961] transition-colors">
+              <button className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
                 <Heart size={20} />
               </button>
-              <button className="p-2 hover:text-[#c9a961] transition-colors">
+              <button className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
                 <ShoppingBag size={20} />
               </button>
             </div>

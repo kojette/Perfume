@@ -190,7 +190,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-[60] flex items-start justify-end">
+      <div className="fixed inset-0 z-[100] flex items-start justify-end">
         <div 
           className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           onClick={onClose}
@@ -387,7 +387,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
 
       {/* 결과 모달 */}
       {showResultModal && resultData && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
           <div 
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={closeResultModal}

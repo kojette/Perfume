@@ -93,7 +93,11 @@ export function Footer() {
               <li className="italic">서울 올림포스점</li>
               <li className="italic">부산 아테네점</li>
               <li className="italic">제주 델포이점</li>
-              <li className="italic">전체 매장 보기</li>
+              <li>
+                <Link to='/store' className="hover:text-[#c9a961] italic transition-colors">
+                  전체 매장 보기
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

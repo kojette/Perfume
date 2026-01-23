@@ -93,7 +93,7 @@ const Mypage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f3] pt-44 pb-20 px-10">
+    <div className="min-h-screen bg-[#faf8f3] pt-16 pb-20 px-10">
       <div className="text-center mb-16">
         <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">MY ACCOUNT</div>
         <Ornament className="mb-6" />
