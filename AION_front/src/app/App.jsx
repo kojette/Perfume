@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
 import { Header } from "./components/Header";
-import { EventBanner } from "./components/EventBanner"; // 추가(규)
+import { EventBanner } from "./components/EventBanner";
 import { Hero } from "./components/Hero";
 import { FeaturedProducts } from "./components/FeaturedProducts";
 import { About } from "./components/About";
@@ -20,6 +20,11 @@ import CustomerSupport from "./components/pages/CustomerSupport";
 import FAQ from "./components/pages/FAQ";
 import PerfumeManagement from './components/pages/PerfumeManagement';
 
+// 새로 추가된 관리자 페이지
+import AnnouncementManagement from './components/pages/AnnouncementManagement';
+import EventManagement from './components/pages/EventManagement';
+import CouponPointManagement from './components/pages/CouponPointManagement';
+
 function AppLayout() {
   const location = useLocation();
 
@@ -33,7 +38,6 @@ function AppLayout() {
         <EventBanner />
       </div>
 
-      {/* Hero는 조건부 공통 렌더 */}
       <div className="pt-[160px]">
         {(isHome || isAdmin) && <Hero isAdmin={isAdmin} />}
 
@@ -60,9 +64,14 @@ function AppLayout() {
 
             {/* 고객센터 */}
             <Route path="/customer/inquiry" element={<CustomerInquiry />} />
+            <Route path="/faq" element={<FAQ />} />
+
+            {/* 관리자 페이지 */}
             <Route path="/admin/support" element={<CustomerSupport />} />
             <Route path="/admin/perfumes" element={<PerfumeManagement />} />
-            <Route path="/faq" element={<FAQ />} />
+            <Route path="/admin/announcements" element={<AnnouncementManagement />} />
+            <Route path="/admin/events" element={<EventManagement />} />
+            <Route path="/admin/coupons" element={<CouponPointManagement />} />
           </Routes>
         </main>
       </div>
