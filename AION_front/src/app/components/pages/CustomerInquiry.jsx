@@ -170,7 +170,7 @@ const CustomerInquiry = () => {
         <div className="flex gap-2 mb-8 border-b border-[#c9a961]/20">
           <button
             onClick={() => setActiveTab('new')}
-            className={`px-6 py-3 text-xs tracking-[0.2em] transition-all relative ${
+            className={`px-6 py-3 text-xs tracking-[0.2em] transition-all relative cursor-pointer ${
               activeTab === 'new'
                 ? 'text-[#c9a961] font-bold'
                 : 'text-[#8b8278] hover:text-[#c9a961]'
@@ -183,7 +183,7 @@ const CustomerInquiry = () => {
           </button>
           <button
             onClick={() => setActiveTab('myInquiries')}
-            className={`px-6 py-3 text-xs tracking-[0.2em] transition-all relative flex items-center gap-2 ${
+            className={`px-6 py-3 text-xs tracking-[0.2em] transition-all relative flex items-center gap-2 cursor-pointer ${
               activeTab === 'myInquiries'
                 ? 'text-[#c9a961] font-bold'
                 : 'text-[#8b8278] hover:text-[#c9a961]'
@@ -208,7 +208,7 @@ const CustomerInquiry = () => {
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* 문의 유형 선택 */}
               <div className="space-y-3">
-                <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] italic mb-4">
+                <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] mb-4">
                   문의 유형 선택
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -217,7 +217,7 @@ const CustomerInquiry = () => {
                       key={type.value}
                       type="button"
                       onClick={() => setFormData({...formData, type: type.value})}
-                      className={`p-4 border-2 rounded-lg transition-all text-left ${
+                      className={`p-4 border-2 rounded-lg transition-all text-left cursor-pointer ${
                         formData.type === type.value
                           ? 'border-[#c9a961] bg-[#c9a961]/5'
                           : 'border-[#c9a961]/20 hover:border-[#c9a961]/50'
@@ -236,7 +236,7 @@ const CustomerInquiry = () => {
                   <button
                     type="button"
                     onClick={() => navigate('/faq')}
-                    className="w-full p-4 border-2 border-[#7ba8d4]/30 bg-[#e8f4ff]/30 rounded-lg hover:border-[#7ba8d4] hover:bg-[#e8f4ff]/50 transition-all text-left"
+                    className="w-full p-4 border-2 border-[#7ba8d4]/30 bg-[#e8f4ff]/30 rounded-lg hover:border-[#7ba8d4] hover:bg-[#e8f4ff]/50 transition-all text-left cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -258,7 +258,7 @@ const CustomerInquiry = () => {
 
               {/* 제목 */}
               <div className="space-y-2">
-                <label className="block text-xs tracking-[0.2em] text-[#8b8278] italic">
+                <label className="block text-xs tracking-[0.2em] text-[#8b8278]">
                   제목
                 </label>
                 <input
@@ -273,7 +273,7 @@ const CustomerInquiry = () => {
 
               {/* 내용 */}
               <div className="space-y-2">
-                <label className="block text-xs tracking-[0.2em] text-[#8b8278] italic">
+                <label className="block text-xs tracking-[0.2em] text-[#8b8278]">
                   문의 내용
                 </label>
                 <textarea
@@ -289,7 +289,7 @@ const CustomerInquiry = () => {
               {/* 제출 버튼 */}
               <button
                 type="submit"
-                className="w-full py-4 bg-[#2a2620] text-white hover:bg-[#c9a961] transition-all duration-500 tracking-[0.3em] text-xs flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#2a2620] text-white hover:bg-[#c9a961] transition-all duration-500 tracking-[0.3em] text-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 문의 접수하기
