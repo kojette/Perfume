@@ -44,7 +44,6 @@ const Login = () => {
             sessionStorage.setItem('userGender', userData.gender);
             sessionStorage.setItem('userBirth', userData.birth);
 
-
             alert(`${userData.name}님, 환영합니다!`);
             navigate('/');
             window.location.reload();
@@ -58,7 +57,7 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#faf8f3] pt-40 pb-20 px-6 flex flex-col items-center">
+        <div className="min-h-screen bg-[#faf8f3] pt-16 pb-20 px-6 flex flex-col items-center">
             {/* 로그인 박스 */}
             <div className="max-w-md w-full bg-white border border-[#c9a961]/20 p-10 shadow-sm relative">
                 {/* 상단 장식 및 타이틀 */}
@@ -71,24 +70,24 @@ const Login = () => {
                 <form onSubmit={handleLogin} className="space-y-8">
                     {/* 이메일 입력창 */}
                     <div className="space-y-2">
-                        <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] italic">EMAIL ADDRESS</label>
+                        <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] font-pretendard">EMAIL ADDRESS</label>
                         <input
                             type = "email"
                             value = {email}
                             onChange = {(e) => setEmail(e.target.value)}
-                            className = "w-full border-b border-[#c9a964]/30 py-2 focus:border-[#c9a961] outline-none bg-transparent transition-colors text-sm"
+                            className = "w-full font-pretendard border-b border-[#c9a964]/30 py-2 focus:border-[#c9a961] outline-none bg-transparent transition-colors text-sm"
                             placeholder = "이메일을 입력해주세요"
                             required />
                     </div>
 
                     {/* 비밀번호 입력창 */}
                     <div className = "space-y-2">
-                        <label className ="block text-[10px] tracking-[0.2em] text-[#8b8278] italic">PASSWORD</label>
+                        <label className ="block font-pretendard text-[10px] tracking-[0.2em] text-[#8b8278]">PASSWORD</label>
                         <input
                             type = "password"
                             value = {password}
                             onChange = {(e) => setPassword(e.target.value)}
-                            className = "w-full border-b border-[#c9a964]/30 py-2 focus:border-[#c9a961] outline-none bg-transparent transition-colors text-sm"
+                            className = "w-full font-pretendard border-b border-[#c9a964]/30 py-2 focus:border-[#c9a961] outline-none bg-transparent transition-colors text-sm"
                             placeholder = "비밀번호를 입력해주세요"
                             required />
                     </div>
@@ -105,13 +104,13 @@ const Login = () => {
                 <div className="mt-10 flex flex-col items-center gap-4 border-t border-[#c9a961]/10 pt-8">
                     <button 
                         onClick = {() => navigate('/signup')}
-                        className = "text-[10px] tracking-[0.2em] text-[#c9a961] hover:text-[#2a2620] transition-colors"
+                        className = "font-pretendard text-[10px] tracking-[0.2em] text-[#c9a961] hover:text-[#2a2620] transition-colors"
                         >
                             계정 생성하기
                         </button>
                         <button
                         onClick={() => navigate('/find-password')}
-                        className="text-[10px] tracking-[0.2em] text-[#8b8278] hover:text-[#c9a961] transition-colors"
+                        className="font-pretendard text-[10px] tracking-[0.2em] text-[#8b8278] hover:text-[#c9a961] transition-colors"
                         >
                             비밀번호 찾기
                         </button>

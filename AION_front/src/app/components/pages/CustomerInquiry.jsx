@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ornament } from '../Ornament';
 import { MessageSquare, Send, Clock, CheckCircle, AlertCircle, X, Trash2 } from 'lucide-react';
+import { supabase } from '../../supabaseClient';
 
 // 문의 유형 (FAQ 제외)
 const INQUIRY_TYPES = [
   { value: 'product', label: '상품문의', icon: '🛍️' },
+  {value: 'delivery', label: '배송문의', icon: '🚚'},
   { value: 'refund', label: '환불문의', icon: '💰' },
   { value: 'site', label: '사이트문의', icon: '🌐' },
   { value: 'company', label: '회사문의', icon: '🏢' },
@@ -15,39 +17,48 @@ const INQUIRY_TYPES = [
 const CustomerInquiry = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('new'); // new, myInquiries
-  const [formData, setFormData] = useState({
-    type: '',
-    title: '',
-    content: ''
-  });
-
-  // 로그인 확인
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const userName = localStorage.getItem('userName') || '고객';
-  const userEmail = localStorage.getItem('userEmail') || '';
-
-  // 내 문의 내역 (localStorage에서 불러오기)
+  const [formData, setFormData] = useState({type: '', title: '', content: ''});
   const [myInquiries, setMyInquiries] = useState([]);
   const [notifications, setNotifications] = useState(0);
+
+  // 로그인 확인
+  const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
+  const userName = sessionStorage.getItem('userName') || '고객';
+  const userEmail = sessionStorage.getItem('userEmail') || '';
+
+  // 내 문의 내역 불러오기
+  const fetchMyInquiries = useCallback(async () => {
+    if (!userEmail) return;
+
+    const { data, error } = await supabase
+      .from('Inquiries')
+      .select('*')
+      .eq('customer_email', userEmail)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('데이터 로드 에러: ', error);
+    } else {
+      setMyInquiries(data);
+      const answeredCount = data.filter(inq => inq.status === 'completed' && !inq.read).length;
+      setNotifications(answeredCount);
+    }
+  }, [userEmail]);
 
   useEffect(() => {
     if (!isLoggedIn) {
       alert('로그인이 필요합니다.');
       navigate('/login');
       return;
-    }
+    } fetchMyInquiries();
+  }, [isLoggedIn, navigate, fetchMyInquiries]);
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
 
-    // localStorage에서 내 문의 불러오기
-    const savedInquiries = JSON.parse(localStorage.getItem('userInquiries') || '[]');
-    const myInquiriesList = savedInquiries.filter(inq => inq.customerEmail === userEmail);
-    setMyInquiries(myInquiriesList);
-
-    // 답변 완료된 문의 개수 (알림)
-    const answeredCount = myInquiriesList.filter(inq => inq.status === 'completed' && !inq.read).length;
-    setNotifications(answeredCount);
-  }, [isLoggedIn, userEmail, navigate]);
-
-  const handleSubmit = (e) => {
+  // 데이터베이스에 새 문의사항 넣기
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.type || !formData.title || !formData.content) {
@@ -55,76 +66,73 @@ const CustomerInquiry = () => {
       return;
     }
 
-    // 새 문의 생성
-    const newInquiry = {
-      id: Date.now(),
+    const {error} = await supabase
+    .from('Inquiries')
+    .insert([{
       type: formData.type,
       title: formData.title,
       content: formData.content,
-      customerName: userName,
-      customerEmail: userEmail,
-      status: 'pending', // pending, processing, completed
-      createdAt: new Date().toLocaleString('ko-KR'),
-      assignedTo: null,
-      hasNotification: true,
-      read: false,
-      answer: null
-    };
+      customer_name: userName,
+      customer_email: userEmail,
+      status: 'pending',
+      read: false
+    }]);
 
-    // localStorage에 저장
-    const allInquiries = JSON.parse(localStorage.getItem('userInquiries') || '[]');
-    allInquiries.push(newInquiry);
-    localStorage.setItem('userInquiries', JSON.stringify(allInquiries));
-
-    alert('문의가 접수되었습니다.');
-    setFormData({ type: '', title: '', content: '' });
-    setActiveTab('myInquiries');
-
-    // 내 문의 목록 갱신
-    const updatedMyInquiries = allInquiries.filter(inq => inq.customerEmail === userEmail);
-    setMyInquiries(updatedMyInquiries);
-  };
-
-  const markAsRead = (inquiryId) => {
-    const allInquiries = JSON.parse(localStorage.getItem('userInquiries') || '[]');
-    const updated = allInquiries.map(inq => 
-      inq.id === inquiryId ? { ...inq, read: true } : inq
-    );
-    localStorage.setItem('userInquiries', JSON.stringify(updated));
-
-    const updatedMyInquiries = updated.filter(inq => inq.customerEmail === userEmail);
-    setMyInquiries(updatedMyInquiries);
-    
-    const answeredCount = updatedMyInquiries.filter(inq => inq.status === 'completed' && !inq.read).length;
-    setNotifications(answeredCount);
-  };
-
-  // 문의 취소 (답변 전에만 가능)
-  const handleCancelInquiry = (inquiryId) => {
-    if (window.confirm('문의를 취소하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-      const allInquiries = JSON.parse(localStorage.getItem('userInquiries') || '[]');
-      const updated = allInquiries.filter(inq => inq.id !== inquiryId);
-      localStorage.setItem('userInquiries', JSON.stringify(updated));
-
-      const updatedMyInquiries = updated.filter(inq => inq.customerEmail === userEmail);
-      setMyInquiries(updatedMyInquiries);
-      
-      alert('문의가 취소되었습니다.');
+    if(error) {
+      console.error('저장 에러:', error.message);
+      alert('문의 접수 중 오류가 발생했습니다.');
+    } else {
+      alert('문의가 접수되었습니다.');
+      setFormData({type: '', title: '', content: ''});
+      setActiveTab('myInquiries');
+      fetchMyInquiries();
     }
   };
 
-  // 문의 삭제 (답변 완료 후)
-  const handleDeleteInquiry = (inquiryId) => {
-    if (window.confirm('문의 내역을 삭제하시겠습니까?')) {
-      const allInquiries = JSON.parse(localStorage.getItem('userInquiries') || '[]');
-      const updated = allInquiries.filter(inq => inq.id !== inquiryId);
-      localStorage.setItem('userInquiries', JSON.stringify(updated));
+  // 읽음 처리
+  const markAsRead = async (inquiryId) => {
+    const {error} = await supabase
+    .from('Inquiries')
+    .update({read: true})
+    .eq('id', inquiryId);
 
-      const updatedMyInquiries = updated.filter(inq => inq.customerEmail === userEmail);
-      setMyInquiries(updatedMyInquiries);
-      
-      alert('문의가 삭제되었습니다.');
-    }
+    if(!error) fetchMyInquiries();
+  }
+
+  // 문의 취소 (문의 삭제 보완 버전)
+  const handleCancelInquiry = async (inquiryId) => {
+    if(!window.confirm('정말 이 문의를 취소하시겠습니까?')) return;
+
+    const {error} = await supabase
+      .from('Inquiries')
+      .update({status: 'cancelled'})
+      .eq('id', inquiryId);
+
+      if(error) {
+        alert('취소 처리 중 오류가 발생했습니다.');
+      } else {
+        alert('문의가 취소되었습니다.');
+        fetchMyInquiries();
+      }
+  };
+
+  // 문의 삭제 -> 조금 고려해봐야할 코드같음
+  const handleDeleteInquiry = async (inquiryId, isCancel = false) => {
+    const message = isCancel ? '문의를 취소하시겟습니까?' : '문의 내역을 삭제하시겠습니까?';
+    if(!window.confirm(message)) 
+      return;
+
+    const {error} = await supabase
+      .from('Inquiries')
+      .delete()
+      .eq('id', inquiryId);
+
+      if(error) {
+        alert('오류가 발생했습니다.');
+      } else {
+        alert(isCancel ? '취소되었습니다.' : '삭제되었습니다.');
+        fetchMyInquiries();
+      }
   };
 
   const getStatusConfig = (status) => {
@@ -140,8 +148,10 @@ const CustomerInquiry = () => {
     }
   };
 
+
+
   return (
-    <div className="min-h-screen bg-[#faf8f3] pt-16 pb-20 px-6">
+    <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-6">
       <div className="max-w-5xl mx-auto">
         
         {/* Header */}
@@ -289,7 +299,7 @@ const CustomerInquiry = () => {
         ) : (
           // 내 문의 내역
           <div className="space-y-4">
-            {myInquiries.length === 0 ? (
+            {myInquiries.filter(inquiry => inquiry.status !== 'cancelled').length === 0 ? (
               <div className="bg-white p-16 text-center border border-[#c9a961]/10 rounded-lg">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 text-[#c9a961]/30" />
                 <p className="text-sm text-[#8b8278] italic">문의 내역이 없습니다</p>
@@ -301,10 +311,12 @@ const CustomerInquiry = () => {
                 </button>
               </div>
             ) : (
-              myInquiries.map(inquiry => {
-                const statusConfig = getStatusConfig(inquiry.status);
-                const StatusIcon = statusConfig.icon;
-                const typeInfo = INQUIRY_TYPES.find(t => t.value === inquiry.type);
+              myInquiries
+                .filter(inquiry => inquiry.status !== 'cancelled')
+                .map(inquiry => {
+                  const statusConfig = getStatusConfig(inquiry.status);
+                  const StatusIcon = statusConfig.icon;
+                  const typeInfo = INQUIRY_TYPES.find(t => t.value === inquiry.type);
 
                 return (
                   <div
@@ -321,7 +333,7 @@ const CustomerInquiry = () => {
                               <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                             )}
                           </div>
-                          <p className="text-xs text-[#8b8278]">{inquiry.createdAt}</p>
+                          <p className="text-xs text-[#8b8278]">{new Date(inquiry.created_at).toLocaleString('ko-KR')}</p>
                         </div>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-[10px] font-medium flex items-center gap-1.5 ${statusConfig.color}`}>
@@ -369,8 +381,9 @@ const CustomerInquiry = () => {
                       </div>
                     )}
 
+                    
                     {/* 답변 대기/처리중일 때 취소 버튼 */}
-                    {(inquiry.status === 'pending' || inquiry.status === 'processing') && (
+                    {(inquiry.status === 'pending'|| inquiry.status === 'processing') && (
                       <div className="mt-4 pt-4 border-t border-[#c9a961]/10 flex justify-end">
                         <button
                           onClick={() => handleCancelInquiry(inquiry.id)}
@@ -381,6 +394,7 @@ const CustomerInquiry = () => {
                         </button>
                       </div>
                     )}
+
                   </div>
                 );
               })

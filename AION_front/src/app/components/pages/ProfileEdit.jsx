@@ -7,11 +7,11 @@ const ProfileEdit = () => {
 
   // localStorage에서 기존 회원정보 불러오기
   const [formData, setFormData] = useState({
-    name: localStorage.getItem('userName') || '',
-    email: localStorage.getItem('userEmail') || '',
-    phone: localStorage.getItem('userPhone') || '',
-    gender: localStorage.getItem('userGender') || '',
-    birth: localStorage.getItem('userBirth') || ''
+    name: sessionStorage.getItem('userName') || '',
+    email: sessionStorage.getItem('userEmail') || '',
+    phone: sessionStorage.getItem('userPhone') || '',
+    gender: sessionStorage.getItem('userGender') || '',
+    birth: sessionStorage.getItem('userBirth') || ''
   });
 
   const handleChange = (e) => {
@@ -21,18 +21,28 @@ const ProfileEdit = () => {
 
   const handleSave = () => {
     // 수정된 정보 다시 저장
-    localStorage.setItem('userName', formData.name);
-    localStorage.setItem('userPhone', formData.phone);
-    localStorage.setItem('userGender', formData.gender);
-    localStorage.setItem('userBirth', formData.birth);
+    sessionStorage.setItem('userName', formData.name);
+    sessionStorage.setItem('userPhone', formData.phone);
+    sessionStorage.setItem('userGender', formData.gender);
+    sessionStorage.setItem('userBirth', formData.birth);
 
     alert('회원 정보가 수정되었습니다');
     navigate('/mypage');
     window.location.reload();
   };
 
+  const handleDeleteAccount = () => {
+    if(window.confirm("정말 계정을 삭제하시겠습니까? 삭제 후에는 복구가 불가능합니다.")) {
+      sessionStorage.clear();
+      localStorage.clear();
+      alert("회원 탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.");
+      navigate('/');
+      window.location.reload();
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-[#faf8f3] pt-40 px-6">
+    <div className="min-h-screen bg-[#faf8f3] pt-12 px-6">
       <div className="max-w-md mx-auto bg-white p-10 border border-[#c9a961]/20 shadow-sm">
 
         <div className="text-center mb-10">
@@ -40,7 +50,7 @@ const ProfileEdit = () => {
             PROFILE EDIT
           </div>
           <Ornament className="mb-4" />
-          <h2 className="text-2xl tracking-[0.2em]">회원 정보 수정</h2>
+          <h2 className="text-2xl tracking-[0.2em]">회원 정보 입력</h2>
         </div>
 
         <div className="space-y-6">
@@ -50,14 +60,14 @@ const ProfileEdit = () => {
             value={formData.name}
             onChange={handleChange}
             placeholder="이름"
-            className="w-full border-b py-2 outline-none text-sm"
+            className="w-full border-b py-2 outline-none text-sm font-pretendard"
           />
 
           {/* 이메일 (수정 불가) */}
           <input
             value={formData.email}
             disabled
-            className="w-full border-b py-2 text-gray-400 text-sm bg-transparent"
+            className="w-full border-b py-2 text-gray-400 text-sm bg-transparent font-pretendard"
           />
 
           {/* 전화번호 */}
@@ -66,7 +76,7 @@ const ProfileEdit = () => {
             value={formData.phone}
             onChange={handleChange}
             placeholder="전화번호"
-            className="w-full border-b py-2 outline-none text-sm"
+            className="w-full border-b py-2 outline-none text-sm font-pretendard"
           />
 
           {/* 성별 */}
@@ -74,7 +84,7 @@ const ProfileEdit = () => {
             name="gender"
             value={formData.gender}
             onChange={handleChange}
-            className="w-full border-b py-2 text-sm bg-transparent outline-none"
+            className="w-full border-b py-2 text-sm bg-transparent outline-none font-pretendard"
           >
             <option value="">성별 선택</option>
             <option value="male">남성</option>
@@ -87,7 +97,7 @@ const ProfileEdit = () => {
             name="birth"
             value={formData.birth}
             onChange={handleChange}
-            className="w-full border-b py-2 text-sm outline-none"
+            className="w-full border-b py-2 text-sm outline-none font-pretendard"
           />
 
           {/* 저장 버튼 */}
@@ -97,6 +107,14 @@ const ProfileEdit = () => {
           >
             SAVE
           </button>
+
+          {/* 계정 삭제 버튼 */}
+          <button
+            onClick = {handleDeleteAccount}
+            className = "w-full text-[10px] text-[#8b8278] underline hover:text-red-500 transition-colors cursor-pointer tracking-widest iatalic" >
+            계정 삭제하기
+          </button>
+        
         </div>
 
       </div>

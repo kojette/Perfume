@@ -39,10 +39,18 @@ const CustomerSupport = () => {
   const [answerText, setAnswerText] = useState('');
   
   // 현재 로그인한 관리자 (실제로는 로그인 시스템에서 가져와야 함)
-  const currentUser = localStorage.getItem('userName') || '관리자';
+  const currentUser = sessionStorage.getItem('userName') || '관리자';
   const isAdmin = true; // 실제로는 권한 체크 필요
 
   useEffect(() => {
+    const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
+
+    if(!isLoggedIn) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
+      return;
+    }
+
     // 관리자 권한 체크
     if (!isAdmin) {
       alert('관리자 권한이 필요합니다.');

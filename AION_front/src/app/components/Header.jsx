@@ -8,7 +8,6 @@ export function Header() {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const navigate = useNavigate();
 
-  //const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
 
   const handleUserClick = () => {
