@@ -37,12 +37,13 @@ const Login = () => {
                 navigate('/');
             }
 
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userEmail', userData.email);
-            localStorage.setItem('userName', userData.name);
-            localStorage.setItem('userPhone', userData.phone);
-            localStorage.setItem('userGender', userData.gender);
-            localStorage.setItem('userBirth', userData.birth);
+            sessionStorage.setItem('isLoggedIn', 'true');
+            sessionStorage.setItem('userEmail', userData.email);
+            sessionStorage.setItem('userName', userData.name);
+            sessionStorage.setItem('userPhone', userData.phone);
+            sessionStorage.setItem('userGender', userData.gender);
+            sessionStorage.setItem('userBirth', userData.birth);
+
 
             alert(`${userData.name}님, 환영합니다!`);
             navigate('/');
