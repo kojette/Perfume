@@ -23,6 +23,8 @@ import PerfumeManagement from './components/pages/PerfumeManagement';
 import Store from './components/pages/Store';
 
 // 새로 추가된 관리자 페이지
+import AdminDashboard from "./components/pages/AdminDashboard";
+import AdminRoute from './components/AdminRoute';
 import AnnouncementManagement from './components/pages/AnnouncementManagement';
 import EventManagement from './components/pages/EventManagement';
 import CouponPointManagement from './components/pages/CouponPointManagement';
@@ -70,11 +72,31 @@ function AppLayout() {
             <Route path="/faq" element={<FAQ />} />
 
             {/* 관리자 페이지 */}
-            <Route path="/admin/support" element={<CustomerSupport />} />
-            <Route path="/admin/perfumes" element={<PerfumeManagement />} />
-            <Route path="/admin/announcements" element={<AnnouncementManagement />} />
-            <Route path="/admin/events" element={<EventManagement />} />
-            <Route path="/admin/coupons" element={<CouponPointManagement />} />
+            <Route path="/admin" element = {
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            } />
+            <Route path="/admin/support" element={
+              <AdminRoute>
+                <CustomerSupport />
+              </AdminRoute>} />
+            <Route path="/admin/perfumes" element={
+              <AdminRoute>
+                <PerfumeManagement />
+              </AdminRoute>} />
+            <Route path="/admin/announcements" element={
+              <AdminRoute>
+                <AnnouncementManagement />
+              </AdminRoute>} />
+            <Route path="/admin/events" element={
+              <AdminRoute>
+                <EventManagement />
+              </AdminRoute>} />
+            <Route path="/admin/coupons" element={
+              <AdminRoute>
+                <CouponPointManagement />
+              </AdminRoute>} />
           </Routes>
         </main>
       </div>

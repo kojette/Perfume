@@ -33,20 +33,40 @@ const Login = () => {
 
             if(userError){
                 console.error('사용자 정보 조회 에러:', userError);
-                alert('환영합니다!');
+            }
+
+            const {data: adminData} = await supabase
+                .from('Admin_Accounts')
+                .select('*')
+                .eq('email', email)
+                .eq('is_active', true)
+                .single();
+
+                const isAdmin = !!adminData;
+
+            sessionStorage.setItem('isLoggedIn', 'true');
+            sessionStorage.setItem('userEmail', userData?.email || email);
+            sessionStorage.setItem('userName', userData?.name || '사용자');
+            sessionStorage.setItem('userPhone', userData?.phone || '');
+            sessionStorage.setItem('userGender', userData?.gender || '');
+            sessionStorage.setItem('userBirth', userData?.birth || '');
+            sessionStorage.setItem('isAdmin', isAdmin.toString());
+
+            if (isAdmin){
+                sessionStorage.setItem('adminRole', adminData.role);
+            }
+
+            const userName = userData?.name || '사용자';
+            if(isAdmin){
+                alert(`${userName}님, 관리자 페이지로 접속합니다.`);
+                navigate('/admin');
+            } else {
+                alert(`${userName}님, 환영합니다!`);
                 navigate('/');
             }
 
-            sessionStorage.setItem('isLoggedIn', 'true');
-            sessionStorage.setItem('userEmail', userData.email);
-            sessionStorage.setItem('userName', userData.name);
-            sessionStorage.setItem('userPhone', userData.phone);
-            sessionStorage.setItem('userGender', userData.gender);
-            sessionStorage.setItem('userBirth', userData.birth);
-
-            alert(`${userData.name}님, 환영합니다!`);
-            navigate('/');
             window.location.reload();
+
         } catch(err){
             console.error('예상치 못한 에러:', err);
             alert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
