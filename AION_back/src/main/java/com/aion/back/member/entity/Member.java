@@ -6,7 +6,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "\"Users\"") // 수퍼베이스의 기존 Users 테이블과 연결
+@Table(name = "\"Users\"")
 @Getter @Setter
 public class Member {
     @Id
@@ -17,18 +17,20 @@ public class Member {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "password_hash", nullable = false)
     private String password;
 
     private String name;
     private String nickname;
+    private String phone;
+    private String gender;
 
-    @Column(name = "agreement_terms")
-    private boolean agreementTerms;
+    @Column(name = "profile_image")
+    private String profileImage;
 
-    @Column(name = "is_withdrawn")
-    private boolean isWithdrawn = false;
+    @Column(name = "account_status")
+    private String accountStatus;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 }
