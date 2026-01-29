@@ -1,10 +1,13 @@
 package com.aion.back.member.service;
 
+import com.aion.back.member.dto.request.MemberRegistrationRequest;
 import com.aion.back.member.dto.response.MyPageResponse;
 import com.aion.back.member.entity.Member;
 import com.aion.back.member.repository.MemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 public class MemberService {
@@ -30,5 +33,20 @@ public class MemberService {
                 .profileImage(member.getProfileImage())
                 .accountStatus(member.getAccountStatus())
                 .build();
+    }
+
+    public void registerMember(MemberRegistrationRequest request){
+        Member member = new Member();
+        member.setSupabaseUid(request.getSupabaseUid());
+        member.setEmail(request.getEmail());
+        member.setName(request.getName());
+        member.setNickname(request.getNickname());
+        member.setPhone(request.getPhone());
+        member.setGender(request.getGender());
+        member.setAccountStatus("ACTIVE");
+        member.setJoinDate(LocalDateTime.now());
+        member.setCreatedAt(LocalDateTime.now());
+
+        userRepository.save(member);
     }
 }
