@@ -47,13 +47,16 @@ export function EventBanner() {
 
   return (
     <>
-      <div className="w-full bg-[#c9a961] text-[#2a2620] py-3 relative">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-center gap-3">
-          <span className="text-lg">{banners[currentIdx].icon}</span>
-          <span className="text-sm tracking-[0.2em] font-medium">
-            {banners[currentIdx].text}
-          </span>
-        </div>
+      <div className="w-full bg-[#c9a961] text-[#2a2620] relative min-h-[44px] flex items-center"> 
+        {/* min-h를 줘서 로딩 중에도 높이를 잡게 합니다 */}
+        {!loading && banners[currentIdx] && (
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-center gap-3 w-full">
+            <span className="text-lg">{banners[currentIdx].icon}</span>
+            <span className="text-sm tracking-[0.2em] font-medium">
+              {banners[currentIdx].text}
+            </span>
+          </div>
+        )}
 
         {isAdmin && (
           <button

@@ -1,102 +1,104 @@
-import { useState, useMemo } from "react";
-
-// 실제 향수 데이터
-const perfumeData = [
-  {
-    id: 1,
-    name: '아폴론의 빛',
-    nameEn: 'APOLLO\'S RADIANCE',
-    greekName: 'Ἀπόλλων',
-    category: '시트러스 & 우디',
-    price: 385000,
-    tags: ['시트러스', '우디', '남성', '데이트', '아폴론', '밝은'],
-    description: '태양신의 광채를 담은 밝고 따뜻한 향',
-    rating: 5
-  },
-  {
-    id: 2,
-    name: '아프로디테의 정원',
-    nameEn: 'APHRODITE\'S GARDEN',
-    greekName: 'Ἀφροδίτη',
-    category: '플로럴 & 머스크',
-    price: 365000,
-    tags: ['플로럴', '머스크', '여성', '로맨틱', '아프로디테', '우아한'],
-    description: '사랑의 여신이 거니는 장미 정원의 향기',
-    rating: 5
-  },
-  {
-    id: 3,
-    name: '아르테미스의 숲',
-    nameEn: 'ARTEMIS\' FOREST',
-    greekName: 'Ἄρτεμις',
-    category: '그린 & 우디',
-    price: 345000,
-    tags: ['그린', '우디', '중성', '자연', '아르테미스', '청량한'],
-    description: '달의 여신이 지키는 신성한 숲의 청량함',
-    rating: 5
-  },
-  {
-    id: 4,
-    name: '제우스의 천상',
-    nameEn: 'ZEUS\' OLYMPUS',
-    greekName: 'Ζεύς',
-    category: '오리엔탈 & 앰버',
-    price: 420000,
-    tags: ['오리엔탈', '앰버', '남성', '카리스마', '제우스', '강렬한'],
-    description: '신들의 왕이 지배하는 올림포스의 위엄',
-    rating: 5
-  },
-  {
-    id: 5,
-    name: '헤라의 위엄',
-    nameEn: 'HERA\'S MAJESTY',
-    greekName: 'Ἥρα',
-    category: '플로럴 & 파우더리',
-    price: 395000,
-    tags: ['플로럴', '파우더리', '여성', '고급', '헤라', '우아한'],
-    description: '여신의 여왕이 품은 고귀한 향기',
-    rating: 5
-  },
-  {
-    id: 6,
-    name: '포세이돈의 바다',
-    nameEn: 'POSEIDON\'S OCEAN',
-    greekName: 'Ποσειδῶν',
-    category: '아쿠아틱 & 미네랄',
-    price: 375000,
-    tags: ['아쿠아틱', '미네랄', '중성', '시원한', '포세이돈', '청량한'],
-    description: '바다의 신이 다스리는 푸른 심해의 신비',
-    rating: 4
-  },
-  {
-    id: 7,
-    name: '아테나의 지혜',
-    nameEn: 'ATHENA\'S WISDOM',
-    greekName: 'Ἀθηνᾶ',
-    category: '허브 & 우디',
-    price: 355000,
-    tags: ['허브', '우디', '중성', '지적', '아테나', '차분한'],
-    description: '지혜의 여신이 선사하는 명료한 향기',
-    rating: 5
-  },
-  {
-    id: 8,
-    name: '디오니소스의 축제',
-    nameEn: 'DIONYSUS\' FEAST',
-    greekName: 'Διόνυσος',
-    category: '프루티 & 스파이시',
-    price: 340000,
-    tags: ['프루티', '스파이시', '중성', '활기찬', '디오니소스', '달콤한'],
-    description: '축제의 신이 주최하는 황홀한 연회',
-    rating: 4
-  }
-];
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from '../../supabaseClient';
 
 export default function Recommend() {
+  const [perfumeData, setPerfumeData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [sortBy, setSortBy] = useState("latest");
+
+  // 향수 데이터 가져오기
+  useEffect(() => {
+    fetchPerfumes();
+  }, []);
+
+  const fetchPerfumes = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from('Perfumes')
+        .select(`
+          perfume_id,
+          name,
+          name_en,
+          price,
+          sale_rate,
+          sale_price,
+          volume_ml,
+          concentration,
+          gender,
+          season,
+          occasion,
+          avg_rating,
+          is_active,
+          brand_id,
+          Brands (
+            brand_name,
+            brand_name_en
+          ),
+          Perfume_Notes (
+            note_type,
+            Scents (
+              scent_name
+            )
+          ),
+          Perfume_Tags (
+            Preference_Tags (
+              tag_name,
+              tag_type
+            )
+          )
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // 데이터 변환
+      const transformedData = data.map(perfume => {
+        // 향 카테고리 추출
+        const scentCategories = perfume.Perfume_Notes
+          ?.map(note => note.Scents?.scent_category)
+          .filter((v, i, a) => v && a.indexOf(v) === i) || [];
+
+        // 태그 추출
+        const tags = [
+          ...(perfume.Perfume_Tags?.map(pt => pt.Preference_Tags?.tag_name).filter(Boolean) || []),
+          perfume.gender === 'MALE' ? '남성' : perfume.gender === 'FEMALE' ? '여성' : '중성',
+          ...(perfume.season || []),
+          ...(perfume.occasion || [])
+        ];
+
+        return {
+          id: perfume.perfume_id,
+          name: perfume.name,
+          nameEn: perfume.name_en || perfume.name,
+          greekName: perfume.name, // 그리스 이름은 별도 필드가 없으면 name 사용
+          category: scentCategories.join(' & ') || '기타',
+          price: perfume.sale_price || perfume.price,
+          originalPrice: perfume.sale_rate > 0 ? perfume.price : null,
+          discountRate: perfume.sale_rate || 0,
+          tags: tags,
+          description: `${perfume.Brands?.brand_name || ''} ${perfume.volume_ml}ml ${perfume.concentration || ''}`,
+          rating: Math.round(perfume.avg_rating || 0),
+          brand: perfume.Brands?.brand_name || ''
+        };
+      });
+
+      setPerfumeData(transformedData);
+    } catch (err) {
+      console.error('Error fetching perfumes:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && tagInput.trim() !== "") {
@@ -121,7 +123,8 @@ export default function Recommend() {
       result = result.filter(perfume => 
         perfume.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         perfume.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        perfume.category.toLowerCase().includes(searchTerm.toLowerCase())
+        perfume.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        perfume.brand.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -139,7 +142,7 @@ export default function Recommend() {
     // 3. 정렬
     switch (sortBy) {
       case "latest":
-        result.reverse();
+        // 이미 created_at desc로 정렬되어 있음
         break;
       case "price-low":
         result.sort((a, b) => a.price - b.price);
@@ -158,7 +161,36 @@ export default function Recommend() {
     }
 
     return result;
-  }, [searchTerm, selectedTags, sortBy]);
+  }, [perfumeData, searchTerm, selectedTags, sortBy]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#faf8f3] pt-16 px-6 pb-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#c9a961] mx-auto mb-4"></div>
+          <p className="text-[#8b8278] italic">향수 데이터를 불러오는 중...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-[#faf8f3] pt-16 px-6 pb-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 opacity-20">⚠️</div>
+          <p className="text-lg text-red-500 mb-2">데이터를 불러오는 중 오류가 발생했습니다</p>
+          <p className="text-sm text-[#a39d8f] mb-4">{error}</p>
+          <button 
+            onClick={fetchPerfumes}
+            className="px-6 py-2 bg-[#c9a961] text-white rounded-lg hover:bg-[#b89851] transition-colors"
+          >
+            다시 시도
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#faf8f3] pt-16 px-6 pb-20">
@@ -195,7 +227,7 @@ export default function Recommend() {
           </button>
 
           <button
-            onClick={() => setSelectedTags(['데이트'])}
+            onClick={() => setSelectedTags(['데이트', 'ROMANTIC'])}
             className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all cursor-pointer"
           >
             <div className="text-2xl mb-2">💕</div>
@@ -204,7 +236,7 @@ export default function Recommend() {
           </button>
 
           <button
-            onClick={() => setSelectedTags(['청량한'])}
+            onClick={() => setSelectedTags(['청량한', 'FRESH'])}
             className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all cursor-pointer"
           >
             <div className="text-2xl mb-2">🌿</div>
@@ -275,7 +307,7 @@ export default function Recommend() {
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="ex) 플로럴, 데이트, 아프로디테"
+              placeholder="ex) 플로럴, 데이트, 우디"
               className="flex-1 min-w-[200px] outline-none bg-transparent text-sm italic text-[#4b463a] placeholder:text-[#a39d8f]"
             />
           </div>
@@ -305,7 +337,7 @@ export default function Recommend() {
                   className="flex items-center gap-6 p-6 rounded-2xl bg-white/80 shadow-sm hover:shadow-lg hover:bg-white transition-all duration-300 cursor-pointer group"
                 >
                   <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-[#e8e2d6] to-[#d4cfc3] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                    <span className="text-2xl opacity-40">{perfume.greekName.charAt(0)}</span>
+                    <span className="text-2xl opacity-40">{perfume.name.charAt(0)}</span>
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -323,9 +355,25 @@ export default function Recommend() {
                       </div>
                       
                       <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-semibold text-[#c9a961] mb-1">
-                          ₩{perfume.price.toLocaleString()}
-                        </p>
+                        {perfume.discountRate > 0 ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-xs text-red-500 line-through">
+                              ₩{perfume.originalPrice?.toLocaleString()}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-semibold text-[#c9a961]">
+                                ₩{perfume.price.toLocaleString()}
+                              </span>
+                              <span className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                                {perfume.discountRate}%
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-lg font-semibold text-[#c9a961] mb-1">
+                            ₩{perfume.price.toLocaleString()}
+                          </p>
+                        )}
                         <div className="flex gap-0.5">
                           {[...Array(5)].map((_, i) => (
                             <span
