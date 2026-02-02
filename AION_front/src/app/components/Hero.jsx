@@ -2,27 +2,57 @@ import { useState, useEffect } from "react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { CornerOrnament } from "./Ornament";
 import { HeroAdminOverlay } from "./HeroAdminOverlay";
+import { supabase } from "../supabaseClient";
 
 import img11 from "../../assets/11.png";
 import img12 from "../../assets/12.jpg";
 import img13 from "../../assets/13.jpg";
 
-export function Hero() {
- // ✅ localStorage에서 저장된 데이터 불러오기
-const savedData = localStorage.getItem("heroData");
-const heroData = savedData ? JSON.parse(savedData) : null;
-
-// 저장된 이미지가 있으면 사용, 없으면 기본 이미지
-const images = heroData?.images || [img11, img12, img13];
-const displayTitle = heroData?.title || "AION";
-const displaySubtitle = heroData?.subtitle || "영원한 그들의 향을 담다";
-const displayTagline = heroData?.tagline || "ESSENCE OF DIVINE";
-
+// App.js에서 계산된 navHeight를 전달받습니다.
+export function Hero({ navHeight = 0 }) {
+  const [heroData, setHeroData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [currentIdx, setCurrentIdx] = useState(0);
-
-  // ✅ 관리자 여부 (URL 경로 기반)
-const isAdmin = window.location.pathname.startsWith("/admin");
   const [editorOpen, setEditorOpen] = useState(false);
+
+  const isAdmin = window.location.pathname.startsWith("/admin");
+
+  /**
+   * [핵심] 겹침 강도 설정
+   * 사용자의 요청대로 배너 전체 높이의 20%를 계산합니다.
+   * 이 값만큼 Hero 섹션을 위로(-marginTop) 끌어올립니다.
+   */
+  const overlapHeight = navHeight * 0.02;
+
+  useEffect(() => {
+    const fetchActiveHero = async () => {
+      const { data, error } = await supabase
+        .from("hero_history")
+        .select(`
+          *,
+          hero_images(image_url)
+        `)
+        .eq("is_active", true)
+        .single();
+
+      if (data) {
+        setHeroData({
+          title: data.title,
+          subtitle: data.subtitle,
+          tagline: data.tagline,
+          images: data.hero_images?.map(img => img.image_url) || []
+        });
+      }
+      setLoading(false);
+    };
+
+    fetchActiveHero();
+  }, []);
+
+  const images = heroData?.images?.length > 0 ? heroData.images : [img11, img12, img13];
+  const displayTitle = heroData?.title || "AION";
+  const displaySubtitle = heroData?.subtitle || "영원한 그들의 향을 담다";
+  const displayTagline = heroData?.tagline || "ESSENCE OF DIVINE";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -32,8 +62,60 @@ const isAdmin = window.location.pathname.startsWith("/admin");
     return () => clearInterval(timer);
   }, [images.length]);
 
+  const handleSave = async (saveData) => {
+    try {
+      await supabase
+        .from("hero_history")
+        .update({ is_active: false })
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      const { data: newHero, error: heroError } = await supabase
+        .from("hero_history")
+        .insert({
+          record_title: saveData.recordTitle,
+          title: saveData.title,
+          subtitle: saveData.subtitle,
+          tagline: saveData.tagline,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (heroError) throw heroError;
+
+      if (saveData.images?.length > 0) {
+        const imageInserts = saveData.images.map(imgUrl => ({
+          hero_id: newHero.id,
+          image_url: imgUrl
+        }));
+
+        const { error: imgError } = await supabase
+          .from("hero_images")
+          .insert(imageInserts);
+
+        if (imgError) throw imgError;
+      }
+
+      alert("Hero 배너가 저장되었습니다!");
+      window.location.reload();
+    } catch (error) {
+      console.error("Hero 저장 실패:", error);
+      alert("저장에 실패했습니다: " + error.message);
+    }
+  };
+
   return (
-    <section className="relative h-screen flex items-center justify-center overflow-hidden">
+    <section 
+      className="relative flex items-center justify-center overflow-hidden"
+      style={{ 
+        // 1. 배너의 2%만큼 위로 강제 이동
+        marginTop: `-${overlapHeight}px`, 
+        // 2. 위로 올라간 만큼 하단이 비지 않도록 높이 보정
+        height: `calc(100vh + ${overlapHeight}px)`,
+        // 3. 배너보다 뒤에 위치하도록 설정 (배너는 z-50임)
+        zIndex: 1
+      }}
+    >
       {/* ================= 배경 이미지 ================= */}
       <div className="absolute inset-0 z-0 bg-[#2a2620]">
         {images.map((img, index) => (
@@ -50,9 +132,8 @@ const isAdmin = window.location.pathname.startsWith("/admin");
             />
           </div>
         ))}
-
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#2a2620]/60 via-[#2a2620]/40 to-[#2a2620]/60" />
+        {/* 상단 겹치는 부분의 자연스러움을 위해 그라데이션 강화 */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#2a2620]/90 via-[#2a2620]/40 to-[#2a2620]/70" />
       </div>
 
       {/* ================= 장식 ================= */}
@@ -62,7 +143,11 @@ const isAdmin = window.location.pathname.startsWith("/admin");
       <CornerOrnament position="bottom-right" className="opacity-60" />
 
       {/* ================= 콘텐츠 ================= */}
-      <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
+      <div 
+        className="relative z-10 text-center px-4 max-w-5xl mx-auto"
+        // 배너 뒤로 겹쳐지는 만큼 텍스트가 가려지지 않게 안쪽 여백 추가
+        style={{ paddingTop: `${overlapHeight}px` }} 
+      >
         <div className="flex items-center justify-center mb-8">
           <div className="h-[1px] w-20 bg-gradient-to-r from-transparent to-[#c9a961]" />
           <div className="mx-4 text-[#c9a961] text-xl">✦</div>
@@ -78,7 +163,7 @@ const isAdmin = window.location.pathname.startsWith("/admin");
         </h1>
 
         <p className="text-lg md:text-xl tracking-[0.3em] mb-4 text-[#e8dcc8] italic">
-          영원한 그들의 향을 담다
+          {displaySubtitle}
         </p>
 
         <div className="flex items-center justify-center my-8">
@@ -99,17 +184,16 @@ const isAdmin = window.location.pathname.startsWith("/admin");
         <div className="w-[1px] h-12 bg-gradient-to-b from-[#c9a961] to-transparent" />
       </div>
 
-      {/* ================= 관리자 버튼 ================= */}
       {isAdmin && (
         <button
           onClick={() => setEditorOpen(true)}
-          className="absolute top-32 right-8 z-20 px-4 py-2 bg-black/60 text-[#c9a961] border border-[#c9a961]/40 text-sm tracking-widest hover:bg-black"
+           style={{ transform: `translateY(calc(${overlapHeight}px - 4px))` }}
+          className="absolute top-8 right-8 z-20 px-4 py-2 bg-black/60 text-[#c9a961] border border-[#c9a961]/40 text-sm tracking-widest hover:bg-black"
         >
-          전체 편집
+          Hero 편집
         </button>
       )}
 
-      {/* ================= 관리자 오버레이 ================= */}
       {isAdmin && editorOpen && (
         <HeroAdminOverlay 
           onClose={() => setEditorOpen(false)} 
@@ -118,10 +202,7 @@ const isAdmin = window.location.pathname.startsWith("/admin");
             subtitle: displaySubtitle,
             tagline: displayTagline
           }}
-          onSave={(data) => {
-            localStorage.setItem("heroData", JSON.stringify(data));
-            window.location.reload(); // 저장 후 페이지 새로고침으로 즉시 반영
-          }}
+          onSave={handleSave}
         />
       )}
     </section>
