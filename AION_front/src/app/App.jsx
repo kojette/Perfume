@@ -29,6 +29,9 @@ import AnnouncementManagement from './components/pages/AnnouncementManagement';
 import EventManagement from './components/pages/EventManagement';
 import CouponPointManagement from './components/pages/CouponPointManagement';
 
+
+import Collections from "./components/pages/Collections";//컬렉션과 시그니처
+import Signature from "./components/pages/Signature";
 function AppLayout() {
   const location = useLocation();
   const [navHeight, setNavHeight] = useState(0);
@@ -81,6 +84,10 @@ return (
             />
             <Route path="/recommend" element={<Recommend />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/collections" element={<Collections />} />
+            <Route path="/signature" element={<Signature />} />
+
+
             <Route path="/signup" element={<Signup />} />
             <Route path="/mypage" element={<Mypage />} />
             <Route path="/find-password" element={<FindPassword />} />

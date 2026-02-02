@@ -121,6 +121,20 @@ function BannerEditor({ onClose, currentBanners }) {
     setBanners(banners.filter((_, i) => i !== index));
   };
 
+  const handleMoveUp = (index) => {
+    if (index === 0) return;
+    const newBanners = [...banners];
+    [newBanners[index - 1], newBanners[index]] = [newBanners[index], newBanners[index - 1]];
+    setBanners(newBanners);
+  };
+
+  const handleMoveDown = (index) => {
+    if (index === banners.length - 1) return;
+    const newBanners = [...banners];
+    [newBanners[index], newBanners[index + 1]] = [newBanners[index + 1], newBanners[index]];
+    setBanners(newBanners);
+  };
+
   const handleSave = async () => {
     if (!recordTitle.trim()) {
       alert("저장 제목을 입력하세요");
@@ -287,12 +301,42 @@ function BannerEditor({ onClose, currentBanners }) {
                       <span className="text-sm">{banner.text}</span>
                     </div>
                     
-                    <button
-                      onClick={() => handleRemove(idx)}
-                      className="px-3 py-1 text-xs text-red-400 border border-red-400/40 hover:bg-red-400/10"
-                    >
-                      삭제
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {/* 순서 변경 버튼 */}
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          onClick={() => handleMoveUp(idx)}
+                          disabled={idx === 0}
+                          className={`px-2 py-0.5 text-xs border transition-colors ${
+                            idx === 0
+                              ? 'text-[#c9a961]/30 border-[#c9a961]/20 cursor-not-allowed'
+                              : 'text-[#c9a961] border-[#c9a961]/40 hover:bg-[#c9a961]/10'
+                          }`}
+                          title="위로 이동"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onClick={() => handleMoveDown(idx)}
+                          disabled={idx === banners.length - 1}
+                          className={`px-2 py-0.5 text-xs border transition-colors ${
+                            idx === banners.length - 1
+                              ? 'text-[#c9a961]/30 border-[#c9a961]/20 cursor-not-allowed'
+                              : 'text-[#c9a961] border-[#c9a961]/40 hover:bg-[#c9a961]/10'
+                          }`}
+                          title="아래로 이동"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                      
+                      <button
+                        onClick={() => handleRemove(idx)}
+                        className="px-3 py-1 text-xs text-red-400 border border-red-400/40 hover:bg-red-400/10"
+                      >
+                        삭제
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
