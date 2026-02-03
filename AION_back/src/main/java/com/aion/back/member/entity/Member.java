@@ -32,13 +32,13 @@ public class Member {
     @Column(name = "phone", nullable = false, unique = true)
     private String phone;
 
-    @Column(name = "gender", columnDefinition = "user_gender")
+    @Column(name = "gender")
     private String gender;
 
     @Column(name = "profile_image")
     private String profileImage;
 
-    @Column(name = "account_status", columnDefinition = "user_account_status")
+    @Column(name = "account_status")
     private String accountStatus;
 
     @Column(name = "join_date", updatable = false)

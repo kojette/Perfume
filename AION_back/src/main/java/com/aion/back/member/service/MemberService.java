@@ -1,26 +1,35 @@
 package com.aion.back.member.service;
 
+import com.aion.back.common.config.SupabaseJwtValidator;
 import com.aion.back.member.dto.request.MemberRegistrationRequest;
+import com.aion.back.member.dto.request.ProfileUpdateRequest;
+import com.aion.back.member.dto.response.MemberProfileResponse;
 import com.aion.back.member.dto.response.MyPageResponse;
 import com.aion.back.member.entity.Member;
 import com.aion.back.member.repository.MemberRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 public class MemberService {
 
     @Autowired
     private MemberRepository userRepository;
 
-    // 중복 이메일 체크
+    @Autowired
+    private SupabaseJwtValidator jwtValidator;
+
+    // ===== 기존 메서드들 (그대로 유지) =====
+
     public boolean isEmailDuplicated(String email) {
         return userRepository.existsByEmail(email);
     }
 
-    // 마이페이지 정보 조회 전용 메서드
     public MyPageResponse getMyPageInfo(Long userId) {
         Member member = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
@@ -48,5 +57,117 @@ public class MemberService {
         member.setCreatedAt(LocalDateTime.now());
 
         userRepository.save(member);
+    }
+
+    // ===== 새로 추가하는 메서드들 =====
+
+    /**
+     * 토큰으로 회원 정보 조회
+     */
+    @Transactional(readOnly = true)
+    public MemberProfileResponse getProfileByToken(String token) {
+        try {
+            // Bearer 제거
+            String actualToken = token.replace("Bearer ", "");
+
+            // 토큰에서 이메일 추출
+            String email = jwtValidator.validateAndGetEmail(actualToken);
+
+            log.info("프로필 조회 - 이메일: {}", email);
+
+            Member member = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
+
+            return MemberProfileResponse.builder()
+                    .email(member.getEmail())
+                    .name(member.getName())
+                    .nickname(member.getNickname())
+                    .phone(member.getPhone())
+                    .gender(member.getGender())
+                    .profileImage(member.getProfileImage())
+                    .accountStatus(member.getAccountStatus())
+                    .build();
+        } catch (Exception e) {
+            log.error("프로필 조회 실패", e);
+            throw new RuntimeException("프로필 조회 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 회원 정보 수정 - Repository 네이티브 쿼리 사용
+     */
+    @Transactional
+    public MemberProfileResponse updateProfile(String token, ProfileUpdateRequest request) {
+        try {
+            // Bearer 제거
+            String actualToken = token.replace("Bearer ", "");
+
+            // 토큰에서 이메일 추출
+            String email = jwtValidator.validateAndGetEmail(actualToken);
+
+            log.info("회원 정보 수정 시작 - 이메일: {}", email);
+            log.info("수정 요청 데이터: name={}, nickname={}, phone={}, gender={}",
+                    request.getName(), request.getNickname(), request.getPhone(), request.getGender());
+
+            // 현재 회원 정보 조회
+            Member member = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
+
+            // 네이티브 쿼리로 업데이트 (타입 캐스팅 포함)
+            userRepository.updateMemberProfile(
+                    request.getName() != null ? request.getName() : member.getName(),
+                    request.getNickname(),
+                    request.getPhone() != null ? request.getPhone() : member.getPhone(),
+                    request.getGender() != null ? request.getGender() : member.getGender(),
+                    email
+            );
+
+            log.info("회원 정보 수정 완료: {}", email);
+
+            // 업데이트된 정보 다시 조회
+            Member updated = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
+
+            return MemberProfileResponse.builder()
+                    .email(updated.getEmail())
+                    .name(updated.getName())
+                    .nickname(updated.getNickname())
+                    .phone(updated.getPhone())
+                    .gender(updated.getGender())
+                    .profileImage(updated.getProfileImage())
+                    .accountStatus(updated.getAccountStatus())
+                    .build();
+        } catch (Exception e) {
+            log.error("회원 정보 수정 실패", e);
+            throw new RuntimeException("회원 정보 수정 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 회원 탈퇴 - Repository 네이티브 쿼리 사용
+     */
+    @Transactional
+    public void deleteAccount(String token) {
+        try {
+            // Bearer 제거
+            String actualToken = token.replace("Bearer ", "");
+
+            // 토큰에서 이메일 추출
+            String email = jwtValidator.validateAndGetEmail(actualToken);
+
+            log.info("회원 탈퇴 시작 - 이메일: {}", email);
+
+            // 회원 존재 여부 확인
+            Member member = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
+
+            // 네이티브 쿼리로 상태 변경 (타입 캐스팅 포함)
+            userRepository.updateAccountStatus("DELETED", email);
+
+            log.info("회원 탈퇴 처리 완료: {}", email);
+        } catch (Exception e) {
+            log.error("회원 탈퇴 실패", e);
+            throw new RuntimeException("회원 탈퇴 실패: " + e.getMessage());
+        }
     }
 }
