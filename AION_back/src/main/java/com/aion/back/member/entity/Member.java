@@ -35,6 +35,9 @@ public class Member {
     @Column(name = "gender")
     private String gender;
 
+    @Column(name = "birth_date")
+    private String birthDate;
+
     @Column(name = "profile_image")
     private String profileImage;
 

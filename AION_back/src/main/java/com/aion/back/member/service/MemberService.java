@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class MemberService {
 
     @Autowired
-    private MemberRepository userRepository;
+    private MemberRepository memberRepository;
 
     @Autowired
     private SupabaseJwtValidator jwtValidator;
@@ -27,11 +27,11 @@ public class MemberService {
     // ===== 기존 메서드들 (그대로 유지) =====
 
     public boolean isEmailDuplicated(String email) {
-        return userRepository.existsByEmail(email);
+        return memberRepository.existsByEmail(email);
     }
 
     public MyPageResponse getMyPageInfo(Long userId) {
-        Member member = userRepository.findById(userId)
+        Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
         return MyPageResponse.builder()
@@ -45,6 +45,10 @@ public class MemberService {
     }
 
     public void registerMember(MemberRegistrationRequest request){
+        if(memberRepository.existsByEmail(request.getEmail())){
+            throw new RuntimeException("이미 등록된 이메일입니다.");
+        }
+
         Member member = new Member();
         member.setSupabaseUid(request.getSupabaseUid());
         member.setEmail(request.getEmail());
@@ -56,7 +60,7 @@ public class MemberService {
         member.setJoinDate(LocalDateTime.now());
         member.setCreatedAt(LocalDateTime.now());
 
-        userRepository.save(member);
+        memberRepository.save(member);
     }
 
     // ===== 새로 추가하는 메서드들 =====
@@ -75,7 +79,7 @@ public class MemberService {
 
             log.info("프로필 조회 - 이메일: {}", email);
 
-            Member member = userRepository.findByEmail(email)
+            Member member = memberRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
 
             return MemberProfileResponse.builder()
@@ -110,11 +114,11 @@ public class MemberService {
                     request.getName(), request.getNickname(), request.getPhone(), request.getGender());
 
             // 현재 회원 정보 조회
-            Member member = userRepository.findByEmail(email)
+            Member member = memberRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
 
             // 네이티브 쿼리로 업데이트 (타입 캐스팅 포함)
-            userRepository.updateMemberProfile(
+            memberRepository.updateMemberProfile(
                     request.getName() != null ? request.getName() : member.getName(),
                     request.getNickname(),
                     request.getPhone() != null ? request.getPhone() : member.getPhone(),
@@ -125,7 +129,7 @@ public class MemberService {
             log.info("회원 정보 수정 완료: {}", email);
 
             // 업데이트된 정보 다시 조회
-            Member updated = userRepository.findByEmail(email)
+            Member updated = memberRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
 
             return MemberProfileResponse.builder()
@@ -158,11 +162,11 @@ public class MemberService {
             log.info("회원 탈퇴 시작 - 이메일: {}", email);
 
             // 회원 존재 여부 확인
-            Member member = userRepository.findByEmail(email)
+            Member member = memberRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
 
             // 네이티브 쿼리로 상태 변경 (타입 캐스팅 포함)
-            userRepository.updateAccountStatus("DELETED", email);
+            memberRepository.updateAccountStatus("DELETED", email);
 
             log.info("회원 탈퇴 처리 완료: {}", email);
         } catch (Exception e) {

@@ -8,32 +8,34 @@ import com.aion.back.member.dto.response.MyPageResponse;
 import com.aion.back.member.service.MemberService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/members")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class MemberController {
 
     @Autowired
-    private MemberService userService;
+    private MemberService memberService;
 
     // ===== 기존 메서드들 (그대로 유지) =====
 
     @GetMapping("/check-email")
     public ApiResponse<Boolean> checkEmail(@RequestParam("email") String email) {
-        boolean isDuplicated = userService.isEmailDuplicated(email);
+        boolean isDuplicated = memberService.isEmailDuplicated(email);
         return ApiResponse.success("이메일 중복 체크 결과입니다.", isDuplicated);
     }
 
     @GetMapping("/mypage")
     public ApiResponse<MyPageResponse> getMyPage(@RequestParam("userId") Long userId) {
-        MyPageResponse response = userService.getMyPageInfo(userId);
+        MyPageResponse response = memberService.getMyPageInfo(userId);
         return ApiResponse.success("마이페이지 정보를 성공적으로 불러왔습니다.", response);
     }
 
     @PostMapping("/register")
     public ApiResponse<String> register(@RequestBody MemberRegistrationRequest request) {
-        userService.registerMember(request);
+        memberService.registerMember(request);
         return ApiResponse.success("사용자 정보가 우리 DB에 성공적으로 등록되었습니다.");
     }
 
@@ -45,9 +47,9 @@ public class MemberController {
     @GetMapping("/profile")
     public ApiResponse<MemberProfileResponse> getProfile(
             @RequestHeader("Authorization") String token) {
-        
+
         try {
-            MemberProfileResponse profile = userService.getProfileByToken(token);
+            MemberProfileResponse profile = memberService.getProfileByToken(token);
             return ApiResponse.success("프로필 조회 성공", profile);
         } catch (Exception e) {
             return ApiResponse.error("프로필 조회 실패: " + e.getMessage());
@@ -63,7 +65,7 @@ public class MemberController {
             @RequestBody ProfileUpdateRequest request) {
         
         try {
-            MemberProfileResponse updated = userService.updateProfile(token, request);
+            MemberProfileResponse updated = memberService.updateProfile(token, request);
             return ApiResponse.success("회원 정보 수정 완료", updated);
         } catch (Exception e) {
             return ApiResponse.error("회원 정보 수정 실패: " + e.getMessage());
@@ -78,7 +80,7 @@ public class MemberController {
             @RequestHeader("Authorization") String token) {
         
         try {
-            userService.deleteAccount(token);
+            memberService.deleteAccount(token);
             return ApiResponse.success("회원 탈퇴가 완료되었습니다.");
         } catch (Exception e) {
             return ApiResponse.error("회원 탈퇴 실패: " + e.getMessage());

@@ -6,6 +6,8 @@ const Mypage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
   
   // 백엔드에서 가져올 사용자 정보
   const [userInfo, setUserInfo] = useState({
@@ -37,7 +39,7 @@ const Mypage = () => {
       }
 
       // 백엔드 API 호출
-      const response = await fetch('http://localhost:8080/api/members/profile', {
+      const response = await fetch(`${API_BASE_URL}/api/members/profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -46,7 +48,8 @@ const Mypage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('프로필 조회 실패');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `서버 에러 (${response.status})`);
       }
 
       const result = await response.json();
@@ -59,8 +62,11 @@ const Mypage = () => {
 
     } catch (err) {
       console.error('프로필 조회 에러:', err);
-      setError(err.message);
-      alert('프로필 정보를 불러오는데 실패했습니다.');
+      if(err.message === 'Failed to fetch'){
+        setError('서버와 연결할 수 없습니다. 관리자에게 문의하세요.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }

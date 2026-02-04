@@ -114,6 +114,30 @@ const Signup = () => {
                 return;
             }
 
+            try {
+                const backendResponse = await fetch('http://localhost:8080/api/members/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type' : 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        name: formData.name,
+                        phone: formData.phone,
+                        gender: formData.gender,
+                        birth: birthDate,
+                        supabaseUid: data.user.id
+                    })
+                });
+
+                if(!backendResponse.ok){
+                    console.error('백엔드 DB 저장 실패');
+                
+                }
+            } catch (backendErr){
+                console.error('백엔드 서버 연결 에러:', backendErr);
+            }
+
             alert("가입 신청 완료! 입력하신 이메일로 전송된 확인 링크를 클릭하여 인증을 완료해주세요.");
             navigate('/login');
 
