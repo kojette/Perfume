@@ -1,5 +1,6 @@
 package com.aion.back.perfume.entity;
 
+import com.aion.back.brand.entity.Brand;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -8,7 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "perfumes")
+@Table(name = "\"Perfumes\"")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -40,7 +41,7 @@ public class Perfume {
     @Column(name = "sale_rate")
     private Integer saleRate;
 
-    @Column(name = "sale_price")
+    @Column(name = "sale_price", insertable = false, updatable = false)
     private Integer salePrice;
 
     @Column(name = "volume_ml")
@@ -80,10 +81,12 @@ public class Perfume {
 
     // 비즈니스 메서드
     public void incrementViewCount() {
+
         this.viewCount = (this.viewCount == null ? 0 : this.viewCount) + 1;
     }
 
     public void incrementSalesCount() {
+
         this.salesCount = (this.salesCount == null ? 0 : this.salesCount) + 1;
     }
 
