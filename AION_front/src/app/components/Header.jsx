@@ -91,7 +91,10 @@ export function Header() {
               <button className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
                 <Heart size={20} />
               </button>
-              <button className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
+              <button 
+                onClick = {() => navigate('/cart')}
+                className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer"
+                title = "장바구니">
                 <ShoppingBag size={20} />
               </button>
             </div>

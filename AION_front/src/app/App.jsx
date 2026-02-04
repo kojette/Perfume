@@ -22,6 +22,7 @@ import CustomerSupport from "./components/pages/CustomerSupport";
 import FAQ from "./components/pages/FAQ";
 import PerfumeManagement from './components/pages/PerfumeManagement';
 import Store from './components/pages/Store';
+import Cart from './components/pages/Cart';
 
 import AdminDashboard from "./components/pages/AdminDashboard";
 import AdminRoute from './components/AdminRoute';
@@ -86,7 +87,7 @@ return (
             <Route path="/login" element={<Login />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/signature" element={<Signature />} />
-
+            <Route path="/cart" element={<Cart />} />
 
             <Route path="/signup" element={<Signup />} />
             <Route path="/mypage" element={<Mypage />} />
