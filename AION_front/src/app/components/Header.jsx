@@ -88,7 +88,9 @@ export function Header() {
                 title="내 계정">
                   <User size={20} />
               </button>
-              <button className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
+              <button 
+                onClick = {() => navigate('/wishlist')}
+                className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
                 <Heart size={20} />
               </button>
               <button 
