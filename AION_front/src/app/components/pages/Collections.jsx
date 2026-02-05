@@ -7,9 +7,11 @@ export default function Collections() {
   const [media, setMedia] = useState([]);
   const [perfumes, setPerfumes] = useState([]);
   const [textBlocks, setTextBlocks] = useState([]);
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);//const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const isAdmin = window.location.pathname.startsWith("/admin") || localStorage.getItem('isAdmin') === 'true';//관리자영역
 
   // 활성화된 컬렉션 가져오기
   useEffect(() => {
@@ -27,7 +29,7 @@ export default function Collections() {
         .eq('type', 'COLLECTION')
         .eq('is_active', true)
         .eq('is_published', true)
-        .single();
+        .maybeSingle();
 
       if (collectionError) throw collectionError;
       if (!collectionData) {
@@ -35,6 +37,12 @@ export default function Collections() {
         setLoading(false);
         return;
       }
+      if (collectionError) throw collectionError;
+      if (!collectionData) {
+        setError('활성화된 컬렉션이 없습니다.');
+        setLoading(false);
+        return;
+      }//
 
       setCollection(collectionData);
 
@@ -49,7 +57,7 @@ export default function Collections() {
       setMedia(mediaData || []);
 
       // 3. 향수 가져오기
-      const { data: perfumeData, error: perfumeError } = await supabase
+      /*const { data: perfumeData, error: perfumeError } = await supabase
         .from('Collection_Perfumes')
         .select(`
           display_order,
@@ -78,6 +86,60 @@ export default function Collections() {
         thumbnail: item.Perfumes.Perfume_Images?.find(img => img.is_thumbnail)?.image_url
       })) || [];
       
+      setPerfumes(transformedPerfumes);*/
+      // 3. 향수 가져오기 부분 수정
+      const { data: perfumeData, error: perfumeError } = await supabase
+        .from('Collection_Perfumes')
+        .select(`
+          display_order,
+          is_featured,
+          perfume_id
+        `)
+        .eq('collection_id', collectionData.collection_id)
+        .order('display_order', { ascending: true });
+
+      if (perfumeError) throw perfumeError;
+
+      // 향수 상세 정보 가져오기
+      const perfumeIds = perfumeData?.map(p => p.perfume_id) || [];
+
+      const { data: perfumes } = await supabase
+        .from('Perfumes')
+        .select('perfume_id, name, name_en, price, sale_rate, sale_price, brand_id')
+        .in('perfume_id', perfumeIds);
+
+      // 브랜드 정보
+      const brandIds = [...new Set(perfumes?.map(p => p.brand_id).filter(Boolean))];
+      const { data: brands } = await supabase
+        .from('Brands')
+        .select('brand_id, brand_name')
+        .in('brand_id', brandIds);
+
+      const brandMap = {};
+      brands?.forEach(b => brandMap[b.brand_id] = b.brand_name);
+
+      // 이미지 정보
+      const { data: images } = await supabase
+        .from('Perfume_Images')
+        .select('perfume_id, image_url, is_thumbnail')
+        .in('perfume_id', perfumeIds)
+        .eq('is_thumbnail', true);
+
+      const imageMap = {};
+      images?.forEach(img => imageMap[img.perfume_id] = img.image_url);
+
+      // 데이터 결합
+      const transformedPerfumes = perfumeData?.map(cp => {
+        const perfume = perfumes?.find(p => p.perfume_id === cp.perfume_id);
+        return {
+          ...perfume,
+          display_order: cp.display_order,
+          is_featured: cp.is_featured,
+          brand_name: brandMap[perfume?.brand_id],
+          thumbnail: imageMap[cp.perfume_id]
+        };
+      }).filter(p => p.perfume_id) || [];
+
       setPerfumes(transformedPerfumes);
 
       // 4. 텍스트 블록 가져오기
@@ -99,15 +161,15 @@ export default function Collections() {
   };
 
   // 미디어 자동 전환 (5초마다)
-  useEffect(() => {
+   useEffect(() => {
     if (media.length <= 1) return;
 
-    const interval = setInterval(() => {
-      setCurrentMediaIndex((prev) => (prev + 1) % media.length);
+    const timer = setInterval(() => {
+      setCurrentMediaIndex(prev => (prev + 1) % media.length);
     }, 5000);
 
-    return () => clearInterval(interval);
-  }, [media.length]);
+    return () => clearInterval(timer);
+  }, [media]);
 
   // 폰트 크기 매핑
   const getFontSize = (size) => {
@@ -348,6 +410,15 @@ export default function Collections() {
               아직 등록된 향수가 없습니다
             </p>
           </div>
+        )}
+        {/*관리자 버튼 수정*/}
+        {isAdmin && (
+          <button
+            onClick={() => window.location.href = '/admin/collections'} // 관리자 페이지로 이동하거나 모달 띄우기
+            className="fixed bottom-8 right-8 z-50 px-6 py-3 bg-black/80 text-[#c9a961] border border-[#c9a961] hover:bg-[#c9a961] hover:text-black transition-all"
+          >
+            COLLECTION 편집하기
+          </button>
         )}
       </div>
     </div>

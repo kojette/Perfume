@@ -11,6 +11,8 @@ export default function Signature() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const isAdmin = window.location.pathname.startsWith("/admin") || localStorage.getItem('isAdmin') === 'true';
+
   // 활성화된 시그니처 가져오기
   useEffect(() => {
     fetchActiveSignature();
@@ -27,7 +29,7 @@ export default function Signature() {
         .eq('type', 'SIGNATURE')
         .eq('is_active', true)
         .eq('is_published', true)
-        .single();
+        .maybeSingle();
 
       if (signatureError) throw signatureError;
       if (!signatureData) {
@@ -48,36 +50,59 @@ export default function Signature() {
       if (mediaError) throw mediaError;
       setMedia(mediaData || []);
 
-      // 3. 향수 가져오기
+      // 3. 향수 가져오기 (수정된 버전)
       const { data: perfumeData, error: perfumeError } = await supabase
         .from('Collection_Perfumes')
         .select(`
           display_order,
           is_featured,
-          Perfumes (
-            perfume_id,
-            name,
-            name_en,
-            price,
-            sale_rate,
-            sale_price,
-            Brands (brand_name),
-            Perfume_Images (image_url, is_thumbnail)
-          )
+          perfume_id
         `)
         .eq('collection_id', signatureData.collection_id)
         .order('display_order', { ascending: true });
 
       if (perfumeError) throw perfumeError;
-      
-      const transformedPerfumes = perfumeData?.map(item => ({
-        ...item.Perfumes,
-        display_order: item.display_order,
-        is_featured: item.is_featured,
-        brand_name: item.Perfumes.Brands?.brand_name,
-        thumbnail: item.Perfumes.Perfume_Images?.find(img => img.is_thumbnail)?.image_url
-      })) || [];
-      
+
+      // 향수 상세 정보 가져오기
+      const perfumeIds = perfumeData?.map(p => p.perfume_id) || [];
+
+      const { data: perfumes } = await supabase
+        .from('Perfumes')
+        .select('perfume_id, name, name_en, price, sale_rate, sale_price, brand_id')
+        .in('perfume_id', perfumeIds);
+
+      // 브랜드 정보
+      const brandIds = [...new Set(perfumes?.map(p => p.brand_id).filter(Boolean))];
+      const { data: brands } = await supabase
+        .from('Brands')
+        .select('brand_id, brand_name')
+        .in('brand_id', brandIds);
+
+      const brandMap = {};
+      brands?.forEach(b => brandMap[b.brand_id] = b.brand_name);
+
+      // 이미지 정보
+      const { data: images } = await supabase
+        .from('Perfume_Images')
+        .select('perfume_id, image_url, is_thumbnail')
+        .in('perfume_id', perfumeIds)
+        .eq('is_thumbnail', true);
+
+      const imageMap = {};
+      images?.forEach(img => imageMap[img.perfume_id] = img.image_url);
+
+      // 데이터 결합
+      const transformedPerfumes = perfumeData?.map(cp => {
+        const perfume = perfumes?.find(p => p.perfume_id === cp.perfume_id);
+        return {
+          ...perfume,
+          display_order: cp.display_order,
+          is_featured: cp.is_featured,
+          brand_name: brandMap[perfume?.brand_id],
+          thumbnail: imageMap[cp.perfume_id]
+        };
+      }).filter(p => p.perfume_id) || [];
+
       setPerfumes(transformedPerfumes);
 
       // 4. 텍스트 블록 가져오기
@@ -98,14 +123,12 @@ export default function Signature() {
     }
   };
 
-  // 미디어 자동 전환 (5초마다)
+  // 미디어 자동 전환 (5초)
   useEffect(() => {
     if (media.length <= 1) return;
-
     const interval = setInterval(() => {
       setCurrentMediaIndex((prev) => (prev + 1) % media.length);
     }, 5000);
-
     return () => clearInterval(interval);
   }, [media.length]);
 
@@ -348,6 +371,16 @@ export default function Signature() {
               아직 등록된 향수가 없습니다
             </p>
           </div>
+        )}
+        
+        {/* 관리자 편집 버튼 */}
+        {isAdmin && (
+          <button
+            onClick={() => window.location.href = '/admin/collections'}
+            className="fixed bottom-8 right-8 z-50 flex items-center gap-2 px-6 py-4 bg-[#c9a961] text-black font-bold rounded-full shadow-2xl hover:scale-110 transition-transform cursor-pointer border-2 border-black"
+          >
+            <span>✏️ SIGNATURE 편집</span>
+          </button>
         )}
       </div>
     </div>

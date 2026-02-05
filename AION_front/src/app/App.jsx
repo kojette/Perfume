@@ -34,6 +34,8 @@ import CouponPointManagement from './components/pages/CouponPointManagement';
 
 import Collections from "./components/pages/Collections";//컬렉션과 시그니처
 import Signature from "./components/pages/Signature";
+import CollectionManagement from "./components/pages/CollectionManagement";
+
 function AppLayout() {
   const location = useLocation();
   const [navHeight, setNavHeight] = useState(0);
@@ -88,6 +90,7 @@ return (
             <Route path="/login" element={<Login />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/signature" element={<Signature />} />
+            <Route path="/admin/collections" element={<AdminRoute><CollectionManagement /></AdminRoute>} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/wishlist" element={<Wishlist />} />
 
