@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:aion_perfume_app/screens/login_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'login_screen.dart';
+import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -24,12 +25,13 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _loading = false;
 
   Future<void> _handleSignup() async {
+    // 유효성 검사
     if (_nameController.text.isEmpty) {
       _showAlert('이름을 입력해주세요.');
       return;
     }
-    if (_emailController.text.isEmpty) {
-      _showAlert('이메일을 입력해주세요.');
+    if (_emailController.text.isEmpty || !_emailController.text.contains('@')) {
+      _showAlert('올바른 이메일을 입력해주세요.');
       return;
     }
     if (_passwordController.text.length < 8) {
@@ -60,36 +62,84 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _loading = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      await prefs.setString('userName', _nameController.text);
-      await prefs.setString('userEmail', _emailController.text);
-      await prefs.setString('userPassword', _passwordController.text);
-      await prefs.setString('userPhone', _phoneController.text);
-      await prefs.setString('userGender', _gender);
-      await prefs.setString('userBirth', '$_birthYear-$_birthMonth-$_birthDay');
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      final name = _nameController.text.trim();
+      final phone = _phoneController.text.trim();
+      final birth = '$_birthYear-$_birthMonth-$_birthDay';
 
-      _showAlert('가입이 완료되었습니다!');
-      
-      if (mounted) {
+      // 1. 이메일 중복 체크
+      final isDuplicated = await ApiService.checkEmailDuplicate(email);
+      if (isDuplicated) {
+        _showAlert('이미 사용 중인 이메일입니다.');
+        return;
+      }
+
+      // 2. Supabase 회원가입
+      final authResponse = await SupabaseService.signUp(
+        email: email,
+        password: password,
+      );
+
+      if (authResponse == null || authResponse.user == null) {
+        _showAlert('회원가입 중 오류가 발생했습니다.');
+        return;
+      }
+
+      // 3. Supabase Users 테이블에 사용자 정보 저장
+      final userInserted = await SupabaseService.insertUser(
+        email: email,
+        name: name,
+        phone: phone,
+        gender: _gender,
+        birth: birth,
+      );
+
+      if (!userInserted) {
+        _showAlert('사용자 정보 저장 중 오류가 발생했습니다.');
+        return;
+      }
+
+      // 4. 백엔드에 회원 정보 등록
+      final backendRegistered = await ApiService.registerMember(
+        email: email,
+        password: password,
+        name: name,
+        phone: phone,
+        gender: _gender,
+        birth: birth,
+      );
+
+      if (!backendRegistered) {
+        print('백엔드 등록 실패 (계속 진행)');
+        // 백엔드 실패해도 회원가입은 완료
+      }
+
+      _showAlert('가입이 완료되었습니다!', () {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
-      }
+      });
+    } catch (err) {
+      print('회원가입 오류: $err');
+      _showAlert('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _showAlert(String message) {
+  void _showAlert(String message, [VoidCallback? onConfirm]) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         content: Text(message, style: const TextStyle(fontSize: 13)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm?.call();
+            },
             child: const Text('확인', style: TextStyle(color: Color(0xFFC9A961))),
           ),
         ],
@@ -156,6 +206,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       Expanded(
                         child: TextField(
                           controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
                             hintText: '이메일',
                             hintStyle: TextStyle(fontSize: 13),
@@ -199,7 +250,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     controller: _confirmPasswordController,
                     obscureText: true,
                     decoration: const InputDecoration(
-                      hintText: '비밀번호 재입력',
+                      hintText: '비밀번호 확인',
                       hintStyle: TextStyle(fontSize: 13),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Color(0xFFC9A964), width: 0.5),
@@ -207,19 +258,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     style: const TextStyle(fontSize: 14),
                   ),
-                  if (_confirmPasswordController.text.isNotEmpty &&
-                      _passwordController.text != _confirmPasswordController.text)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        '비밀번호가 일치하지 않습니다.',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.red,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
                   const SizedBox(height: 24),
 
                   // 전화번호
@@ -232,16 +270,17 @@ class _SignupScreenState extends State<SignupScreen> {
                       fontStyle: FontStyle.italic,
                     ),
                   ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: _phoneController,
+                    keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
-                      hintText: '- 를 제외하고 입력해주세요',
+                      hintText: '010-0000-0000',
                       hintStyle: TextStyle(fontSize: 13),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Color(0xFFC9A964), width: 0.5),
                       ),
                     ),
-                    keyboardType: TextInputType.phone,
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 24),
@@ -256,6 +295,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       fontStyle: FontStyle.italic,
                     ),
                   ),
+                  const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(
                       enabledBorder: UnderlineInputBorder(

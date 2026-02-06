@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
-// 아래 경로는 프로젝트 이름이 aion_app일 때 기준입니다!
-import 'package:aion_perfume_app/screens/start_screen.dart'; 
-import 'package:aion_perfume_app/screens/home_screen.dart';
-void main() => runApp(const AionApp());
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/supabase_config.dart';
+import 'screens/start_screen.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: SupabaseConfig.supabaseUrl,
+    anonKey: SupabaseConfig.supabaseAnonKey,
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce, // 🔥 Web 필수
+    ),
+  );
+
+  runApp(const AionApp());
+}
+
 
 class AionApp extends StatelessWidget {
   const AionApp({super.key});
@@ -14,9 +28,15 @@ class AionApp extends StatelessWidget {
       title: 'AION',
       theme: ThemeData(
         brightness: Brightness.light,
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: const Color(0xFFFAF8F3),
+        fontFamily: 'Pretendard',
+        primaryColor: const Color(0xFFC9A961),
+        colorScheme: ColorScheme.light(
+          primary: const Color(0xFFC9A961),
+          secondary: const Color(0xFF2A2620),
+        ),
       ),
-      home: const StartScreen(), // 시작 화면으로 연결
+      home: const StartScreen(),
     );
   }
 }

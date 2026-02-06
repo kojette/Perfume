@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:aion_perfume_app/screens/signup_screen.dart';
-import 'package:aion_perfume_app/screens/find_password_screen.dart';
-import 'package:aion_perfume_app/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'signup_screen.dart';
+import 'find_password_screen.dart';
+import 'home_screen.dart';
+import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,39 +27,80 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedEmail = prefs.getString('userEmail');
-      final savedPassword = prefs.getString('userPassword');
+      // 1. Supabase 로그인
+      final authResponse = await SupabaseService.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-      if (savedEmail == _emailController.text && 
-          savedPassword == _passwordController.text) {
-        await prefs.setBool('isLoggedIn', true);
-        
-        final userName = prefs.getString('userName') ?? '고객';
-        _showAlert('$userName님, 환영합니다!');
-        
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const MainHomePage()),
-          );
-        }
-      } else {
+      if (authResponse == null || authResponse.session == null) {
         _showAlert('이메일 또는 비밀번호가 일치하지 않습니다.');
+        return;
       }
+
+      // 2. JWT 토큰 저장
+      final accessToken = authResponse.session!.accessToken;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('accessToken', accessToken);
+
+      // 3. Supabase에서 사용자 정보 조회
+      final userData = await SupabaseService.getUserData(_emailController.text.trim());
+      final isAdmin = await SupabaseService.checkAdminAccount(_emailController.text.trim());
+
+      // 4. 세션 정보 저장
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('userEmail', userData?['email'] ?? _emailController.text);
+      await prefs.setString('userName', userData?['name'] ?? '사용자');
+      await prefs.setString('userPhone', userData?['phone'] ?? '');
+      await prefs.setString('userGender', userData?['gender'] ?? '');
+      await prefs.setString('userBirth', userData?['birth'] ?? '');
+      await prefs.setBool('isAdmin', isAdmin);
+
+      // 5. 백엔드에 로그인 기록
+      try {
+        await ApiService.recordLogin(_emailController.text.trim(), accessToken);
+      } catch (e) {
+        print('백엔드 로그인 기록 실패: $e');
+        // 백엔드 실패해도 로그인은 진행
+      }
+
+      final userName = userData?['name'] ?? '사용자';
+      if (mounted) {
+        if (isAdmin) {
+          _showAlert('$userName님, 관리자 페이지로 접속합니다.', () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MainHomePage()),
+            );
+          });
+        } else {
+          _showAlert('$userName님, 환영합니다!', () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MainHomePage()),
+            );
+          });
+        }
+      }
+    } catch (err) {
+      print('로그인 오류: $err');
+      _showAlert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _showAlert(String message) {
+  void _showAlert(String message, [VoidCallback? onConfirm]) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         content: Text(message, style: const TextStyle(fontSize: 13)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm?.call();
+            },
             child: const Text('확인', style: TextStyle(color: Color(0xFFC9A961))),
           ),
         ],
@@ -119,6 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   TextField(
                     controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       hintText: '이메일을 입력해주세요',
                       hintStyle: TextStyle(fontSize: 13, color: Colors.black26),

@@ -43,3 +43,39 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+
+# ===============================
+# Environment / Secrets
+# ===============================
+.env
+.env.*
+*.env
+
+# Supabase / API secret configs
+supabase_config.dart
+supabaseClient.js
+supabaseClient.ts
+
+# ===============================
+# Flutter local secrets
+# ===============================
+android/local.properties
+ios/Runner/Generated.xcconfig
+ios/Flutter/Flutter.podspec
+
+# ===============================
+# Node / Frontend
+# ===============================
+node_modules/
+dist/
+build/
+
+# ===============================
+# Logs
+# ===============================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

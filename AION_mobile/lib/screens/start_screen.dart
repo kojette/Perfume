@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:aion_perfume_app/screens/home_screen.dart'; // 홈 화면으로 넘어가야 하니 import!
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'login_screen.dart';
+import 'home_screen.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
@@ -12,48 +16,42 @@ class _StartScreenState extends State<StartScreen> {
   @override
   void initState() {
     super.initState();
-    // 2초 뒤에 메인 홈으로 자동 이동
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainHomePage()),
-        );
-      }
-    });
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    final session = Supabase.instance.client.auth.currentSession;
+
+    if (!mounted) return;
+
+    // ✅ 로그인 유지 조건
+    if (isLoggedIn && session != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainHomePage()),
+      );
+    } else {
+      // ❌ 세션 불일치 → 정리
+      await prefs.clear();
+      await Supabase.instance.client.auth.signOut();
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFE8EADF), Color(0xFFF5F5F0)],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'E S S E N C E  O F  D I V I N E',
-                style: TextStyle(fontSize: 10, color: Color(0xFFBC9E5D), letterSpacing: 4),
-              ),
-              const SizedBox(height: 15),
-              const Text(
-                'A  I  O  N',
-                style: TextStyle(fontSize: 48, fontWeight: FontWeight.w100, letterSpacing: 18, color: Colors.black87),
-              ),
-              const SizedBox(height: 25),
-              const Text(
-                '영원한 그들의 향을 담다',
-                style: TextStyle(fontSize: 15, color: Colors.black54, letterSpacing: 1.5),
-              ),
-            ],
-          ),
+    return const Scaffold(
+      backgroundColor: Color(0xFFFAF8F3),
+      body: Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFFC9A961),
         ),
       ),
     );
