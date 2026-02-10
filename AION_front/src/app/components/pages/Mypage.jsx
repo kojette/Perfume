@@ -127,6 +127,48 @@ const Mypage = () => {
     }
   };
 
+  // 회원 탈퇴 처리 함수
+  const handleWithdrawal = async () => {
+    const reason = window.prompt("탈퇴 사유를 입력해주세요. (최소 5자)");
+    
+    if (reason === null) return; // 취소 클릭 시
+    if (reason.trim().length < 5) {
+      alert("탈퇴 사유를 상세히 입력해주세요 (5자 이상).");
+      return;
+    }
+
+    if (!window.confirm("정말로 탈퇴하시겠습니까? 탈퇴 후 30일간 재가입이 불가능할 수 있습니다.")) return;
+
+    try {
+      setLoading(true);
+      const token = sessionStorage.getItem('accessToken');
+      
+      const response = await fetch(`${API_BASE_URL}/api/members/account`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: reason })
+      });
+
+      if (response.ok) {
+        alert("회원 탈퇴가 완료되었습니다. 그동안 이용해주셔서 감사합니다.");
+        sessionStorage.clear();
+        await supabase.auth.signOut();
+        navigate('/');
+        window.location.reload();
+      } else {
+        const errData = await response.json();
+        throw new Error(errData.message || "탈퇴 처리 중 오류가 발생했습니다.");
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 성별 및 상태 텍스트 변환 함수
   const getGenderText = (gender) => {
     if (gender === 'MALE') return '남성';
@@ -188,6 +230,7 @@ const Mypage = () => {
             >
               SIGN OUT
             </button>
+            
           </nav>
         </aside>
 
@@ -215,10 +258,18 @@ const Mypage = () => {
                 <div className="flex items-center gap-10">
                   {/* 프로필 이미지 혹은 이니셜 서클 */}
                   <div className="relative">
-                    <div className="w-24 h-24 rounded-full border border-[#c9a961]/30 flex items-center justify-center bg-[#faf8f3]">
-                      <span className="text-3xl font-display text-[#c9a961]">
-                        {userInfo?.name?.charAt(0) || 'U'}
-                      </span>
+                    <div className="w-24 h-24 rounded-full border border-[#c9a961]/30 flex items-center justify-center bg-[#faf8f3] overflow-hidden shadow-inner">
+                     {userInfo?.profileImage ? (
+                        <img 
+                          src={userInfo.profileImage} 
+                          alt="Profile" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-3xl font-display text-[#c9a961]">
+                          {userInfo?.name?.charAt(0) || 'U'}
+                        </span>
+                      )}
                     </div>
                     <button 
                       onClick={() => navigate('/profile/edit')}
@@ -269,6 +320,7 @@ const Mypage = () => {
                       <span className="text-[11px] text-[#8b8278] uppercase">Full Name</span>
                       <span className="text-[12px] text-[#2a2620] font-medium">{userInfo?.name}</span>
                     </div>
+                
                     <div className="flex justify-between items-center border-b border-[#faf8f3] pb-3">
                       <span className="text-[11px] text-[#8b8278] uppercase">Email Address</span>
                       <span className="text-[12px] text-[#2a2620] font-medium">{userInfo?.email}</span>
