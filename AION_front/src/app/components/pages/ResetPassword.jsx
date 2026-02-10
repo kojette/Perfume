@@ -1,61 +1,52 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Ornament } from "../Ornament";
+import { supabase } from "../../supabaseClient";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [token, setToken] = useState("");
-  const [tokenValid, setTokenValid] = useState(null);
+  const [sessionReady, setSessionReady] = useState(null); // null=확인중, true=준비됨, false=실패
 
   const isMatch = password === confirmPassword;
 
   useEffect(() => {
-    // URL에서 토큰 추출
-    const tokenFromUrl = searchParams.get('token');
-    
-    if (!tokenFromUrl) {
-      alert('유효하지 않은 접근입니다. 비밀번호 찾기를 다시 진행해주세요.');
-      navigate('/find-password');
-      return;
-    }
-
-    setToken(tokenFromUrl);
-    verifyToken(tokenFromUrl);
-  }, [searchParams, navigate]);
-
-  // 토큰 유효성 검증
-  const verifyToken = async (tokenValue) => {
-    try {
-      const response = await fetch('/api/auth/verify-reset-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token: tokenValue })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setTokenValid(false);
-        alert('만료되었거나 유효하지 않은 링크입니다. 비밀번호 찾기를 다시 진행해주세요.');
-        navigate('/find-password');
-        return;
+    // ★ 핵심: Supabase가 메일 링크 클릭 시 URL에 access_token을 담아 리다이렉트함
+    // onAuthStateChange로 세션이 자동 수립되는 걸 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        // 비밀번호 재설정용 세션이 수립됨 → 입력 폼 표시
+        setSessionReady(true);
+      } else if (event === "SIGNED_IN" && session) {
+        // 이미 로그인된 상태로 진입한 경우도 허용
+        setSessionReady(true);
       }
+    });
 
-      setTokenValid(true);
-    } catch (error) {
-      console.error('토큰 검증 에러:', error);
-      setTokenValid(false);
-      alert('토큰 검증 중 오류가 발생했습니다.');
-      navigate('/find-password');
-    }
-  };
+    // 이미 세션이 있는 경우 처리 (새로고침 등)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSessionReady(true);
+      } else {
+        // 5초 대기 후에도 세션 없으면 실패 처리
+        setTimeout(() => {
+          setSessionReady((prev) => {
+            if (prev === null) {
+              alert("유효하지 않은 접근입니다. 비밀번호 찾기를 다시 진행해주세요.");
+              navigate("/find-password");
+              return false;
+            }
+            return prev;
+          });
+        }, 5000);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,7 +61,6 @@ const ResetPassword = () => {
       return;
     }
 
-    // 비밀번호 강도 검증 (최소 8자, 영문+숫자 포함)
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
     if (!passwordRegex.test(password)) {
       alert("비밀번호는 최소 8자 이상, 영문과 숫자를 포함해야 합니다.");
@@ -80,37 +70,31 @@ const ResetPassword = () => {
     try {
       setLoading(true);
 
-      // 백엔드 API 호출
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: token,
-          newPassword: password
-        })
+      // ★ Supabase Auth 비밀번호 변경 (세션 기반으로 자동 처리)
+      const { error } = await supabase.auth.updateUser({
+        password: password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || '비밀번호 재설정에 실패했습니다.');
+      if (error) {
+        throw new Error(error.message);
       }
 
       alert("비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.");
+      
+      // 로그아웃 후 로그인 페이지로
+      await supabase.auth.signOut();
       navigate("/login");
 
     } catch (error) {
-      console.error('비밀번호 재설정 에러:', error);
+      console.error("비밀번호 재설정 에러:", error);
       alert(error.message || "비밀번호 재설정 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 토큰 검증 중
-  if (tokenValid === null) {
+  // 세션 확인 중
+  if (sessionReady === null) {
     return (
       <div className="min-h-screen bg-[#faf8f3] pt-40 pb-20 px-6 flex flex-col items-center justify-center">
         <div className="text-center">
@@ -121,15 +105,14 @@ const ResetPassword = () => {
     );
   }
 
-  // 토큰 유효하지 않음
-  if (tokenValid === false) {
-    return null; // 이미 navigate로 리다이렉트됨
+  if (sessionReady === false) {
+    return null;
   }
 
   return (
     <div className="min-h-screen bg-[#faf8f3] pt-40 pb-20 px-6 flex flex-col items-center">
       <div className="max-w-md w-full bg-white border border-[#c9a961]/20 p-10 shadow-sm">
-        {/* 상단 타이틀 */}
+
         <div className="text-center mb-10">
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">
             AUTHENTICATION
@@ -141,7 +124,6 @@ const ResetPassword = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* 새 비밀번호 */}
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] italic">
               NEW PASSWORD
@@ -160,7 +142,6 @@ const ResetPassword = () => {
             </p>
           </div>
 
-          {/* 비밀번호 확인 */}
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] italic">
               CONFIRM PASSWORD
@@ -176,21 +157,18 @@ const ResetPassword = () => {
             />
           </div>
 
-          {/* 불일치 메시지 */}
           {confirmPassword && !isMatch && (
             <p className="text-[10px] text-red-500 italic">
               비밀번호가 일치하지 않습니다.
             </p>
           )}
 
-          {/* 일치 메시지 */}
           {confirmPassword && isMatch && password.length >= 8 && (
             <p className="text-[10px] text-green-600 italic">
               ✓ 비밀번호가 일치합니다.
             </p>
           )}
 
-          {/* 버튼 */}
           <button
             type="submit"
             disabled={loading || !isMatch || password.length < 8}
@@ -200,7 +178,6 @@ const ResetPassword = () => {
           </button>
         </form>
 
-        {/* 하단 링크 */}
         <div className="mt-10 flex justify-center border-t border-[#c9a961]/10 pt-8">
           <button
             onClick={() => navigate("/login")}

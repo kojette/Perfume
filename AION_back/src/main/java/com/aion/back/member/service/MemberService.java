@@ -8,6 +8,7 @@ import com.aion.back.member.dto.response.MyPageResponse;
 import com.aion.back.member.entity.Member;
 import com.aion.back.member.repository.MemberRepository;
 import lombok.extern.slf4j.Slf4j;
+import com.aion.back.member.entity.AccountStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,7 +57,7 @@ public class MemberService {
         member.setNickname(request.getNickname());
         member.setPhone(request.getPhone());
         member.setGender(request.getGender());
-        member.setAccountStatus("ACTIVE");
+        member.setAccountStatus(AccountStatus.ACTIVE);
         member.setJoinDate(LocalDateTime.now());
         member.setCreatedAt(LocalDateTime.now());
 

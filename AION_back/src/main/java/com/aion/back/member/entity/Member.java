@@ -41,8 +41,10 @@ public class Member {
     @Column(name = "profile_image", columnDefinition = "TEXT")
     private String profileImage;
 
-    @Column(name = "account_status")
-    private String accountStatus;
+    // 이 부분을 수정! ENUM 타입 명시
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", columnDefinition = "user_account_status")
+    private AccountStatus accountStatus;
 
     @Column(name = "join_date", updatable = false)
     private LocalDateTime joinDate;

@@ -1,5 +1,6 @@
 package com.aion.back.member.dto.response;
 
+import com.aion.back.member.entity.AccountStatus;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,5 +12,5 @@ public class MyPageResponse {
     private String name;
     private String gender;
     private String profileImage;
-    private String accountStatus;
+    private AccountStatus accountStatus;
 }
