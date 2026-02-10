@@ -57,9 +57,18 @@ public class AuthService {
             // 1. JWT 토큰 검증 및 이메일 추출
             String email = jwtValidator.validateAndGetEmail(token);
 
+            // 2. 유저 상태 확인 (방어 로직 추가)
+            Member member = memberRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+            if ("DELETED".equals(member.getAccountStatus())) {
+                log.warn("탈퇴한 계정 접근 시도 - Email: {}", email);
+                throw new RuntimeException("탈퇴 처리된 계정입니다. 접속할 수 없습니다.");
+            }
+
             log.info("로그인 기록 저장 - Email: {}, Method: {}", email, request.getLoginMethod());
 
-            // 2. 로그인 이력 저장 (LoginHistory 엔티티 생성 후 활성화)
+            // 3. 로그인 이력 저장 (LoginHistory 엔티티 생성 후 활성화)
             /*
             LoginHistory history = LoginHistory.builder()
                     .email(email)
@@ -76,6 +85,8 @@ public class AuthService {
             log.info("로그인 성공 - IP: {}, UserAgent: {}",
                     request.getIpAddress(), request.getUserAgent());
 
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             log.error("로그인 기록 저장 실패", e);
             throw new RuntimeException("로그인 기록 저장 중 오류 발생", e);

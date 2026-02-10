@@ -123,6 +123,7 @@ public class MemberService {
                     request.getNickname(),
                     request.getPhone() != null ? request.getPhone() : member.getPhone(),
                     request.getGender() != null ? request.getGender() : member.getGender(),
+                    request.getProfileImage(),
                     email
             );
 
@@ -151,22 +152,19 @@ public class MemberService {
      * 회원 탈퇴 - Repository 네이티브 쿼리 사용
      */
     @Transactional
-    public void deleteAccount(String token) {
+    public void deleteAccount(String token, String reason) { // reason 파라미터 추가
         try {
-            // Bearer 제거
             String actualToken = token.replace("Bearer ", "");
-
-            // 토큰에서 이메일 추출
             String email = jwtValidator.validateAndGetEmail(actualToken);
 
-            log.info("회원 탈퇴 시작 - 이메일: {}", email);
+            log.info("회원 탈퇴 시작 - 이메일: {}, 사유: {}", email, reason);
 
-            // 회원 존재 여부 확인
+            // 존재 확인
             Member member = memberRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("회원 정보를 찾을 수 없습니다."));
 
-            // 네이티브 쿼리로 상태 변경 (타입 캐스팅 포함)
-            memberRepository.updateAccountStatus("DELETED", email);
+            // 소프트 삭제 실행
+            memberRepository.softDeleteMember("DELETED", reason, email);
 
             log.info("회원 탈퇴 처리 완료: {}", email);
         } catch (Exception e) {

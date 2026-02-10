@@ -22,7 +22,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             "name = :name, " +
             "nickname = :nickname, " +
             "phone = :phone, " +
-            "gender = CAST(:gender AS user_gender) " +
+            "gender = CAST(:gender AS user_gender), " +
+            "profile_image = :profileImage " +
             "WHERE email = :email",
             nativeQuery = true)
     void updateMemberProfile(
@@ -30,17 +31,21 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("nickname") String nickname,
             @Param("phone") String phone,
             @Param("gender") String gender,
+            @Param("profileImage") String profileImage,
             @Param("email") String email
     );
 
     // 네이티브 쿼리로 계정 상태 변경 (타입 캐스팅 포함)
     @Modifying
     @Query(value = "UPDATE \"Users\" SET " +
-            "account_status = CAST(:status AS user_account_status) " +
+            "account_status = CAST(:status AS user_account_status), " +
+            "withdraw_reason = :reason, " +
+            "withdraw_date = NOW() " + // PostgreSQL의 현재 시간을 바로 저장
             "WHERE email = :email",
             nativeQuery = true)
-    void updateAccountStatus(
+    void softDeleteMember(
             @Param("status") String status,
+            @Param("reason") String reason,
             @Param("email") String email
     );
 }

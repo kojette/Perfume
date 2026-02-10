@@ -38,7 +38,7 @@ public class Member {
     @Column(name = "birth_date")
     private String birthDate;
 
-    @Column(name = "profile_image")
+    @Column(name = "profile_image", columnDefinition = "TEXT")
     private String profileImage;
 
     @Column(name = "account_status")

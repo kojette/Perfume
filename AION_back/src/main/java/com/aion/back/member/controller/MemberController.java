@@ -3,6 +3,7 @@ package com.aion.back.member.controller;
 import com.aion.back.common.response.ApiResponse;
 import com.aion.back.member.dto.request.MemberRegistrationRequest;
 import com.aion.back.member.dto.request.ProfileUpdateRequest;
+import com.aion.back.member.dto.request.WithdrawalRequest;
 import com.aion.back.member.dto.response.MemberProfileResponse;
 import com.aion.back.member.dto.response.MyPageResponse;
 import com.aion.back.member.service.MemberService;
@@ -75,12 +76,15 @@ public class MemberController {
     /**
      * 회원 탈퇴
      */
+    // MemberController.java
+
     @DeleteMapping("/account")
     public ApiResponse<String> deleteAccount(
-            @RequestHeader("Authorization") String token) {
-        
+            @RequestHeader("Authorization") String token,
+            @RequestBody WithdrawalRequest request) { // DTO 추가
+
         try {
-            memberService.deleteAccount(token);
+            memberService.deleteAccount(token, request.getReason());
             return ApiResponse.success("회원 탈퇴가 완료되었습니다.");
         } catch (Exception e) {
             return ApiResponse.error("회원 탈퇴 실패: " + e.getMessage());
