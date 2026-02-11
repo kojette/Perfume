@@ -67,6 +67,38 @@ const Wishlist = () => {
         }
     };
 
+    const handleAddToCart = async (perfumeId) => {
+        try {
+            const {data: {session}} = await supabase.auth.getSession();
+            if(!session) {
+                alert("로그인이 필요합니다.");
+                return;
+            }
+
+            const response = await fetch('http://localhost:8080/api/cart/add', {
+                method : 'POST',
+                headers : {
+                    'Authorization' : `Bearer ${session.access_token}`,
+                    'Content-Type' : 'application/json',
+                },
+                body : JSON.stringify({
+                    perfumeId : perfumeId,
+                    quantity : 1
+                })
+            });
+
+            if(response.ok) {
+                if(window.confirm("장바구니에 성공적으로 담겼습니다! 장바구니로 이동하시겠습니까?")) {
+                    navigate('/cart');
+                }
+            } else {
+                alert("장바구니 담기에 실패했습니다.");
+            }
+        } catch(error) {
+            console.error("장바구니 담기 중 오류 발생: ", error);
+        }
+    }
+
     return (
         <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-6 flex flex-col items-center">
             <div className="max-w-4xl w-full">
@@ -94,7 +126,9 @@ const Wishlist = () => {
                                 <div className="aspect-[3/4] bg-gray-100 mb-4 bg-cover bg-center" style={{backgroundImage: `url(${item.imageUrl})`}}></div>
                                 <h3 className="font-serif text-lg text-[#1a1a1a]">{item.name}</h3>
                                 <p className="text-sm text-[#8b8278] mt-2">₩{item.price.toLocaleString()}</p>
-                                <button className="w-full mt-4 py-2 border border-[#1a1a1a] text-[#1a1a1a] text-xs hover:bg-[#1a1a1a] hover:text-white transition-colors cursor-pointer">
+                                <button 
+                                    onClick = {() => handleAddToCart(item.perfumeId)}
+                                    className="w-full mt-4 py-2 border border-[#1a1a1a] text-[#1a1a1a] text-xs hover:bg-[#1a1a1a] hover:text-white transition-colors cursor-pointer">
                                     ADD TO CART
                                 </button>
                             </div>
