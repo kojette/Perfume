@@ -43,6 +43,30 @@ const Wishlist = () => {
     if (loading)
         return <div className = "text-center pt-40">LOADING...</div>;
 
+    const handleDelete = async (wishlistId) => {
+        if (!window.confirm("정말 삭제하시겠습니까?")) return;
+
+        try {
+            const {data: {session}} = await supabase.auth.getSession();
+            const response = await fetch(`http://localhost:8080/api/wishlist/${wishlistId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization' : `Bearer ${session.access_token}`,
+                },
+            });
+
+            if (response.ok) {
+                alert("삭제되었습니다.");
+                setWishlistItems(prev => prev.filter(item => item.wishlistId !== wishlistId));
+
+            } else {
+                alert("삭제 실패");
+            }
+        } catch (error) {
+            console.error("삭제 중 오류 발생: ", error);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-6 flex flex-col items-center">
             <div className="max-w-4xl w-full">
@@ -62,11 +86,15 @@ const Wishlist = () => {
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
                         {wishlistItems.map((item) => (
-                            <div key={item.wishlistId} className="bg-white p-4 border border-[#eee] hover:border-[#c9a961]/50 transition-colors group">
+                            <div key={item.wishlistId} className="relative bg-white p-4 border border-[#eee] hover:border-[#c9a961]/50 transition-colors group">
+                                <button onClick={() => handleDelete(item.wishlistId)}
+                                    className = "absolute top-2 right-1 text-gray-400 hover:text-red-500 cursor-pointer">
+                                        x
+                                    </button>
                                 <div className="aspect-[3/4] bg-gray-100 mb-4 bg-cover bg-center" style={{backgroundImage: `url(${item.imageUrl})`}}></div>
                                 <h3 className="font-serif text-lg text-[#1a1a1a]">{item.name}</h3>
                                 <p className="text-sm text-[#8b8278] mt-2">₩{item.price.toLocaleString()}</p>
-                                <button className="w-full mt-4 py-2 border border-[#1a1a1a] text-[#1a1a1a] text-xs hover:bg-[#1a1a1a] hover:text-white transition-colors">
+                                <button className="w-full mt-4 py-2 border border-[#1a1a1a] text-[#1a1a1a] text-xs hover:bg-[#1a1a1a] hover:text-white transition-colors cursor-pointer">
                                     ADD TO CART
                                 </button>
                             </div>
