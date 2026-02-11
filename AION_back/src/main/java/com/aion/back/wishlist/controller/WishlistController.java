@@ -76,4 +76,22 @@ public class WishlistController {
         }
     }
 
+    @DeleteMapping("/{wishlistId}")
+    public ApiResponse<String> deleteWishlist(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long wishlistId
+    ) {
+        Member member = memberService.getMemberEntityByToken(token);
+
+        Wishlist wishlist = wishlistRepository.findById(wishlistId)
+                .orElseThrow(() -> new RuntimeException("해당 찜 내역이 존재하지 않습니다."));
+
+        if(!wishlist.getMember().getUserId().equals(member.getUserId())) {
+            throw new RuntimeException("본인의 찜 목록만 삭제할 수 있습니다.");
+        }
+
+        wishlistRepository.delete(wishlist);
+        return ApiResponse.success("찜 목록에서 삭제되었습니다.");
+    }
+
 }
