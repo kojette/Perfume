@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate} from 'react-router-dom';
 import { Ornament } from '../Ornament';
 import { Gift, Coins, Calendar, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
 const Mypage = () => {
   const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,6 +18,7 @@ const Mypage = () => {
   const [totalPoints, setTotalPoints] = useState(0);
   const [eventParticipations, setEventParticipations] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -29,7 +31,9 @@ const Mypage = () => {
   useEffect(() => {
     if (!userInfo) return;
 
-    if (activeTab === 'coupons') {
+    if (activeTab === 'overview') {
+      fetchOrders();
+    } else if (activeTab === 'coupons') {
       fetchCoupons();
     } else if (activeTab === 'points') {
       fetchPoints();
@@ -209,6 +213,10 @@ const Mypage = () => {
     }
   }
 
+  const toggleOrderDetails = (orderId) => {
+    setExpandedOrderId(prev => prev === orderId ? null : orderId);
+  }
+
   return (
     <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-10">
       {/* 헤더 섹션 */}
@@ -373,19 +381,50 @@ const Mypage = () => {
                     <div className="w-1 h-3 bg-[#c9a961]"></div>
                     ORDER HISTORY
                   </h3>
-                  <div className="py-6 text-center border border-dashed border-[#c9a961]/20 bg-[#faf8f3]/50 rounded-sm">
-                    <p className="text-[12px] text-[#8b8278] italic leading-relaxed">
-                      최근 구매 내역이 없습니다.<br />
-                      당신만을 위해 큐레이션된 새로운 컬렉션을 만나보세요.
-                    </p>
-                  </div>
+                  
+                  {orders.length === 0 ? (
+                    <div className = "py-6 text-center border border-dashed border-[#c9a961]/20 bg-[#faf8f3]/50 rounded-sm">
+                      <p className = "text-[12px] text-[#8b8278] italic leading-relaxed">
+                        최근 구매 내역이 없습니다.<br />
+                        당신만을 위해 큐레이션된 새로운 컬렉션을 만나보세요.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className = "space-y-4">
+                      <div className = "flex justify-between items-center border-b border-[#faf8f3] pb-3">
+                        <span className = "text-[11px] text-[#8b8278] uppercase">Order Date</span>
+                        <span className = "text-[12px] text-[#2a2620] font-medium">
+                          {new Date(orders[0].createdAt).toLocaleDateString('ko-KR')}
+                        </span>
+                      </div>
+                      <div className = "flex justify-between items-center border-b border-[#faf8f3] pb-3">
+                        <span className = "text-[11px] text-[#8b8278] uppercase">Order No.</span>
+                        <span className = "text-[12px] text-[#2a2620] font-mono font-medium">
+                          {orders[0].orderNumber}
+                        </span>
+                      </div>
+                      <div className = "flex justify-between items-center border-b border-[#faf8f3] pb-3">
+                        <span className = "text-[11px] text-[#8b8278] uppercase">Total Amount</span>
+                        <span className = "text-[12px] text-[#2a2620] font-medium font-bold">
+                          ₩{orders[0].finalAmount?.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className = "flex justify-between items-center border-b border-[#faf8f3] pb-3">
+                        <span className = "text-[11px] text-[#8b8278] uppercase">Status</span>
+                        <span className = "text-[10px] text-[#c9a961] bg-[#c9a961]/10 px-2 py-1 rounded tracking-widest uppercase font-bold">
+                          {orders[0].orderStatus || 'COMPLETED'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
                 
                 <button 
-                  onClick={() => navigate('/')}
+                  onClick={() => orders.length === 0 ? navigate('/') : setActiveTab('orders')}
                   className="mt-8 text-[10px] text-[#2a2620] tracking-[0.4em] uppercase border-b border-[#c9a961]/30 pb-1 w-fit hover:text-[#c9a961] hover:border-[#c9a961] transition-all cursor-pointer font-bold"
                 >
-                  Explore Now →
+                  {orders.length === 0 ? 'Explore Now →' : 'View All Orders →'}
                 </button>
                         </div>
                       </div>
@@ -536,10 +575,39 @@ const Mypage = () => {
                           <p className = "text-[11px] text -[#8b8278] uppercase tracking-widest mb-1">Total Amount</p>
                           <p className="text-lg font-bold text-[#2a2620]">₩{order.finalAmount?.toLocaleString()}</p>
                       </div>
-                      <button className="text-[10px] text-[#c9a961] border border-[#c9a961] px-4 py-2 hover:bg-[#c9a961] hover:text-white transition-colors cursor-pointer tracking-widest">
-                        상세 보기
+                      <button 
+                        onClick = {() => toggleOrderDetails(order.orderId)}
+                        className="text-[10px] text-[#c9a961] border border-[#c9a961] px-4 py-2 hover:bg-[#c9a961] hover:text-white transition-colors cursor-pointer tracking-widest">
+                        {expandedOrderId === order.orderId ? '닫기 x' : '상세 보기'}
                       </button>
                     </div>
+                    {expandedOrderId === order.orderId && (
+                      <div className = "mt-6 pt-6 border-t border-dashed border-[#c9a961]/30 animate-in slide-in-from-top-2 duration-300">
+                        <h4 className = "text-[10px] font-bold tracking-[0.2em] text-[#2a2620] mb-4 flex items-center gap-2">
+                          <div className = "w-1 h-3 bg-[#c0a061]"></div>
+                          SHIPPING DETAILS
+                        </h4>
+
+                        <div className = "grid grid-cols-2 gap-4 text-xs text-[#555]">
+                          <div>
+                            <p className = "text-[#8b8278] mb-1 uppercase tracking-widest text-[9px]">Receiver</p>
+                            <p className = "font-medium text-[#2a2620]">{order.receiverName}</p>
+                          </div>
+                          <div>
+                            <p className = "text-[#8b8278] mb-1 uppercase tracking-widest text-[9px]">Phone</p>
+                            <p className = "font-medium text-[#2a2620]">{order.receiverPhone}</p>
+                          </div>
+                          <div className = "col-span-2">
+                            <p className = "text-[#8b8278] mb-1 uppercase tracking-widest text-[9px]">Address</p>
+                            <p className = "font-medium text-[#2a2620]">[{order.shippingZipcode}]{order.shippingAddress}</p>
+                          </div>
+                          <div className="col-span-2 mt-2 pt-2 border-t border-[#faf8f3]">
+                            <p className = "text-[#8b8278] mb-1 uppercase tracking-widest text-[9px]">Payment Method</p>
+                            <p className = "font-medium text-[#2a2620]">{order.paymentMethod || 'CARD'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
