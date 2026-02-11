@@ -74,4 +74,12 @@ public class OrderController {
 
         return ApiResponse.success("주문이 성공적으로 완료되었습니다!");
     }
+
+    @GetMapping("/my")
+    public ApiResponse<List<Order>> getMyOrders(@RequestHeader("Authorization") String token) {
+        Member member = memberService.getMemberEntityByToken(token);
+        List<Order> myOrders = orderRepository.findByMemberOrderByCreatedAtDesc(member);
+
+        return ApiResponse.success("주문 내역 조회 성공", myOrders);
+    }
 }
