@@ -16,6 +16,7 @@ const Mypage = () => {
   const [points, setPoints] = useState([]);
   const [totalPoints, setTotalPoints] = useState(0);
   const [eventParticipations, setEventParticipations] = useState([]);
+  const [orders, setOrders] = useState([]);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -34,6 +35,8 @@ const Mypage = () => {
       fetchPoints();
     } else if (activeTab === 'events') {
       fetchEventParticipations();
+    } else if (activeTab === 'orders') {
+      fetchOrders();
     }
   }, [activeTab, userInfo]);
 
@@ -185,6 +188,27 @@ const Mypage = () => {
     );
   }
 
+  // 내 주문 내역 조회
+  const fetchOrders = async () => {
+    try {
+      const {data: {session}} = await supabase.auth.getSession();
+      const response = await fetch(`${API_BASE_URL}/api/orders/my`, {
+        method : 'GET',
+        headers : {
+          'Authorization' : `Bearer ${session.access_token}`,
+          'Content-Type' : 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setOrders(result.data);
+      }
+    } catch (error) {
+      console.error('주문 내역 로드 에러: ', error);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-10">
       {/* 헤더 섹션 */}
@@ -220,7 +244,11 @@ const Mypage = () => {
             >
               ACCOUNT PROFILE
             </button>
-            <button className="py-3 text-[11px] tracking-[0.2em] text-[#8b8278] text-left border-b border-[#c9a961]/10 hover:text-[#c9a961] transition-colors cursor-pointer">
+            <button
+              onClick = {() => setActiveTab('orders')}
+              className = {`py-3 text-[11px] tracking-[0.2em] text-left border-b border-[#c9a961]/10 transition-colors cursor-pointer ${
+                activeTab === 'orders' ? 'text-[#2a2620] font-bold' : 'text-[#8b8278] hover:text-[#c9a961]' 
+              }`}>
               ORDER HISTORY
             </button>
             
@@ -467,6 +495,50 @@ const Mypage = () => {
                         <p className="text-xs text-[#8b8278] mb-2">참여일: {new Date(participation.participated_at).toLocaleString('ko-KR')}</p>
                         {participation.event?.description && <p className="text-xs text-[#555]">{participation.event.description}</p>}
                       </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+          {/* 5. 주문 내역 조회 탭 */}
+          {activeTab === 'orders' && (
+            <div className = "space-y-4 animate-in fade-in duration-700">
+              {orders.length === 0 ? (
+                <div className = "text-center py-20 bg-white border border-[#c9a961]/10 rounded-lg">
+                  <p className = "text-sm text-[#8b8278] italic">주문 내역이 없습니다.</p>
+                  <button onClick = {() => navigate('/')} className = "mt-6 px-6 py-6 border border-[#c9a961] text-[#c9a961] text-xs tracking-wider hover:bg-[#c9a961] hover:text-white transition-all cursor-pointer">
+                    쇼핑하러 가기
+                  </button>
+                </div>
+              ) : (
+                orders.map((order) => (
+                  <div key = {order.orderId} className = "bg-white border border-[#c9a961]/20 rounded-lg p-6 hover:shadow-md transition-all">
+                    <div className = "flex items-start justify-between border-b border-[#faf8f3] pb-4 mb-4">
+                      <div>
+                        {/* 주문 일자 및 주문 번호 */}
+                        <p className = "text-xs text-[#8b8278] mb-1">
+                          {new Date(order.createdAt).toLocaleDateString('ko-KR')} 결제
+                        </p>
+                        <p className = "font-mono font-bold text-sm text-[#2a2620]">
+                          {order.orderNumber}
+                        </p>
+                      </div>
+                      {/* 주문 상태 (결제 완료 등) */}
+                      <span className = "px-3 py-1 bg-[#c9a961]/10 text-[#c9a961] text-[10px] tracking-widest rounded uppercase">
+                        {order.orderStatus || 'COMPLETED'}
+                      </span>
+                    </div>
+
+                    <div className = "flex justify-between items-center">
+                      <div>
+                        {/* 총 결제 금액 */}
+                          <p className = "text-[11px] text -[#8b8278] uppercase tracking-widest mb-1">Total Amount</p>
+                          <p className="text-lg font-bold text-[#2a2620]">₩{order.finalAmount?.toLocaleString()}</p>
+                      </div>
+                      <button className="text-[10px] text-[#c9a961] border border-[#c9a961] px-4 py-2 hover:bg-[#c9a961] hover:text-white transition-colors cursor-pointer tracking-widest">
+                        상세 보기
+                      </button>
                     </div>
                   </div>
                 ))
