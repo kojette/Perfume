@@ -84,6 +84,35 @@ const Cart = () => {
     if (loading) 
         return <div className = "text-center pt-40">LOADING...</div>;
 
+    const handleCheckout = async () => {
+        if (!window.confirm("장바구니에 담긴 상품을 정말 결제하시겠습니까?")) return;
+
+        try {
+            const {data: {session}} = await supabase.auth.getSession();
+            if (!session) {
+                alert("로그인이 필요합니다.");
+                return;
+            }
+
+            const response = await fetch('http://localhost:8080/api/orders/checkout', {
+                method : 'POST',
+                headers : {
+                    'Authorization' : `Bearer ${session.access_token}`,
+                    'Content-Type' : 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                alert("주문이 성공적으로 완료되었습니다! 영수증이 발행되었습니다.");
+                setCartItems([]);
+            } else {
+                alert ("주문 처리 중 문제가 발생하였습니다.");
+            }
+        } catch (error) {
+            console.error("주문 에러: " , error);
+        }
+    }
+
     return (
         <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-6 flex flex-col items-center">
             <div className="max-w-4xl w-full">
@@ -163,7 +192,9 @@ const Cart = () => {
                                 <span className="text-[#8b8278] font-serif italic">Total</span>
                                 <span className="text-[#1a1a1a] font-bold">₩{totalPrice.toLocaleString()}</span>
                             </div>
-                            <button className="px-12 py-4 bg-[#1a1a1a] text-white text-xs tracking-[0.2em] hover:bg-[#c9a961] transition-colors">
+                            <button 
+                                onClick = {handleCheckout}
+                                className="px-12 py-4 bg-[#1a1a1a] text-white text-xs tracking-[0.2em] hover:bg-[#c9a961] transition-colors">
                                 CHECKOUT
                             </button>
                         </div>
