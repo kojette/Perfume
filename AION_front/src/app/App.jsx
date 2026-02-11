@@ -24,6 +24,7 @@ import PerfumeManagement from './components/pages/PerfumeManagement';
 import Store from './components/pages/Store';
 import Cart from './components/pages/Cart';
 import Wishlist from './components/pages/Wishlist';
+import SearchResult from './components/pages/SearchResult';
 
 import AdminDashboard from "./components/pages/AdminDashboard";
 import AdminRoute from './components/AdminRoute';
@@ -93,6 +94,7 @@ return (
             <Route path="/admin/collections" element={<AdminRoute><CollectionManagement /></AdminRoute>} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/search" element={<SearchResult />} />
 
             <Route path="/signup" element={<Signup />} />
             <Route path="/mypage" element={<Mypage />} />

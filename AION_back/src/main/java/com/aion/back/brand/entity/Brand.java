@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,7 +21,7 @@ public class Brand {
     @Column(name = "brand_id")
     private Long brandId;
 
-    @Column(name = "brand_name", nullable = false, length = 100)
+    @Column(name = "brand_name", nullable = false, unique = true, length = 100)
     private String brandName;
 
     @Column(name = "brand_name_en", length = 100)
@@ -35,8 +36,13 @@ public class Brand {
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
 
+    /*
     @Column(name = "website_url", length = 500)
     private String websiteUrl;
+    */
+
+    @Column(name = "commission_rate")
+    private BigDecimal commissionRate;
 
     @Column(name = "is_active")
     private Boolean isActive;

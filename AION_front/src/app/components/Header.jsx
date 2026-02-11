@@ -6,6 +6,8 @@ import NotificationPanel from './pages/NotificationPanel';
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
@@ -17,6 +19,16 @@ export function Header() {
       navigate('/login');
     }
   };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim() !== '') {
+      console.log("검색어: " + searchQuery);
+      setIsSearchOpen(false);
+      setSearchQuery('');
+      navigate(`/search?q=${searchQuery}`);
+    }
+  }
 
   return (
     <>
@@ -68,10 +80,25 @@ export function Header() {
               </a>
             </nav>
 
+            {/* 우측 아이콘 메뉴 영역 */}
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
-                <Search size={20} />
-              </button>
+              {/* 검색(돋보기) 아이콘*/}
+              <div className = "flex items-center">
+                {isSearchOpen && (
+                  <form onSubmit = {handleSearch} className = "mr-2 animate-in fade-in slide-in-from-right-2 duration-200">
+                    <input
+                      type = "text" placeholder = "검색어 입력" value = {searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                      className = "border-b border-[#c9a961] bg-transparent text-xs text-[#2a2620] w-24 md:w-32 outline-none placeholder-[#8b8278] pb-1"
+                      autoFocus />
+                  </form>
+                )}
+                <button
+                  onClick = {() => setIsSearchOpen(!isSearchOpen)}
+                  className = "p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
+                    {isSearchOpen ? <X size = {20} /> : <Search size = {20} />}
+                  </button>
+              </div>
+
               {/* 공지/이벤트 확성기 아이콘 */}
               <button 
                 onClick={() => setNotificationOpen(true)}

@@ -25,6 +25,11 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
     // - findAllById(Iterable<Long> ids)
 
     /**
+     * 향수 이름 찾기
+     */
+    List<Perfume> findByNameContainingIgnoreCase(String keyword);
+
+    /**
      * 활성화된 향수만 조회
      */
     Page<Perfume> findByIsActiveTrue(Pageable pageable);
