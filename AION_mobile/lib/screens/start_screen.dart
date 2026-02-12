@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 
+import 'main_screen.dart'; //
+
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
 
@@ -31,7 +33,7 @@ class _StartScreenState extends State<StartScreen> {
     if (isLoggedIn && session != null) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const MainHomePage()),
+        MaterialPageRoute(builder: (_) =>  MainScreen()), //const MainHomePage()),
       );
     } else {
       // ❌ 세션 불일치 → 정리

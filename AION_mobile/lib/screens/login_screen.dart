@@ -5,6 +5,7 @@ import 'find_password_screen.dart';
 import 'home_screen.dart';
 import '../services/supabase_service.dart';
 import '../services/api_service.dart';
+import 'main_screen.dart';//
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -70,14 +71,14 @@ class _LoginScreenState extends State<LoginScreen> {
           _showAlert('$userName님, 관리자 페이지로 접속합니다.', () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const MainHomePage()),
+              MaterialPageRoute(builder: (context) =>  MainScreen()),
             );
           });
         } else {
           _showAlert('$userName님, 환영합니다!', () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const MainHomePage()),
+              MaterialPageRoute(builder: (context) =>  MainScreen()),
             );
           });
         }
