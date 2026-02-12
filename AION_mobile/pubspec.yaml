@@ -57,3 +57,10 @@ flutter:
   #       - asset: fonts/Pretendard-Regular.ttf
   #       - asset: fonts/Pretendard-Bold.ttf
   #         weight: 700
+
+  dependencies: #2월 12일자
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  shared_preferences: ^2.2.2
+  image_picker: ^1.0.7
