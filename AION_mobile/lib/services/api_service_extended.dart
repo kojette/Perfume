@@ -75,21 +75,29 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-        // Spring Boot Page 객체 처리
-        if (data is Map && data.containsKey('content')) {
-          final List content = data['content'];
-          return content.map((e) => Perfume.fromJson(e)).toList();
-        }
-        
-        // 배열로 직접 반환되는 경우
+
+        List items = [];
+
         if (data is List) {
-          return data.map((e) => Perfume.fromJson(e)).toList();
+          // 케이스 1: 바로 배열 [ {...}, {...} ]
+          items = data;
+        } else if (data is Map) {
+          if (data.containsKey('content') && data['content'] is List) {
+            // 케이스 2: Spring Page { "content": [...] }
+            items = data['content'];
+          } else if (data.containsKey('data') && data['data'] is List) {
+            // 케이스 3: 래핑된 { "data": [...] }
+            items = data['data'];
+          } else if (data.containsKey('data') && data['data'] is Map &&
+              data['data']['content'] is List) {
+            // 케이스 4: 이중 래핑 { "data": { "content": [...] } }
+            items = data['data']['content'];
+          }
         }
-        
-        return [];
+
+        return items.map((e) => Perfume.fromJson(e)).toList();
       }
-      
+
       throw Exception('향수 목록 불러오기 실패');
     } catch (e) {
       debugPrint('향수 목록 조회 오류: $e');
@@ -129,8 +137,31 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body);
-        return data.map((e) => Perfume.fromJson(e['perfume'])).toList();
+        final decoded = jsonDecode(response.body);
+
+        List items = [];
+
+        if (decoded is List) {
+          // 케이스 1: 바로 배열
+          items = decoded;
+        } else if (decoded is Map) {
+          if (decoded.containsKey('data') && decoded['data'] is List) {
+            // 케이스 2: { "data": [...] }
+            items = decoded['data'];
+          } else if (decoded.containsKey('content') && decoded['content'] is List) {
+            // 케이스 3: Page 형태
+            items = decoded['content'];
+          }
+        }
+
+        return items.map((e) {
+          // e가 { perfumeId, name, ... } 직접 구조이거나
+          // e가 { perfume: { ... } } 래핑 구조일 수 있음
+          final perfumeData = (e is Map && e.containsKey('perfume'))
+              ? e['perfume']
+              : e;
+          return Perfume.fromJson(perfumeData);
+        }).toList();
       }
       return [];
     } catch (e) {

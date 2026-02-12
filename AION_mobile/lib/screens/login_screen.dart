@@ -35,6 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (authResponse == null || authResponse.session == null) {
+        setState(() => _loading = false);
         _showAlert('이메일 또는 비밀번호가 일치하지 않습니다.');
         return;
       }

@@ -31,12 +31,19 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════
 
   static Future<List<Perfume>> fetchPerfumes() async {
-    final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/perfumes'));
+    final response =
+        await http.get(Uri.parse('${ApiConfig.baseUrl}/api/perfumes'));
+
     if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
-      return data.map((e) => Perfume.fromJson(e)).toList();
+      // ⭐ UTF-8 필수
+      final decoded = utf8.decode(response.bodyBytes);
+      final Map<String, dynamic> body = jsonDecode(decoded);
+
+      final List content = body['content']; // Page 핵심
+      return content.map((e) => Perfume.fromJson(e)).toList();
     }
-    throw Exception('향수 목록 불러오기 실패');
+
+    throw Exception('향수 목록 불러오기 실패: ${response.statusCode}');
   }
 
   // ═══════════════════════════════════════════════════════════════

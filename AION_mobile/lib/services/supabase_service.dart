@@ -14,6 +14,9 @@ class SupabaseService {
       return await _client.auth.signInWithPassword(
         email: email,
         password: password,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('로그인 요청 시간이 초과되었습니다.'),
       );
     } catch (e) {
       print('Supabase 로그인 오류: $e');
