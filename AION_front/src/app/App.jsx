@@ -25,6 +25,7 @@ import Store from './components/pages/Store';
 import Cart from './components/pages/Cart';
 import Wishlist from './components/pages/Wishlist';
 import SearchResult from './components/pages/SearchResult';
+import OrderReceipt from "./components/pages/OrderReceipt";
 
 import AdminDashboard from "./components/pages/AdminDashboard";
 import AdminRoute from './components/AdminRoute';
@@ -95,6 +96,7 @@ return (
             <Route path="/cart" element={<Cart />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/search" element={<SearchResult />} />
+            <Route path="/orders/:id" element={<OrderReceipt/>} />
 
             <Route path="/signup" element={<Signup />} />
             <Route path="/mypage" element={<Mypage />} />

@@ -125,10 +125,30 @@ const Cart = () => {
                 },
             });
 
+            console.log("Response status: ", response.status);
+            console.log("Response ok: ", response.ok);
+
             if (response.ok) {
-                alert("주문이 성공적으로 완료되었습니다! 영수증이 발행되었습니다.");
-                setCartItems([]);
+                const json = await response.json();
+
+                console.log("백엔드 응답 전체: ", json);
+                console.log("json.data: ", json.data);
+                console.log("json.data.orderId: ", json.data?.orderId);
+
+                const newOrderId = json.data.orderId;
+                
+                if (newOrderId) {
+                    alert("주문이 성공적으로 완료되었습니다.");
+                    setCartItems([]);
+                    navigate(`/orders/${newOrderId}`);
+                } else {
+                    console.error("orderId가 존재하지 않습니다.");
+                    alert("주문은 완료되었으나 주문번호를 받지 못했습니다.");
+                }
+
             } else {
+                const errorText = await response.text();
+                console.error("에러 응답: ", errorText);
                 alert ("주문 처리 중 문제가 발생하였습니다.");
             }
         } catch (error) {

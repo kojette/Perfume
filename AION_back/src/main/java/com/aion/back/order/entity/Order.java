@@ -1,6 +1,7 @@
 package com.aion.back.order.entity;
 
 import com.aion.back.member.entity.Member;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -57,5 +58,9 @@ public class Order {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    private java.util.List<OrderItem> orderItems;
 
 }
