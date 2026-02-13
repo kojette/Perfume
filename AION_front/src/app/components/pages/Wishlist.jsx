@@ -31,7 +31,28 @@ const Wishlist = () => {
 
             if(response.ok){
                 const json = await response.json();
-                setWishlistItems(json.data);
+                let items = json.data;
+
+                if (items && items.length > 0) {
+                    const perfumeIds = items.map(item => item.perfumeId);
+                    const {data: images} = await supabase
+                        .from('Perfume_Images')
+                        .select('perfume_id, image_url')
+                        .in('perfume_id', perfumeIds)
+                        .eq('is_thumbnail', true);
+
+                    const imageMap = {};
+                    images?.forEach(img => {
+                        imageMap[img.perfume_id] = img.image_url;
+                    });
+
+                    items = items.map(item => ({
+                        ...item,
+                        imageUrl : imageMap[item.perfumeId] || item.imageUrl || 'https://via.placeholder.com/300?text=No+Image'
+                    }));
+                }
+
+                setWishlistItems(items);
             }
         } catch (error) {
             console.error("찜 목록 불러오기 실패: ",  error);
@@ -123,14 +144,19 @@ const Wishlist = () => {
                                     className = "absolute top-2 right-1 text-gray-400 hover:text-red-500 cursor-pointer">
                                         x
                                     </button>
-                                <div className="aspect-[3/4] bg-gray-100 mb-4 bg-cover bg-center" style={{backgroundImage: `url(${item.imageUrl})`}}></div>
-                                <h3 className="font-serif text-lg text-[#1a1a1a]">{item.name}</h3>
-                                <p className="text-sm text-[#8b8278] mt-2">₩{item.price.toLocaleString()}</p>
-                                <button 
-                                    onClick = {() => handleAddToCart(item.perfumeId)}
-                                    className="w-full mt-4 py-2 border border-[#1a1a1a] text-[#1a1a1a] text-xs hover:bg-[#1a1a1a] hover:text-white transition-colors cursor-pointer">
-                                    ADD TO CART
-                                </button>
+                                <div className = "aspect-[3/4] bg-white mb-4 bg-cover bg-center border border-[#eee] group-hover:border-[#c9a961]/50 transition-colors"
+                                    style = {{
+                                        backgroundImage: `url(${item.imageUrl})`
+                                    }}></div>
+                                <div className = "text-center">
+                                    <h3 className="font-serif text-lg text-[#1a1a1a]">{item.name}</h3>
+                                    <p className="text-sm text-[#8b8278] mt-2">₩{item.price.toLocaleString()}</p>
+                                    <button 
+                                        onClick = {() => handleAddToCart(item.perfumeId)}
+                                        className="w-full mt-4 py-2 border border-[#1a1a1a] text-[#1a1a1a] text-xs hover:bg-[#1a1a1a] hover:text-white transition-colors cursor-pointer">
+                                        ADD TO CART
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>

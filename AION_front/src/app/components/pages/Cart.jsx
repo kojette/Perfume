@@ -33,9 +33,32 @@ const Cart = () => {
 
             if(response.ok){
                 const json = await response.json();
-                setCartItems(json.data);
-                const total = json.data.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+                let items = json.data;
+
+                if (items && items.length > 0) {
+                    const perfumeIds = items.map(item => item.perfumeId);
+                    const {data: images} = await supabase
+                        .from('Perfume_Images')
+                        .select('perfume_id, image_url')
+                        .in('perfume_id', perfumeIds)
+                        .eq('is_thumbnail', true);
+
+                    const imageMap = {};
+                    images?.forEach(img => {
+                        imageMap[img.perfume_id] = img.image_url;
+                    });
+
+                    items = items.map(item => ({
+                        ...item,
+                        imageUrl : imageMap[item.perfumeId] || item.imageUrl || 'https://via.placeholder.com/100?text=No+Image'
+                    }));
+                }
+
+                setCartItems(items);
+
+                const total = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
                 setTotalPrice(total);
+
             } else {
                 console.error("장바구니 불러오기 실패");
         
@@ -150,10 +173,15 @@ const Cart = () => {
                                     <tr key={item.cartId} className="border-b border-[#eee] last:border-0">
                                         <td className="py-6 pl-2">
                                             <div className="flex items-center gap-6">
-                                                <div className="w-16 h-20 bg-gray-100 bg-cover bg-center" style={{ backgroundImage: `url(${item.imageUrl})` }}></div>
+                                                <div 
+                                                    className="w-16 h-20 bg-gray-100 bg-cover bg-center" 
+                                                    style={{ backgroundImage: `url(${item.imageUrl})` }}></div>
                                                 <div>
                                                     <p className="text-[#1a1a1a] font-serif text-lg">{item.name}</p>
                                                     <p className="text-[10px] text-[#8b8278] tracking-widest mt-1">50ML / EAU DE PARFUM</p>
+                                                    <p className = "md:hidden text-xs text-[#8b8278] mt-1">
+                                                        ₩{item.price.toLocaleString()}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </td>
