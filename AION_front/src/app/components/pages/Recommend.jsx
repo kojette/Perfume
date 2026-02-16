@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { supabase } from '../../supabaseClient';
+import { getRecommendations } from '../../../services/recommendationApi';
 
 export default function Recommend() {
   const [perfumeData, setPerfumeData] = useState([]);
@@ -14,87 +14,58 @@ export default function Recommend() {
   // 향수 데이터 가져오기
   useEffect(() => {
     fetchPerfumes();
-  }, []);
+  }, [sortBy]);
+
+  // 검색어나 태그가 변경될 때 디바운스 적용
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm || selectedTags.length > 0) {
+        fetchPerfumes();
+      }
+    }, 500); // 500ms 디바운스
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, selectedTags]);
 
   const fetchPerfumes = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from('Perfumes')
-        .select(`
-          perfume_id,
-          name,
-          name_en,
-          price,
-          sale_rate,
-          sale_price,
-          volume_ml,
-          concentration,
-          gender,
-          season,
-          occasion,
-          avg_rating,
-          is_active,
-          brand_id,
-          Brands (
-            brand_name,
-            brand_name_en
-          ),
-          Perfume_Notes (
-            note_type,
-            Scents (
-              scent_name
-            )
-          ),
-          Perfume_Tags (
-            Preference_Tags (
-              tag_name,
-              tag_type
-            )
-          )
-        `)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+      // API 요청 파라미터 구성
+      const params = {
+        search: searchTerm || undefined,
+        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        sortBy: sortBy,
+        page: 0,
+        size: 100, // 클라이언트 사이드 필터링을 위해 많이 가져옴
+      };
 
-      if (error) throw error;
+      // API 호출
+      const response = await getRecommendations(params);
 
       // 데이터 변환
-      const transformedData = data.map(perfume => {
-        // 향 카테고리 추출
-        const scentCategories = perfume.Perfume_Notes
-          ?.map(note => note.Scents?.scent_category)
-          .filter((v, i, a) => v && a.indexOf(v) === i) || [];
-
-        // 태그 추출
-        const tags = [
-          ...(perfume.Perfume_Tags?.map(pt => pt.Preference_Tags?.tag_name).filter(Boolean) || []),
-          perfume.gender === 'MALE' ? '남성' : perfume.gender === 'FEMALE' ? '여성' : '중성',
-          ...(perfume.season || []),
-          ...(perfume.occasion || [])
-        ];
-
-        return {
-          id: perfume.perfume_id,
-          name: perfume.name,
-          nameEn: perfume.name_en || perfume.name,
-          greekName: perfume.name, // 그리스 이름은 별도 필드가 없으면 name 사용
-          category: scentCategories.join(' & ') || '기타',
-          price: perfume.sale_price || perfume.price,
-          originalPrice: perfume.sale_rate > 0 ? perfume.price : null,
-          discountRate: perfume.sale_rate || 0,
-          tags: tags,
-          description: `${perfume.Brands?.brand_name || ''} ${perfume.volume_ml}ml ${perfume.concentration || ''}`,
-          rating: Math.round(perfume.avg_rating || 0),
-          brand: perfume.Brands?.brand_name || ''
-        };
-      });
+      const transformedData = response.content.map(perfume => ({
+        id: perfume.id,
+        name: perfume.name,
+        nameEn: perfume.nameEn || perfume.name,
+        greekName: perfume.name,
+        category: perfume.category || perfume.scentCategories?.join(' & ') || '기타',
+        price: perfume.salePrice || perfume.price,
+        originalPrice: perfume.originalPrice,
+        discountRate: perfume.discountRate || 0,
+        tags: perfume.tags || [],
+        description: `${perfume.brandName || ''} ${perfume.volumeMl || ''}ml`,
+        rating: perfume.rating || 0,
+        brand: perfume.brandName || '',
+        seasons: perfume.seasons || [],
+        occasions: perfume.occasions || [],
+      }));
 
       setPerfumeData(transformedData);
     } catch (err) {
       console.error('Error fetching perfumes:', err);
-      setError(err.message);
+      setError(err.message || '향수 데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -114,54 +85,19 @@ export default function Recommend() {
     setSelectedTags(selectedTags.filter(tag => tag !== tagToRemove));
   };
 
-  // 필터링 및 정렬 로직
-  const filteredAndSortedPerfumes = useMemo(() => {
-    let result = [...perfumeData];
-
-    // 1. 상품명 검색 필터링
-    if (searchTerm.trim()) {
-      result = result.filter(perfume => 
-        perfume.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        perfume.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        perfume.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        perfume.brand.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  // 빠른 필터 버튼 핸들러
+  const handleQuickFilter = (type, value) => {
+    if (type === 'tags') {
+      setSelectedTags(value);
+    } else if (type === 'search') {
+      setSearchTerm(value);
     }
+  };
 
-    // 2. 태그 필터링
-    if (selectedTags.length > 0) {
-      result = result.filter(perfume =>
-        selectedTags.some(selectedTag =>
-          perfume.tags.some(perfumeTag =>
-            perfumeTag.toLowerCase().includes(selectedTag.toLowerCase())
-          )
-        )
-      );
-    }
-
-    // 3. 정렬
-    switch (sortBy) {
-      case "latest":
-        // 이미 created_at desc로 정렬되어 있음
-        break;
-      case "price-low":
-        result.sort((a, b) => a.price - b.price);
-        break;
-      case "price-high":
-        result.sort((a, b) => b.price - a.price);
-        break;
-      case "rating":
-        result.sort((a, b) => b.rating - a.rating);
-        break;
-      case "popular":
-        result.sort((a, b) => b.rating - a.rating || a.id - b.id);
-        break;
-      default:
-        break;
-    }
-
-    return result;
-  }, [perfumeData, searchTerm, selectedTags, sortBy]);
+  // 클라이언트 사이드 필터링 (이미 서버에서 필터링되었지만, 추가 필터링 가능)
+  const filteredPerfumes = useMemo(() => {
+    return perfumeData; // 서버에서 이미 필터링됨
+  }, [perfumeData]);
 
   if (loading) {
     return (
@@ -207,27 +143,27 @@ export default function Recommend() {
         </div>
 
         {/* Quick Theme Recommendations */}
-        <div className="mb-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
           <button
-            onClick={() => setSelectedTags(['남성'])}
+            onClick={() => handleQuickFilter('search', '남성')}
             className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all cursor-pointer"
           >
             <div className="text-2xl mb-2">👔</div>
             <div className="text-sm font-semibold tracking-wider text-[#2a2620] mb-1">남성</div>
-            <div className="text-[10px] text-[#8b8278] italic">Men</div>
+            <div className="text-[10px] text-[#8b8278] italic">Man</div>
           </button>
 
           <button
-            onClick={() => setSelectedTags(['여성'])}
+            onClick={() => handleQuickFilter('search', '여성')}
             className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all cursor-pointer"
           >
             <div className="text-2xl mb-2">👗</div>
             <div className="text-sm font-semibold tracking-wider text-[#2a2620] mb-1">여성</div>
-            <div className="text-[10px] text-[#8b8278] italic">Women</div>
+            <div className="text-[10px] text-[#8b8278] italic">Woman</div>
           </button>
 
           <button
-            onClick={() => setSelectedTags(['데이트', 'ROMANTIC'])}
+            onClick={() => handleQuickFilter('tags', ['데이트', 'DATE'])}
             className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all cursor-pointer"
           >
             <div className="text-2xl mb-2">💕</div>
@@ -236,7 +172,7 @@ export default function Recommend() {
           </button>
 
           <button
-            onClick={() => setSelectedTags(['청량한', 'FRESH'])}
+            onClick={() => handleQuickFilter('tags', ['청량한', 'FRESH'])}
             className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all cursor-pointer"
           >
             <div className="text-2xl mb-2">🌿</div>
@@ -245,7 +181,7 @@ export default function Recommend() {
           </button>
 
           <button
-            onClick={() => setSearchTerm('플로럴')}
+            onClick={() => handleQuickFilter('search', '플로럴')}
             className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all cursor-pointer"
           >
             <div className="text-2xl mb-2">🌸</div>
@@ -254,7 +190,7 @@ export default function Recommend() {
           </button>
 
           <button
-            onClick={() => setSearchTerm('우디')}
+            onClick={() => handleQuickFilter('search', '우디')}
             className="group p-5 bg-white/70 border border-[#c9a961]/20 rounded-xl hover:border-[#c9a961] hover:bg-white transition-all cursor-pointer"
           >
             <div className="text-2xl mb-2">🍂</div>
@@ -323,15 +259,15 @@ export default function Recommend() {
             RECOMMENDED SCENTS
           </h2>
           <p className="text-sm text-[#8b8278] italic">
-            {filteredAndSortedPerfumes.length}개의 향수
+            {filteredPerfumes.length}개의 향수
           </p>
         </div>
 
         {/* Scroll List */}
         <div>
-          {filteredAndSortedPerfumes.length > 0 ? (
+          {filteredPerfumes.length > 0 ? (
             <div className="max-h-[500px] overflow-y-auto pr-2 space-y-6 custom-scrollbar">
-              {filteredAndSortedPerfumes.map((perfume) => (
+              {filteredPerfumes.map((perfume) => (
                 <div
                   key={perfume.id}
                   className="flex items-center gap-6 p-6 rounded-2xl bg-white/80 shadow-sm hover:shadow-lg hover:bg-white transition-all duration-300 cursor-pointer group"
