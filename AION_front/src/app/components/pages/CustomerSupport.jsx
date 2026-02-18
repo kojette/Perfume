@@ -190,7 +190,7 @@ const CustomerSupport = () => {
         <div className="text-center mb-12">
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">CUSTOMER SUPPORT</div>
           <Ornament className="mb-6" />
-          <h1 className="font-display text-3xl tracking-[0.3em] text-[#2a2620] mb-4">고객센터 관리</h1>
+          <h1 className="font-display text-3xl tracking-[0.3em] text-[#2a2620] mb-4">고객 관리</h1>
           <p className="text-sm text-[#8b8278] italic">Customer Inquiries Management</p>
         </div>
 
