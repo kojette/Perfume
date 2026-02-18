@@ -16,4 +16,5 @@ public class MemberProfileResponse {
     private String gender;
     private String profileImage;
     private AccountStatus accountStatus;
+    private String role;
 }

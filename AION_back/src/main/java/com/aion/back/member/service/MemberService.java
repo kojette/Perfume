@@ -91,6 +91,7 @@ public class MemberService {
                     .gender(member.getGender())
                     .profileImage(member.getProfileImage())
                     .accountStatus(member.getAccountStatus())
+                    .role(member.getRole())
                     .build();
         } catch (Exception e) {
             log.error("프로필 조회 실패", e);

@@ -20,6 +20,9 @@ public class Member {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
+    @Column(columnDefinition = "VARCHAR(20) DEFAULT 'USER'")
+    private String role;
+
     @Column(name = "password_hash", nullable = true)
     private String password;
 

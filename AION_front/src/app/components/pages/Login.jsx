@@ -29,7 +29,6 @@ const Login = () => {
         const accessToken = data.session.access_token;
 
         // 2. 백엔드 검문소 (탈퇴 여부 및 로그인 기록 체크)
-        // 세션 저장 전에 먼저 체크해야 합니다!
         try {
             const response = await fetch('http://localhost:8080/api/auth/login-record', {
                 method: 'POST',
@@ -69,45 +68,55 @@ const Login = () => {
             return;
         }
 
-        // 3. 백엔드 통과 후 데이터 조회 (Users, Admin_Accounts)
-        const { data: userData } = await supabase
-            .from('Users')
-            .select('*')
-            .eq('email', email)
-            .single();
+        // 백엔드에서 사용자 정보 가져오기
+        try {
+            const profileResponse = await fetch('http://localhost:8080/api/members/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization' : `Bearer ${accessToken}`,
+                    'Content-Type' : 'application/json'
+                }
+            });
 
-        const { data: adminData } = await supabase
-            .from('Admin_Accounts')
-            .select('*')
-            .eq('email', email)
-            .eq('is_active', true)
-            .single();
+            if (profileResponse.ok) {
+                const json = await profileResponse.json();
+                const userData = json.data;
 
-        const isAdmin = !!adminData;
+                const isAdmin = String(userData.role) === 'ADMIN';
 
-        // 4. 모든 관문을 통과했으므로 이제 세션 정보 저장
-        sessionStorage.setItem('accessToken', accessToken);
-        sessionStorage.setItem('isLoggedIn', 'true');
-        sessionStorage.setItem('userEmail', userData?.email || email);
-        sessionStorage.setItem('userName', userData?.name || '사용자');
-        sessionStorage.setItem('isAdmin', isAdmin.toString());
-        if (isAdmin) sessionStorage.setItem('adminRole', adminData.role);
+                sessionStorage.setItem('accessToken', accessToken);
+                sessionStorage.setItem('isLoggedIn', true);
+                sessionStorage.setItem('userEmail', userData.email);
+                sessionStorage.setItem('userName', userData.name || '사용자');
+                sessionStorage.setItem('isAdmin', isAdmin.toString());
 
-        // 5. 완료 알림 및 이동
-        const userName = userData?.name || '사용자';
-        if (isAdmin) {
-            alert(`${userName}님, 관리자 페이지로 접속합니다.`);
-            navigate('/admin');
-        } else {
-            alert(`${userName}님, 환영합니다!`);
-            navigate('/');
+                if (userData.role) {
+                    sessionStorage.setItem('userRole', userData.role);
+                }
+
+                if (isAdmin) {
+                    alert('관리자로 접속합니다.');
+                    navigate('/admin');
+                } else {
+                    alert (`${userData.name}님, 환영합니다!`);
+                    navigate('/');
+                }
+
+                window.location.reload();
+
+            } else {
+                throw new Error("회원 정보를 불러오지 못했습니다.");
+            }
+        } catch (profileError) {
+            console.error("프로필 조회 실패: ", profileError);
+            await supabase.auth.signOut();
+            alert("회원 정보를 확인하는 중 오류가 발생했습니다.");
+            setLoading(false);
         }
-        window.location.reload();
 
     } catch (err) {
         console.error('예상치 못한 에러:', err);
         alert('로그인 중 오류가 발생했습니다.');
-    } finally {
         setLoading(false);
     }
 };

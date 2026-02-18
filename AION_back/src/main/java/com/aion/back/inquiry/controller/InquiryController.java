@@ -8,6 +8,7 @@ import com.aion.back.member.entity.Member;
 import com.aion.back.member.service.MemberService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -96,5 +97,46 @@ public class InquiryController {
 
         inquiryRepository.delete(inquiry);
         return ApiResponse.success("문의가 삭제되었습니다.");
+    }
+
+    // [관리자 모드] 모든 문의 내역 조회
+    @GetMapping("/admin/all")
+    public ApiResponse<List<Inquiry>> getAllInquiries(@RequestHeader("Authorization") String token) {
+        Member member = memberService.getMemberEntityByToken(token);
+
+        // 관리자 권한 확인
+        if(!"ADMIN".equals(member.getRole())) {
+            throw new RuntimeException("관리자 접근 권한이 없습니다. 접근이 거부되었습니다.");
+        }
+
+        List<Inquiry> allInquiries = inquiryRepository.findAll(
+                org.springframework.data.domain.Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        return ApiResponse.success("전체 문의 조회 성공", allInquiries);
+    }
+
+    // [관리자] 답변 등록
+    @PatchMapping("/admin/{id}/answer")
+    @Transactional
+    public ApiResponse<String> answerInquiry(@RequestHeader("Authorization") String token,
+                                             @PathVariable Long id,
+                                             @RequestBody String answerContent) {
+        Member admin = memberService.getMemberEntityByToken(token);
+
+        // 권한 체크
+        if (!"ADMIN".equals(admin.getRole())) {
+            throw new RuntimeException("관리자 권한이 없습니다. 답변을 등록할 수 없습니다.");
+        }
+
+        Inquiry inquiry = inquiryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("문의를 찾을 수 없습니다."));
+
+        inquiry.setAnswer(answerContent);
+        inquiry.setAssignedTo(admin.getName());
+        inquiry.setStatus("completed");
+        inquiry.setRead(false);
+
+        return ApiResponse.success("답변이 등록되었습니다.");
     }
 }
