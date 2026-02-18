@@ -4,6 +4,7 @@ import com.aion.back.common.response.ApiResponse;
 import com.aion.back.inquiry.dto.InquiryRequestDto;
 import com.aion.back.inquiry.entity.Inquiry;
 import com.aion.back.inquiry.repository.InquiryRepository;
+import com.aion.back.inquiry.dto.InquiryResponseDto;
 import com.aion.back.member.entity.Member;
 import com.aion.back.member.service.MemberService;
 import jakarta.transaction.Transactional;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/inquiries")
@@ -23,10 +25,15 @@ public class InquiryController {
 
     // 내 문의 내역 조회
     @GetMapping("/my")
-    public ApiResponse<List<Inquiry>> getMyInquiries(@RequestParam(defaultValue = "1") Integer page, @RequestHeader("Authorization") String token) {
+    public ApiResponse<List<InquiryResponseDto>> getMyInquiries(@RequestHeader("Authorization") String token) {
         Member member = memberService.getMemberEntityByToken(token);
         List<Inquiry> inquiries = inquiryRepository.findByMemberOrderByCreatedAtDesc(member);
-        return ApiResponse.success("문의 내역 조회 성공", inquiries);
+
+        List<InquiryResponseDto> dtos = inquiries.stream()
+                .map(InquiryResponseDto::from)
+                .collect(Collectors.toList());
+
+        return ApiResponse.success("문의 내역 조회 성공", dtos);
     }
 
     // 문의 등록
@@ -101,19 +108,22 @@ public class InquiryController {
 
     // [관리자 모드] 모든 문의 내역 조회
     @GetMapping("/admin/all")
-    public ApiResponse<List<Inquiry>> getAllInquiries(@RequestHeader("Authorization") String token) {
+    public ApiResponse<List<InquiryResponseDto>> getAllInquiries(@RequestHeader("Authorization") String token) {
         Member member = memberService.getMemberEntityByToken(token);
 
-        // 관리자 권한 확인
-        if(!"ADMIN".equals(member.getRole())) {
-            throw new RuntimeException("관리자 접근 권한이 없습니다. 접근이 거부되었습니다.");
+        if (!"ADMIN".equals(member.getRole())) {
+            throw new RuntimeException("관리자 권한이 없습니다. 접근이 거부되었습니다.");
         }
 
         List<Inquiry> allInquiries = inquiryRepository.findAll(
-                org.springframework.data.domain.Sort.by(Sort.Direction.DESC, "createdAt")
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
         );
 
-        return ApiResponse.success("전체 문의 조회 성공", allInquiries);
+        List<InquiryResponseDto> dtos = allInquiries.stream()
+                .map(InquiryResponseDto::from)
+                .collect(Collectors.toList());
+
+        return ApiResponse.success("전체 문의 조회 성공", dtos);
     }
 
     // [관리자] 답변 등록

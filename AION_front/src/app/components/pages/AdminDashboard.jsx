@@ -1,12 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Droplets, Megaphone, Calendar, Ticket, LogOut, BarChart3, Home } from 'lucide-react';
+import { Users, Droplets, Megaphone, Calendar, Ticket, LogOut, BarChart3, Home, MessageSquare } from 'lucide-react';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
 
     const menuItems = [
-        {title: '고객관리', icon: <Users />, path: '/admin/support', color: 'bg-blue-500'},
+        {title: '고객 문의 관리', icon: <MessageSquare />, path: '/admin/support', color: 'bg-blue-500'},
         {title: '향수 데이터 수정', icon: <Droplets />, path: '/admin/perfumes', color: 'bg-purple-500'},
         {title: '공지사항 관리', icon: <Megaphone />, path: '/admin/announcements', color: 'bg-orange-500'},
         {title: '이벤트 관리', icon: <Calendar />, path: '/admin/events', color: 'bg-green-500'},
