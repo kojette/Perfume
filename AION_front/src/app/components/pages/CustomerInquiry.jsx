@@ -7,7 +7,7 @@ import { supabase } from '../../supabaseClient';
 // 문의 유형 (FAQ 제외)
 const INQUIRY_TYPES = [
   { value: 'product', label: '상품문의', icon: '🛍️' },
-  {value: 'delivery', label: '배송문의', icon: '🚚'},
+  { value: 'delivery', label: '배송문의', icon: '🚚'},
   { value: 'refund', label: '환불문의', icon: '💰' },
   { value: 'site', label: '사이트문의', icon: '🌐' },
   { value: 'company', label: '회사문의', icon: '🏢' },
@@ -20,44 +20,46 @@ const CustomerInquiry = () => {
   const [formData, setFormData] = useState({type: '', title: '', content: ''});
   const [myInquiries, setMyInquiries] = useState([]);
   const [notifications, setNotifications] = useState(0);
-
-  // 로그인 확인
-  const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
-  const userName = sessionStorage.getItem('userName') || '고객';
-  const userEmail = sessionStorage.getItem('userEmail') || '';
+  const [loading, setLoading] = useState(false);
 
   // 내 문의 내역 불러오기
   const fetchMyInquiries = useCallback(async () => {
-    if (!userEmail) return;
+    try {
+      const { data: {session}} = await supabase.auth.getSession();
+      if (!session) return;
 
-    const { data, error } = await supabase
-      .from('Inquiries')
-      .select('*')
-      .eq('customer_email', userEmail)
-      .order('created_at', { ascending: false });
+      const response = await fetch('http://localhost:8080/api/inquiries/my', {
+        method: 'GET',
+        headers: {
+          'Authorization' : `Bearer ${session.access_token}`,
+          'Content-Type' : 'application/json'
+        }
+      });
 
-    if (error) {
-      console.error('데이터 로드 에러: ', error);
-    } else {
-      setMyInquiries(data);
-      const answeredCount = data.filter(inq => inq.status === 'completed' && !inq.read).length;
-      setNotifications(answeredCount);
+      if (response.ok) {
+        const json = await response.json();
+        const data = json.data;
+        setMyInquiries(data);
+
+        const answeredCount = data.filter(inq => inq.status === 'completed' && !inq.read).length ;
+        setNotifications(answeredCount);
+      } else {
+        console.error("문의 내역 조회 실패");
+      }
+    } catch (error) {
+        console.error('데이터 로드 에러: ', error);
     }
-  }, [userEmail]);
+  }, []);
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      alert('로그인이 필요합니다.');
-      navigate('/login');
-      return;
-    } fetchMyInquiries();
-  }, [isLoggedIn, navigate, fetchMyInquiries]);
-  
+    fetchMyInquiries();
+  }, [fetchMyInquiries]);
+
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo(0,0);
   }, [activeTab]);
 
-  // 데이터베이스에 새 문의사항 넣기
+  // 새 문의사항 작성
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -66,73 +68,110 @@ const CustomerInquiry = () => {
       return;
     }
 
-    const {error} = await supabase
-    .from('Inquiries')
-    .insert([{
-      type: formData.type,
-      title: formData.title,
-      content: formData.content,
-      customer_name: userName,
-      customer_email: userEmail,
-      status: 'pending',
-      read: false
-    }]);
+    try {
+      setLoading(true);
+      const {data: {session}} = await supabase.auth.getSession();
+      if (!session) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
 
-    if(error) {
-      console.error('저장 에러:', error.message);
-      alert('문의 접수 중 오류가 발생했습니다.');
-    } else {
-      alert('문의가 접수되었습니다.');
-      setFormData({type: '', title: '', content: ''});
-      setActiveTab('myInquiries');
-      fetchMyInquiries();
+      const response = await fetch('http://localhost:8080/api/inquiries', {
+        method: 'POST',
+        headers: {
+          'Authorization' : `Bearer ${session.access_token}`,
+          'Content-Type' : 'application/json'
+        }, 
+        body : JSON.stringify({
+          type : formData.type,
+          title: formData.title,
+          content : formData.content
+        })
+      });
+
+      if (response.ok) {
+        alert('문의가 접수되었습니다.');
+        setFormData({type:'', title:'', content:''});
+        setActiveTab('myInquiries');
+        fetchMyInquiries();
+      } else {
+        alert('문의 접수 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('저장 에러: ', error);
+      alert('서버 통신 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
   // 읽음 처리
   const markAsRead = async (inquiryId) => {
-    const {error} = await supabase
-    .from('Inquiries')
-    .update({read: true})
-    .eq('id', inquiryId);
+    try {
+      const {data: {session}} = await supabase.auth.getSession();
 
-    if(!error) fetchMyInquiries();
+      const response = await fetch(`http://localhost:8080/api/inquiries/${inquiryId}/read`, {
+        method : 'PATCH',
+        headers : {
+          'Authorization' : `Bearer ${session.access_token}`
+        }
+      });
+
+      if (response.ok){
+        fetchMyInquiries();
+      }
+    } catch (error) {
+      console.error("읽음 처리 실패: ", error);
+    }
   }
 
-  // 문의 취소 (문의 삭제 보완 버전)
+  // 문의 취소
   const handleCancelInquiry = async (inquiryId) => {
     if(!window.confirm('정말 이 문의를 취소하시겠습니까?')) return;
 
-    const {error} = await supabase
-      .from('Inquiries')
-      .update({status: 'cancelled'})
-      .eq('id', inquiryId);
+    try {
+      const {data: {session}} = await supabase.auth.getSession();
+      const response = await fetch(`http://localhost:8080/api/inquiries/${inquiryId}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization' : `Bearer ${session.access_token}`
+        }
+      });
 
-      if(error) {
-        alert('취소 처리 중 오류가 발생했습니다.');
-      } else {
+      if(response.ok) {
         alert('문의가 취소되었습니다.');
         fetchMyInquiries();
+      } else {
+        alert('취소 처리 중 오류가 발생했습니다.');
       }
+    } catch (error) {
+      console.error("취소 실패: ", error);
+    }
   };
 
-  // 문의 삭제 -> 조금 고려해봐야할 코드같음
-  const handleDeleteInquiry = async (inquiryId, isCancel = false) => {
-    const message = isCancel ? '문의를 취소하시겟습니까?' : '문의 내역을 삭제하시겠습니까?';
-    if(!window.confirm(message)) 
-      return;
+  // 문의 삭제
+  const handleDeleteInquiry = async (inquiryId) => {
+    if (!window.confirm('문의 내역을 삭제하시겠습니까?')) return;
 
-    const {error} = await supabase
-      .from('Inquiries')
-      .delete()
-      .eq('id', inquiryId);
+    try {
+      const {data: {session}} = await supabase.auth.getSession();
+      
+      const response = await fetch(`http://localhost:8080/api/inquiries/${inquiryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization' : `Bearer ${session.access_token}`
+        }
+      });
 
-      if(error) {
-        alert('오류가 발생했습니다.');
-      } else {
-        alert(isCancel ? '취소되었습니다.' : '삭제되었습니다.');
+      if (response.ok) {
+        alert('삭제되었습니다.');
         fetchMyInquiries();
+      } else {
+        alert('오류가 발생했습니다.');
       }
+    } catch (error) {
+      console.error("삭제 실패: ", error);
+    }
   };
 
   const getStatusConfig = (status) => {
@@ -289,10 +328,11 @@ const CustomerInquiry = () => {
               {/* 제출 버튼 */}
               <button
                 type="submit"
-                className="w-full py-4 bg-[#2a2620] text-white hover:bg-[#c9a961] transition-all duration-500 tracking-[0.3em] text-xs flex items-center justify-center gap-2 cursor-pointer"
+                disabled={loading}
+                className="w-full py-4 bg-[#2a2620] text-white hover:bg-[#c9a961] transition-all duration-500 tracking-[0.3em] text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
-                문의 접수하기
+                {loading ? '접수 중...' : '문의 접수하기'}
               </button>
             </form>
           </div>
@@ -316,16 +356,16 @@ const CustomerInquiry = () => {
                 .map(inquiry => {
                   const statusConfig = getStatusConfig(inquiry.status);
                   const StatusIcon = statusConfig.icon;
-                  const typeInfo = INQUIRY_TYPES.find(t => t.value === inquiry.type);
+                  const typeInfo = INQUIRY_TYPES.find(t => t.value === inquiry.type) || { icon: '📝' };
 
                 return (
                   <div
-                    key={inquiry.id}
+                    key={inquiry.inquiryId}
                     className="bg-white border border-[#c9a961]/20 p-6 rounded-lg shadow-sm hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{typeInfo?.icon}</span>
+                        <span className="text-2xl">{typeInfo.icon}</span>
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-semibold text-[#2a2620]">{inquiry.title}</h3>
@@ -333,7 +373,7 @@ const CustomerInquiry = () => {
                               <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                             )}
                           </div>
-                          <p className="text-xs text-[#8b8278]">{new Date(inquiry.created_at).toLocaleString('ko-KR')}</p>
+                          <p className="text-xs text-[#8b8278]">{new Date(inquiry.createdAt).toLocaleString('ko-KR')}</p>
                         </div>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-[10px] font-medium flex items-center gap-1.5 ${statusConfig.color}`}>
@@ -364,14 +404,14 @@ const CustomerInquiry = () => {
                         <div className="flex items-center gap-3 mt-3">
                           {!inquiry.read && (
                             <button
-                              onClick={() => markAsRead(inquiry.id)}
+                              onClick={() => markAsRead(inquiry.inquiryId)}
                               className="text-xs text-[#c9a961] underline italic hover:text-[#b89851]"
                             >
                               확인 완료
                             </button>
                           )}
                           <button
-                            onClick={() => handleDeleteInquiry(inquiry.id)}
+                            onClick={() => handleDeleteInquiry(inquiry.inquiryId)}
                             className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -386,7 +426,7 @@ const CustomerInquiry = () => {
                     {(inquiry.status === 'pending'|| inquiry.status === 'processing') && (
                       <div className="mt-4 pt-4 border-t border-[#c9a961]/10 flex justify-end">
                         <button
-                          onClick={() => handleCancelInquiry(inquiry.id)}
+                          onClick={() => handleCancelInquiry(inquiry.inquiryId)}
                           className="flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-800 transition-colors"
                         >
                           <X className="w-3.5 h-3.5" />
