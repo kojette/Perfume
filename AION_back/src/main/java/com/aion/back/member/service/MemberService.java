@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -31,6 +33,28 @@ public class MemberService {
         return memberRepository.existsByEmail(email);
     }
 
+    @Transactional(readOnly = true)
+    public void checkEmailAvailability(String email) {
+        Optional<Member> memberOpt = memberRepository.findByEmail(email);
+
+        if (memberOpt.isPresent()) {
+            Member member = memberOpt.get();
+
+            // ★ 수정: String "DELETED" 대신 Enum 타입인 AccountStatus.DELETED와 비교해야 함
+            if (AccountStatus.DELETED.equals(member.getAccountStatus())) {
+                LocalDateTime withdrawDate = member.getWithdrawDate();
+                if (withdrawDate != null) {
+                    long daysSinceWithdraw = ChronoUnit.DAYS.between(withdrawDate, LocalDateTime.now());
+                    if (daysSinceWithdraw < 30) {
+                        throw new RuntimeException("탈퇴 후 30일 이내에는 재가입이 불가능합니다. (" + (30 - daysSinceWithdraw) + "일 남음)");
+                    }
+                }
+            } else {
+                throw new RuntimeException("이미 등록된 이메일입니다.");
+            }
+        }
+    }
+
     public MyPageResponse getMyPageInfo(Long userId) {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
@@ -45,16 +69,32 @@ public class MemberService {
                 .build();
     }
 
-    public void registerMember(MemberRegistrationRequest request){
-        if(memberRepository.existsByEmail(request.getEmail())){
-            throw new RuntimeException("이미 등록된 이메일입니다.");
+    @Transactional // ★ 수정: 가입 로직에는 Transactional을 붙여주는 것이 안전합니다.
+    public void registerMember(MemberRegistrationRequest request) {
+        // ★ 수정: 가입 전 검증 로직을 위에 만든 checkEmailAvailability로 통합 호출
+        checkEmailAvailability(request.getEmail());
+
+        // 1. 이메일로 기존 회원 정보 조회
+        Optional<Member> existingMember = memberRepository.findByEmail(request.getEmail());
+
+        if (existingMember.isPresent()) {
+            Member member = existingMember.get();
+
+            // ★ 수정: Enum 비교 방식으로 수정
+            if (AccountStatus.DELETED.equals(member.getAccountStatus())) {
+                // 30일이 지났다면 기존의 탈퇴 데이터를 삭제 (새로운 가입 허용)
+                memberRepository.delete(member);
+                memberRepository.flush();
+            }
         }
 
+        // 2. 새로운 회원 정보 생성 및 저장
         Member member = new Member();
         member.setSupabaseUid(request.getSupabaseUid());
         member.setEmail(request.getEmail());
         member.setName(request.getName());
-        member.setNickname(request.getNickname());
+        // ★ 참고: 닉네임이 request에 없다면 이름을 기본값으로 쓰거나 null 처리
+        member.setNickname(request.getNickname() != null ? request.getNickname() : request.getName());
         member.setPhone(request.getPhone());
         member.setGender(request.getGender());
         member.setAccountStatus(AccountStatus.ACTIVE);

@@ -49,9 +49,16 @@ public class Member {
     @Column(name = "account_status", columnDefinition = "user_account_status")
     private AccountStatus accountStatus;
 
+    @Column(name = "withdraw_date")
+    private LocalDateTime withdrawDate;
+
     @Column(name = "join_date", updatable = false)
     private LocalDateTime joinDate;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    public LocalDateTime getWithdrawDate() {
+        return null;
+    }
 }

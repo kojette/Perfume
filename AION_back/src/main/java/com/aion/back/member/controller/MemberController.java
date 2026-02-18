@@ -8,8 +8,12 @@ import com.aion.back.member.dto.response.MemberProfileResponse;
 import com.aion.back.member.dto.response.MyPageResponse;
 import com.aion.back.member.service.MemberService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import lombok.RequiredArgsConstructor;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/members")
@@ -23,9 +27,25 @@ public class MemberController {
     // ===== 기존 메서드들 (그대로 유지) =====
 
     @GetMapping("/check-email")
-    public ApiResponse<Boolean> checkEmail(@RequestParam("email") String email) {
-        boolean isDuplicated = memberService.isEmailDuplicated(email);
-        return ApiResponse.success("이메일 중복 체크 결과입니다.", isDuplicated);
+    public ResponseEntity<?> checkEmail(@RequestParam String email) {
+        try {
+            // 기존의 return memberService.isEmailDuplicated(email); 대신 아래 코드로 변경
+            memberService.checkEmailAvailability(email);
+
+            // 에러 없이 통과하면 가입 가능한 상태
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "가입 가능한 이메일입니다.",
+                    "data", false // 중복되지 않음
+            ));
+        } catch (RuntimeException e) {
+            // 서비스에서 throw한 "탈퇴 후 30일 이내..." 메시지를 여기서 잡아서 응답
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage(),
+                    "data", true // 중복 혹은 제한 상태
+            ));
+        }
     }
 
     @GetMapping("/mypage")
