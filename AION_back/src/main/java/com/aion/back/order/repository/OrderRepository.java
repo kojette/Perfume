@@ -1,4 +1,4 @@
-package com.aion.back.order.respository;
+package com.aion.back.order.repository;
 
 import com.aion.back.member.entity.Member;
 import com.aion.back.order.entity.Order;

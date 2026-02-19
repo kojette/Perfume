@@ -1,4 +1,4 @@
-package com.aion.back.order.respository;
+package com.aion.back.order.repository;
 
 public class ReturnExchangeRepository {
 }
