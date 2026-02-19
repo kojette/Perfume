@@ -3,7 +3,8 @@ import 'screens/faq_screen.dart';
 import 'screens/customer_inquiry_screen.dart';
 import 'screens/store_screen.dart';
 import 'screens/search_result_screen.dart';
-import 'screens/recommend_screen_new.dart';
+import 'screens/recommend_screen.dart';
+
 
 
 final routes = {

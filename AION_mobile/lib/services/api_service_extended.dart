@@ -18,6 +18,10 @@ class ApiService {
     'Authorization': 'Bearer $token',
   };
 
+  static Map<String, String> get _jsonHeaders => {
+    'Content-Type': 'application/json',
+  };
+
   // ═══════════════════════════════════════════════════════════════
   // Hero 배너
   // ═══════════════════════════════════════════════════════════════
@@ -27,9 +31,9 @@ class ApiService {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/hero/active'),
       );
-      
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
         return HeroData.fromJson(data);
       }
       return null;
@@ -41,45 +45,36 @@ class ApiService {
 
   // ═══════════════════════════════════════════════════════════════
   // 향수 목록 및 검색
+  //
+  // 백엔드 /api/perfumes 는 Spring Page<Perfume> 반환:
+  // {
+  //   "content": [ { "perfumeId": 1, "name": "...", "brand": {...}, ... } ],
+  //   "totalElements": 100,
+  //   "totalPages": 5,
+  //   "size": 20,
+  //   "number": 0
+  // }
   // ═══════════════════════════════════════════════════════════════
 
   static Future<List<Perfume>> fetchPerfumes({
     int page = 0,
     int size = 20,
-    String? searchTerm,
-    List<String>? tags,
-    String? sortBy,
   }) async {
     try {
-      final queryParams = <String, String>{
-        'page': page.toString(),
-        'size': size.toString(),
-      };
-
-      if (searchTerm != null && searchTerm.isNotEmpty) {
-        queryParams['search'] = searchTerm;
-      }
-      
-      if (tags != null && tags.isNotEmpty) {
-        queryParams['tags'] = tags.join(',');
-      }
-
-      if (sortBy != null) {
-        queryParams['sort'] = sortBy;
-      }
-
-      final uri = Uri.parse('${ApiConfig.baseUrl}/api/perfumes')
-          .replace(queryParameters: queryParams);
-
-      final response = await http.get(uri);
+      // 쿼리 파라미터 없이 단순 호출 (백엔드가 파라미터 거부함)
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/perfumes'),
+      );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        // ⭐ 한글 깨짐 방지: UTF-8 디코딩
+        final decoded = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(decoded);
 
         List items = [];
 
         if (data is List) {
-          // 케이스 1: 바로 배열 [ {...}, {...} ]
+          // 케이스 1: 바로 배열
           items = data;
         } else if (data is Map) {
           if (data.containsKey('content') && data['content'] is List) {
@@ -88,17 +83,21 @@ class ApiService {
           } else if (data.containsKey('data') && data['data'] is List) {
             // 케이스 3: 래핑된 { "data": [...] }
             items = data['data'];
-          } else if (data.containsKey('data') && data['data'] is Map &&
+          } else if (data.containsKey('data') &&
+              data['data'] is Map &&
               data['data']['content'] is List) {
-            // 케이스 4: 이중 래핑 { "data": { "content": [...] } }
+            // 케이스 4: 이중 래핑
             items = data['data']['content'];
           }
         }
 
-        return items.map((e) => Perfume.fromJson(e)).toList();
+        return items
+            .map((e) => Perfume.fromJson(e as Map<String, dynamic>))
+            .toList();
       }
 
-      throw Exception('향수 목록 불러오기 실패');
+      debugPrint('향수 목록 실패: ${response.statusCode}');
+      return [];
     } catch (e) {
       debugPrint('향수 목록 조회 오류: $e');
       return [];
@@ -110,10 +109,11 @@ class ApiService {
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/perfumes/$perfumeId'),
       );
-      
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return Perfume.fromJson(data);
+        final decoded = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(decoded);
+        return Perfume.fromJson(data as Map<String, dynamic>);
       }
       return null;
     } catch (e) {
@@ -123,7 +123,7 @@ class ApiService {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // 위시리스트 (찜)
+  // 위시리스트
   // ═══════════════════════════════════════════════════════════════
 
   static Future<List<Perfume>> getWishlist() async {
@@ -137,29 +137,25 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
+        final decoded = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(decoded);
 
         List items = [];
-
-        if (decoded is List) {
-          // 케이스 1: 바로 배열
-          items = decoded;
-        } else if (decoded is Map) {
-          if (decoded.containsKey('data') && decoded['data'] is List) {
-            // 케이스 2: { "data": [...] }
-            items = decoded['data'];
-          } else if (decoded.containsKey('content') && decoded['content'] is List) {
-            // 케이스 3: Page 형태
-            items = decoded['content'];
+        if (data is List) {
+          items = data;
+        } else if (data is Map) {
+          if (data['data'] is List) {
+            items = data['data'];
+          } else if (data['content'] is List) {
+            items = data['content'];
           }
         }
 
         return items.map((e) {
-          // e가 { perfumeId, name, ... } 직접 구조이거나
-          // e가 { perfume: { ... } } 래핑 구조일 수 있음
+          // { perfume: {...} } 래핑 or 직접 구조 모두 처리
           final perfumeData = (e is Map && e.containsKey('perfume'))
-              ? e['perfume']
-              : e;
+              ? e['perfume'] as Map<String, dynamic>
+              : e as Map<String, dynamic>;
           return Perfume.fromJson(perfumeData);
         }).toList();
       }
@@ -256,7 +252,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/members/register'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _jsonHeaders,
         body: jsonEncode({
           'email': email,
           'password': password,
@@ -333,7 +329,6 @@ class ApiService {
         if (phone != null) request.fields['phone'] = phone;
         if (gender != null) request.fields['gender'] = gender;
         if (birth != null) request.fields['birth'] = birth;
-
         request.files.add(await http.MultipartFile.fromPath(
           'profileImage',
           profileImageFile.path,
