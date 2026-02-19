@@ -11,8 +11,9 @@ const NotificationPanel = ({ isOpen, onClose }) => {
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultData, setResultData] = useState(null);
 
-  const userEmail = localStorage.getItem('userEmail') || '';
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const userEmail = sessionStorage.getItem('userEmail') || '';
+  const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
+  const accessToken = sessionStorage.getItem('accessToken');
 
   useEffect(() => {
     if (isOpen) {
@@ -76,90 +77,53 @@ const NotificationPanel = ({ isOpen, onClose }) => {
   };
 
   const handleParticipate = async (event) => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !accessToken) {
       alert('로그인이 필요한 서비스입니다.');
       return;
     }
 
-    if (participations[event.id]?.participated) {
+    if (participations[event.id]?.participated){
       alert('이미 참여한 이벤트입니다!');
       return;
     }
 
-    setLoading(prev => ({ ...prev, [event.id]: true }));
+    setLoading(prev => ({ ...prev, [event.id]: true}));
 
     try {
-      // 당첨 여부 추첨
-      const randomNumber = Math.random() * 100;
-      const won = randomNumber < event.win_probability;
-
-      // 데이터베이스에 참여 기록 저장
-      const { error } = await supabase
-        .from('EventParticipations')
-        .insert([{
-          user_email: userEmail,
-          event_id: event.id,
-          won: won,
-          participated_at: new Date().toISOString()
-        }]);
-
-      if (error) {
-        console.error('참여 기록 저장 실패:', error);
-        alert('참여 중 오류가 발생했습니다. 다시 시도해주세요.');
+      const response = await fetch(`http://localhost:8080/api/events/${event.id}/participate`, {
+        method: 'POST',
+        headers: {
+          'Authorization' : `Bearer ${accessToken}`,
+          'Content-Type' : 'application/json'
+        }
+      });
+    
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.message || '이벤트 참여 중 오류가 발생했습니다.');
         return;
       }
 
-      // 당첨 시 쿠폰/포인트 자동 발급
-      if (won) {
-        if (event.event_type === 'COUPON' && event.coupon_code) {
-          // 이벤트 쿠폰 코드로 실제 쿠폰 찾기
-          const { data: couponData, error: couponError } = await supabase
-            .from('Coupons')
-            .select('id')
-            .eq('code', event.coupon_code)
-            .single();
+      const result = await response.json();
+      const won = result.data.won;
 
-          if (!couponError && couponData) {
-            await supabase
-              .from('UserCoupons')
-              .insert([{
-                user_email: userEmail,
-                coupon_id: couponData.id,
-                used_at: null
-              }]);
-          } else {
-            console.error('쿠폰을 찾을 수 없습니다:', event.coupon_code);
-          }
-        } else if (event.event_type === 'POINT' && event.point_amount > 0) {
-          await supabase
-            .from('UserPoints')
-            .insert([{
-              user_email: userEmail,
-              points: event.point_amount,
-              action_type: 'EVENT',
-              description: `${event.title} 이벤트 당첨`
-            }]);
-        }
-      }
-
-      // 결과 표시
       setResultData({
         won,
         event,
-        message: won 
+        message: won
           ? `축하합니다! ${event.title}에 당첨되셨습니다! 🎉`
-          : `아쉽게도 당첨되지 않았습니다. 다음 기회에! 😊`
+          : '아쉽게도 당첨되지 않았습니다. 다음 기회에! 😊'
       });
-      setShowResultModal(true);
 
-      // 참여 목록 새로고침
+      setShowResultModal(true);
       fetchParticipations();
 
     } catch (error) {
-      console.error('참여 처리 중 오류:', error);
-      alert('참여 중 오류가 발생했습니다.');
+      console.error('참여 처리 중 오류: ', error);
+      alert('서버와 통신할 수 없습니다.');
+      
     } finally {
-      setLoading(prev => ({ ...prev, [event.id]: false }));
+      setLoading(prev => ({ ...prev, [event.id]: false}));
     }
   };
 

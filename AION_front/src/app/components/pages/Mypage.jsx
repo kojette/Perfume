@@ -84,18 +84,27 @@ const Mypage = () => {
 
   // Supabase: 쿠폰 데이터 조회
   const fetchCoupons = async () => {
-    const { data, error } = await supabase
-      .from('UserCoupons')
-      .select(`
-        *,
-        coupon:coupon_id (
-          id, code, discount_type, discount_value, expiry_date
-        )
-      `)
-      .eq('user_email', userInfo?.email)
-      .order('created_at', { ascending: false });
+    try {
+      const token = sessionStorage.getItem('accessToken');
+      if (!token) return;
 
-    if (!error && data) setCoupons(data);
+      const response = await fetch(`${API_BASE_URL}/api/coupons/my`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setCoupons(result.data);
+      } else {
+        console.error('쿠폰 불러오기 실패');
+      }
+    } catch (error) {
+      console.error('쿠폰 조회 중 에러 발생:', error);
+    }
   };
 
   // Supabase: 포인트 데이터 조회
@@ -442,28 +451,28 @@ const Mypage = () => {
                 </div>
               ) : (
                 coupons.map((userCoupon) => (
-                  <div key={userCoupon.id} className="bg-white border border-[#c9a961]/20 rounded-lg p-6 hover:shadow-md transition-all">
+                  // userCouponId를 key로 사용합니다.
+                  <div key={userCoupon.userCouponId} className="bg-white border border-[#c9a961]/20 rounded-lg p-6 hover:shadow-md transition-all">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
                           <Gift className="w-6 h-6 text-[#c9a961]" />
                           <div>
                             <p className="text-xs text-[#8b8278]">쿠폰 코드</p>
-                            <p className="font-mono font-bold text-lg text-[#2a2620]">{userCoupon.coupon?.code || '이벤트 당첨 쿠폰'}</p>
+                            <p className="font-mono font-bold text-lg text-[#2a2620]">{userCoupon.couponCode}</p>
                           </div>
                         </div>
                         <div className="text-xs text-[#555] space-y-1">
-                          {userCoupon.coupon && (
-                            <>
-                              <p>할인: {userCoupon.coupon.discount_type === 'PERCENTAGE' ? `${userCoupon.coupon.discount_value}%` : `${userCoupon.coupon.discount_value.toLocaleString()}원`}</p>
-                              {userCoupon.coupon.expiry_date && <p className="flex items-center gap-2"><Calendar size={12} /> 만료일: {userCoupon.coupon.expiry_date}</p>}
-                            </>
+                          <p>혜택: {userCoupon.discountType === 'PERCENT' ? `${userCoupon.discountValue}% 할인` : `${userCoupon.discountValue?.toLocaleString()}원 할인`}</p>
+                          {userCoupon.expiryDate && (
+                            <p className="flex items-center gap-2">
+                              <Calendar size={12} /> 만료일: {new Date(userCoupon.expiryDate).toLocaleDateString('ko-KR')}
+                            </p>
                           )}
-                          <p className="flex items-center gap-2"><Calendar size={12} /> 발급일: {new Date(userCoupon.created_at).toLocaleDateString('ko-KR')}</p>
                         </div>
                       </div>
-                      <span className={`px-3 py-1 text-xs rounded ${userCoupon.used_at ? 'bg-gray-200 text-gray-600' : 'bg-[#c9a961] text-white'}`}>
-                        {userCoupon.used_at ? '사용완료' : '사용가능'}
+                      <span className={`px-3 py-1 text-xs rounded ${userCoupon.isUsed ? 'bg-gray-200 text-gray-600' : 'bg-[#c9a961] text-white'}`}>
+                        {userCoupon.isUsed ? '사용완료' : '사용가능'}
                       </span>
                     </div>
                   </div>
