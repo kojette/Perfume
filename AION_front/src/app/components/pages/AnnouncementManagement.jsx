@@ -3,6 +3,9 @@ import { Ornament } from '../Ornament';
 import { Plus, Edit2, Trash2, Pin, AlertCircle, Calendar } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
+// 백엔드 API base URL - 환경에 맞게 설정
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 const AnnouncementManagement = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -10,64 +13,76 @@ const AnnouncementManagement = () => {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    start_date: '',
-    end_date: '',
-    is_pinned: false,
-    is_important: false,
-    linked_event_id: null
+    startDate: '',
+    endDate: '',
+    isPinned: false,
+    isImportant: false,
+    linkedEventId: null
   });
 
-  // 공지사항 목록 불러오기
   useEffect(() => {
     fetchAnnouncements();
   }, []);
 
+  // 인증 토큰 가져오기
+  const getToken = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.access_token
+      ? `Bearer ${data.session.access_token}`
+      : null;
+  };
+
+  // 공지사항 목록 불러오기
   const fetchAnnouncements = async () => {
-    const { data, error } = await supabase
-      .from('Announcements')
-      .select('*')
-      .order('is_pinned', { ascending: false })
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('공지사항 로드 에러:', error);
-    } else {
-      setAnnouncements(data);
+    try {
+      const res = await fetch(`${API_BASE}/api/announcements`);
+      const json = await res.json();
+      if (json.success) setAnnouncements(json.data);
+    } catch (err) {
+      console.error('공지사항 로드 에러:', err);
     }
   };
 
-  // 공지사항 저장
+  // 공지사항 저장 (생성 / 수정)
   const handleSave = async () => {
     if (!formData.title || !formData.content) {
       alert('제목과 내용을 입력해주세요.');
       return;
     }
 
+    const token = await getToken();
+    if (!token) { alert('로그인이 필요합니다.'); return; }
+
+    const body = {
+      title: formData.title,
+      content: formData.content,
+      startDate: formData.startDate || null,
+      endDate: formData.endDate || null,
+      isPinned: formData.isPinned,
+      isImportant: formData.isImportant,
+      linkedEventId: formData.linkedEventId
+    };
+
     try {
-      if (editingId) {
-        // 수정
-        const { error } = await supabase
-          .from('Announcements')
-          .update(formData)
-          .eq('id', editingId);
-        
-        if (error) throw error;
-        alert('공지사항이 수정되었습니다.');
-      } else {
-        // 신규 작성
-        const { error } = await supabase
-          .from('Announcements')
-          .insert([formData]);
-        
-        if (error) throw error;
-        alert('공지사항이 작성되었습니다.');
-      }
-      
+      const url = editingId
+        ? `${API_BASE}/api/announcements/${editingId}`
+        : `${API_BASE}/api/announcements`;
+
+      const res = await fetch(url, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: token },
+        body: JSON.stringify(body)
+      });
+
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
+      alert(editingId ? '공지사항이 수정되었습니다.' : '공지사항이 작성되었습니다.');
       resetForm();
       fetchAnnouncements();
-    } catch (error) {
-      console.error('저장 에러:', error);
-      alert('저장 중 오류가 발생했습니다.');
+    } catch (err) {
+      console.error('저장 에러:', err);
+      alert('저장 중 오류가 발생했습니다: ' + err.message);
     }
   };
 
@@ -75,17 +90,22 @@ const AnnouncementManagement = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
-    const { error } = await supabase
-      .from('Announcements')
-      .delete()
-      .eq('id', id);
+    const token = await getToken();
+    if (!token) { alert('로그인이 필요합니다.'); return; }
 
-    if (error) {
-      console.error('삭제 에러:', error);
-      alert('삭제 중 오류가 발생했습니다.');
-    } else {
+    try {
+      const res = await fetch(`${API_BASE}/api/announcements/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: token }
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
       alert('삭제되었습니다.');
       fetchAnnouncements();
+    } catch (err) {
+      console.error('삭제 에러:', err);
+      alert('삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -95,11 +115,11 @@ const AnnouncementManagement = () => {
     setFormData({
       title: announcement.title,
       content: announcement.content,
-      start_date: announcement.start_date || '',
-      end_date: announcement.end_date || '',
-      is_pinned: announcement.is_pinned,
-      is_important: announcement.is_important,
-      linked_event_id: announcement.linked_event_id
+      startDate: announcement.startDate || '',
+      endDate: announcement.endDate || '',
+      isPinned: announcement.isPinned,
+      isImportant: announcement.isImportant,
+      linkedEventId: announcement.linkedEventId
     });
     setShowForm(true);
   };
@@ -109,11 +129,11 @@ const AnnouncementManagement = () => {
     setFormData({
       title: '',
       content: '',
-      start_date: '',
-      end_date: '',
-      is_pinned: false,
-      is_important: false,
-      linked_event_id: null
+      startDate: '',
+      endDate: '',
+      isPinned: false,
+      isImportant: false,
+      linkedEventId: null
     });
     setEditingId(null);
     setShowForm(false);
@@ -146,7 +166,7 @@ const AnnouncementManagement = () => {
             <h3 className="text-lg font-semibold text-[#2a2620] mb-6">
               {editingId ? '공지사항 수정' : '새 공지사항 작성'}
             </h3>
-            
+
             <div className="space-y-6">
               {/* 제목 */}
               <div>
@@ -154,7 +174,7 @@ const AnnouncementManagement = () => {
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full border border-[#c9a961]/30 rounded px-4 py-2 text-sm focus:border-[#c9a961] outline-none"
                   placeholder="공지사항 제목을 입력하세요"
                 />
@@ -165,7 +185,7 @@ const AnnouncementManagement = () => {
                 <label className="block text-xs text-[#8b8278] mb-2 tracking-wider">내용</label>
                 <textarea
                   value={formData.content}
-                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   className="w-full border border-[#c9a961]/30 rounded px-4 py-3 text-sm focus:border-[#c9a961] outline-none h-40 resize-none"
                   placeholder="공지사항 내용을 입력하세요"
                 />
@@ -177,8 +197,8 @@ const AnnouncementManagement = () => {
                   <label className="block text-xs text-[#8b8278] mb-2 tracking-wider">시작일</label>
                   <input
                     type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                     className="w-full border border-[#c9a961]/30 rounded px-4 py-2 text-sm focus:border-[#c9a961] outline-none"
                   />
                 </div>
@@ -186,8 +206,8 @@ const AnnouncementManagement = () => {
                   <label className="block text-xs text-[#8b8278] mb-2 tracking-wider">종료일</label>
                   <input
                     type="date"
-                    value={formData.end_date}
-                    onChange={(e) => setFormData({...formData, end_date: e.target.value})}
+                    value={formData.endDate}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                     className="w-full border border-[#c9a961]/30 rounded px-4 py-2 text-sm focus:border-[#c9a961] outline-none"
                   />
                 </div>
@@ -198,8 +218,8 @@ const AnnouncementManagement = () => {
                 <label className="flex items-center gap-2 text-sm text-[#555] cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={formData.is_pinned}
-                    onChange={(e) => setFormData({...formData, is_pinned: e.target.checked})}
+                    checked={formData.isPinned}
+                    onChange={(e) => setFormData({ ...formData, isPinned: e.target.checked })}
                     className="w-4 h-4"
                   />
                   상단 고정
@@ -207,8 +227,8 @@ const AnnouncementManagement = () => {
                 <label className="flex items-center gap-2 text-sm text-[#555] cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={formData.is_important}
-                    onChange={(e) => setFormData({...formData, is_important: e.target.checked})}
+                    checked={formData.isImportant}
+                    onChange={(e) => setFormData({ ...formData, isImportant: e.target.checked })}
                     className="w-4 h-4"
                   />
                   중요 공지
@@ -244,13 +264,13 @@ const AnnouncementManagement = () => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    {announcement.is_pinned && (
+                    {announcement.isPinned && (
                       <span className="px-2 py-1 bg-[#c9a961] text-white text-[9px] rounded flex items-center gap-1">
                         <Pin size={10} />
                         고정
                       </span>
                     )}
-                    {announcement.is_important && (
+                    {announcement.isImportant && (
                       <span className="px-2 py-1 bg-red-500 text-white text-[9px] rounded flex items-center gap-1">
                         <AlertCircle size={10} />
                         중요
@@ -266,11 +286,11 @@ const AnnouncementManagement = () => {
                   <div className="flex items-center gap-4 text-xs text-[#8b8278]">
                     <span className="flex items-center gap-1">
                       <Calendar size={12} />
-                      {announcement.start_date || '상시'} ~ {announcement.end_date || '상시'}
+                      {announcement.startDate || '상시'} ~ {announcement.endDate || '상시'}
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-2 ml-4">
                   <button
                     onClick={() => handleEdit(announcement)}
