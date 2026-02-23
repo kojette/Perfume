@@ -38,6 +38,9 @@ import Collections from "./components/pages/Collections";//컬렉션과 시그�
 import Signature from "./components/pages/Signature";
 import CollectionManagement from "./components/pages/CollectionManagement";
 
+import Story from './components/pages/Story';
+import StoryManagement from './components/pages/StoryManagement';
+
 function AppLayout() {
   const location = useLocation();
   const [navHeight, setNavHeight] = useState(0);
@@ -112,6 +115,9 @@ return (
             <Route path="/admin/announcements" element={<AdminRoute><AnnouncementManagement /></AdminRoute>} />
             <Route path="/admin/events" element={<AdminRoute><EventManagement /></AdminRoute>} />
             <Route path="/admin/coupons" element={<AdminRoute><CouponPointManagement /></AdminRoute>} />
+            <Route path="/story" element={<Story />} />
+<Route path="/admin/story" element={<AdminRoute><StoryManagement /></AdminRoute>} />
+         
           </Routes>
         </main>
       </div>
