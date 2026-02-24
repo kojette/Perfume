@@ -119,4 +119,30 @@ public class RecommendationController {
 
         return ResponseEntity.ok(recommendations);
     }
+
+    /**
+     * 연령대별 추천 향수 조회
+     *
+     * 각 연령대에 어울리는 향 특성을 기반으로 추천합니다.
+     *
+     * @param ageGroup 연령대 코드 (10s, 20s, 30s, 40s, 50s)
+     *   - 10s : 플로럴, 프루티, 청량한
+     *   - 20s : 시트러스, 아쿠아틱, 머스크
+     *   - 30s : 우디, 앰버, 스파이시
+     *   - 40s : 오리엔탈, 파우더리, 가죽
+     *   - 50s : 바닐라, 샌달우드, 로즈
+     * @param limit  반환할 최대 개수 (기본 10)
+     */
+    @GetMapping("/age/{ageGroup}")
+    public ResponseEntity<List<RecommendationResponse>> getRecommendationsByAge(
+            @PathVariable String ageGroup,
+            @RequestParam(defaultValue = "10") int limit) {
+
+        log.info("연령대별 추천 조회 - ageGroup: {}, limit: {}", ageGroup, limit);
+
+        List<RecommendationResponse> recommendations =
+                recommendationService.getRecommendationsByAge(ageGroup, limit);
+
+        return ResponseEntity.ok(recommendations);
+    }
 }

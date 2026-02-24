@@ -182,4 +182,65 @@ public class RecommendationService {
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * 연령대별 추천
+     * 연령대마다 선호되는 향 특성 키워드로 필터링합니다.
+     *
+     * 10s  → 플로럴, 프루티, 청량한, 달콤한
+     * 20s  → 시트러스, 아쿠아틱, 머스크, 청량한
+     * 30s  → 우디, 앰버, 스파이시, 관능적인
+     * 40s  → 오리엔탈, 파우더리, 가죽, 클래식
+     * 50s  → 바닐라, 샌달우드, 로즈, 우아한
+     */
+    public List<RecommendationResponse> getRecommendationsByAge(String ageGroup, int limit) {
+
+        // 연령대 → 선호 키워드 매핑
+        List<String> keywords = switch (ageGroup.toLowerCase()) {
+            case "10s" -> List.of("플로럴", "프루티", "청량한", "달콤한");
+            case "20s" -> List.of("시트러스", "아쿠아틱", "머스크", "청량한");
+            case "30s" -> List.of("우디", "앰버", "스파이시", "관능적인");
+            case "40s" -> List.of("오리엔탈", "파우더리", "가죽", "클래식");
+            case "50s" -> List.of("바닐라", "샌달우드", "로즈", "우아한");
+            default    -> List.of();
+        };
+
+        // 활성 향수를 충분히 가져온 뒤 키워드로 필터링
+        List<Perfume> all = perfumeRepository.findByIsActiveTrue(
+                org.springframework.data.domain.PageRequest.of(0, 200)
+        ).getContent();
+
+        List<Perfume> matched = all.stream()
+                .filter(p -> matchesAgeKeywords(p, keywords))
+                .limit(limit)
+                .collect(Collectors.toList());
+
+        // 매칭 결과가 부족하면 일반 인기순으로 보완
+        List<Perfume> result = new ArrayList<>(matched);
+        if (result.size() < limit) {
+            List<Perfume> fallback = all.stream()
+                    .filter(p -> !matched.contains(p))
+                    .limit(limit - result.size())
+                    .collect(Collectors.toList());
+            result.addAll(fallback);
+        }
+
+        return result.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 향수가 연령대 키워드와 매칭되는지 확인
+     * description, category, name 등 텍스트 필드를 검사합니다.
+     */
+    private boolean matchesAgeKeywords(Perfume perfume, List<String> keywords) {
+        if (keywords.isEmpty()) return true;
+        String haystack = String.join(" ",
+                perfume.getName() != null ? perfume.getName() : "",
+                perfume.getNameEn() != null ? perfume.getNameEn() : "",
+                perfume.getDescription() != null ? perfume.getDescription() : ""
+        ).toLowerCase();
+        return keywords.stream().anyMatch(kw -> haystack.contains(kw.toLowerCase()));
+    }
 }
