@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+//import { supabase } from '../../supabaseClient';
 import { Ornament } from '../Ornament';
 
 const SearchResult = () => {
@@ -28,31 +28,7 @@ const SearchResult = () => {
 
             if (response.ok) {
                 const json = await response.json();
-                console.log("백엔드 응답 데이터: ", json);
-
-                let items = json.data;
-
-                if (items && items.length > 0) {
-                  const perfumeIds = items.map(item => item.perfumeId);
-                  const {data: images} = await supabase
-                    .from('Perfume_Images')
-                    .select('perfume_id, image_url')
-                    .in('perfume_id', perfumeIds)
-                    .eq('is_thumbnail', true);
-
-                    const imageMap = {};
-                    images?.forEach(img => {
-                      imageMap[img.perfume_id] = img.image_url;
-                    });
-
-                    items = items.map(item => ({
-                      ...item,
-                      imageUrl : imageMap[item.perfumeId] || item.imageUrl || null
-                    }));
-                }
-
-                setResults(items);
-
+                setResults(json.data || []);
             }
         } catch (error) {
             console.error("검색 API 호출 실패: ", error);

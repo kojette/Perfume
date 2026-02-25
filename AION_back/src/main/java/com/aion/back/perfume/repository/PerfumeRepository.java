@@ -71,4 +71,12 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * 특정 브랜드의 활성 향수 개수
      */
     long countByBrandBrandIdAndIsActive(Long brandId, Boolean isActive);
+
+    @Query(value = "SELECT p.perfume_id AS perfumeId, p.name AS name, p.price AS price, " +
+            "b.brand_name AS brandName, pi.image_url AS imageUrl " +
+            "FROM \"Perfumes\" p " +
+            "LEFT JOIN \"Brands\" b ON p.brand_id = b.brand_id " +
+            "LEFT JOIN \"Perfume_Images\" pi ON p.perfume_id = pi.perfume_id AND pi.is_thumbnail = true " +
+            "WHERE p.name ILIKE CONCAT('%', :keyword, '%')", nativeQuery = true)
+    List<PerfumeSearchProjection> searchWithImages(@Param("keyword") String keyword);
 }
