@@ -76,15 +76,48 @@ const Signup = () => {
                 ? `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`
                 : null;
 
-            const {data: existingUser, error: checkError} = await supabase
+            // 1. 기존 가입 여부 및 재가입 제한 기간(30일) 체크
+            const { data: lastRecord, error: checkError } = await supabase
                 .from('Users')
-                .select('email')
+                .select('email, withdraw_date')
                 .eq('email', formData.email)
+                .order('withdraw_date', { ascending: false }) // 가장 최근 탈퇴일 기준
                 .maybeSingle();
 
-            if(existingUser) {
-                setLoading(false);
-                return alert("이미 가입되어 있는 계정입니다. 로그인 페이지를 이용해주세요.");
+            if (lastRecord) {
+                // A. 만약 withdraw_date가 null이라면 -> 현재 활동 중인 회원임
+                if (lastRecord.withdraw_date == null) {
+                    setLoading(false);
+                    return alert("이미 사용 중인 계정입니다. 로그인 페이지를 이용해주세요.");
+                }
+
+                // B. withdraw_date가 있다면 -> 탈퇴한 회원임. 30일 체크 시작
+                const withdrawnAt = new Date(lastRecord.withdraw_date);
+                const now = new Date();
+                
+                // 날짜 차이 계산 (현재 시간 - 탈퇴 시간)
+                const diffTime = now - withdrawnAt;
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+                if (diffDays < 30) {
+                    setLoading(false);
+                    // 남은 일수 계산 (예: 29.1일 남았으면 30일로 표시)
+                    const remainingDays = Math.ceil(30 - diffDays);
+                    return alert(`탈퇴 후 30일 이내에는 재가입이 불가능합니다. ${remainingDays}일 후에 다시 시도해주세요.`);
+                }
+
+                const { error: deleteError } = await supabase
+                    .from('Users')
+                    .delete()
+                    .eq('email', formData.email);
+
+                if (deleteError) {
+                    console.error("기존 기록 삭제 중 오류:", deleteError);
+                    setLoading(false);
+                    return alert("재가입 처리 중 문제가 발생했습니다.");
+                }
+                
+                console.log("30일 경과 확인: 재가입 절차를 진행합니다.");
             }
 
         
@@ -106,11 +139,12 @@ const Signup = () => {
                 console.error('가입 에러:', error);
 
                 if(error.message.includes("User already registered")){
-                    alert("이미 가입되어 있는 계정입니다. 로그인 페이지를 이용해주세요.");
+                    alert("이미 가입된 이메일이거나, 탈퇴 처리가 진행 중인 계정입니다. 해당 계정으로 로그인을 시도하시거나, 문제가 지속되면 고객센터로 문의해주세요.");
                 }
                 else{
                     alert(`가입 실패: ${error.message}`);
                 }
+                setLoading(false);
                 return;
             }
 
@@ -123,7 +157,7 @@ const Signup = () => {
                     body: JSON.stringify({
                         email: formData.email,
                         name: formData.name,
-                        phone: formData.phone,
+                        phoneformData.phone,
                         gender: formData.gender,
                         birth: birthDate,
                         supabaseUid: data.user.id
