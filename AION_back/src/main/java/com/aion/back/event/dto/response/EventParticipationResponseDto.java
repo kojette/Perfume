@@ -1,4 +1,4 @@
-package com.aion.back.event.dto;
+package com.aion.back.event.dto.response;
 
 import lombok.*;
 

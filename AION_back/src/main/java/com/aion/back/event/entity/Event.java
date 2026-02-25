@@ -41,6 +41,9 @@ public class Event {
     @Column(name = "priority_buyers")
     private Boolean priorityBuyers;
 
+    @Column(name = "max_participants")
+    private Integer maxParticipants;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

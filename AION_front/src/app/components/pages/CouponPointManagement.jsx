@@ -57,27 +57,46 @@ const CouponPointManagement = () => {
     else setPointRules(data);
   };
 
-  // [수정] 쿠폰 저장 로직 - 백엔드 검증 로직(RPC) 호출로 변경
   const handleSaveCoupon = async () => {
     if (!couponData.code) return alert('쿠폰 코드를 입력해주세요.');
     if (couponData.discount_value <= 0) return alert('유효한 할인 값을 입력해주세요.');
     
     setIsSubmitting(true);
     try {
-      // 직접 insert 대신 RPC(DB 함수)를 호출하여 중복 검사를 서버에서 수행
-      const { error } = await supabase.rpc('create_unique_coupon', {
-        coupon_json: couponData
+      const token = sessionStorage.getItem('accessToken');
+      if (!token) throw new Error("로그인이 필요합니다.");
+
+      const requestBody = {
+        code: couponData.code,
+        discountType: couponData.discount_type,
+        discountValue: Number(couponData.discount_value),
+        minPurchase: Number(couponData.min_purchase) || 0,
+        maxDiscount: couponData.max_discount ? Number(couponData.max_discount) : null,
+        expiryDate: couponData.expiry_date ? `${couponData.expiry_date}T23:59:59` : null, 
+        usageLimit: Number(couponData.usage_limit) || 1,
+        isStackable: couponData.is_stackable
+      };
+
+      const response = await fetch('http://localhost:8080/api/admin/coupons', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
       });
-      
-      if (error) throw error;
-      
-      alert('쿠폰이 안전하게 생성되었습니다.');
-      resetCouponForm();
-      fetchCoupons();
+
+      if (response.ok) {
+        alert('쿠폰이 안전하게 생성되었습니다.');
+        resetCouponForm();
+        fetchCoupons(); 
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "쿠폰 생성 실패");
+      }
     } catch (error) {
       console.error('쿠폰 저장 에러:', error);
-      // 서버에서 보낸 에러 메시지(중복 코드 등)를 사용자에게 전달
-      alert(error.message || '쿠폰 생성 중 오류가 발생했습니다.');
+      alert(error.message);
     } finally {
       setIsSubmitting(false);
     }

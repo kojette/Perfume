@@ -1,6 +1,7 @@
 package com.aion.back.event.service;
 
-import com.aion.back.event.dto.EventParticipationResponseDto;
+import com.aion.back.event.dto.response.EventParticipationResponseDto;
+import com.aion.back.event.dto.request.EventRequestDto;
 import com.aion.back.event.entity.Event;
 import com.aion.back.event.entity.EventParticipation;
 import com.aion.back.event.repository.EventParticipationRepository;
@@ -14,7 +15,12 @@ import com.aion.back.coupon.repository.UserCouponRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,15 +29,13 @@ public class EventService {
     private final MemberService memberService;
     private final EventRepository eventRepository;
     private final EventParticipationRepository participationRepository;
-
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
 
+    // 1. 일반 유저용 기능
     @Transactional
     public EventParticipationResponseDto participate(String token, Long eventId) {
-
         Member member = memberService.getMemberEntityByToken(token);
-
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("이벤트를 찾을 수 없습니다."));
 
@@ -50,28 +54,81 @@ public class EventService {
                 .build();
         participationRepository.save(participation);
 
-        // 당첨 시 실제 쿠폰 발급 로직
-        if (isWon) {
-            if ("COUPON".equals(event.getEventType()) && event.getCouponCode() != null) {
+        // 당첨 시 쿠폰 발급
+        if (isWon && "COUPON".equals(event.getEventType()) && event.getCouponCode() != null) {
+            Coupon coupon = couponRepository.findByCode(event.getCouponCode())
+                    .orElseThrow(() -> new RuntimeException("해당 쿠폰 코드가 존재하지 않습니다."));
 
-                Coupon coupon = couponRepository.findByCode(event.getCouponCode())
-                        .orElseThrow(() -> new RuntimeException("해당 이벤트 쿠폰 코드가 존재하지 않습니다: " + event.getCouponCode()));
-
-                UserCoupon userCoupon = UserCoupon.builder()
-                        .member(member)
-                        .coupon(coupon)
-                        .isUsed(false)
-                        .build();
-
-                userCouponRepository.save(userCoupon);
-
-            } else if ("POINT".equals(event.getEventType()) && event.getPointAmount() != null) {
-                // 포인트 지급 로직
-            }
+            UserCoupon userCoupon = UserCoupon.builder()
+                    .member(member)
+                    .coupon(coupon)
+                    .isUsed(false)
+                    .build();
+            userCouponRepository.save(userCoupon);
         }
+        return EventParticipationResponseDto.builder().won(isWon).build();
+    }
 
-        return EventParticipationResponseDto.builder()
-                .won(isWon)
+    // 내 참여 내역 가져오기
+    public List<Map<String, Object>> getMyParticipations(String token) {
+        Member member = memberService.getMemberEntityByToken(token);
+        return participationRepository.findAllByMember(member).stream()
+                .map(p -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("eventId", p.getEvent().getId());
+                    map.put("won", p.isWon());
+                    map.put("participatedAt", p.getParticipatedAt());
+                    return map;
+                })
+                .collect(Collectors.toList());
+    }
+
+    // 2. 관리자용 기능 (Admin)
+    public List<Event> getAllEvents() {
+        return eventRepository.findAll();
+    }
+
+    @Transactional
+    public Event createEvent(EventRequestDto dto) {
+        Event event = Event.builder()
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .eventType(dto.getEventType())
+                .startDate(dto.getStartDate())
+                .endDate(dto.getEndDate())
+                .discountRate(dto.getDiscountRate())
+                .couponCode(dto.getCouponCode())
+                .pointAmount(dto.getPointAmount())
+                .maxParticipants(dto.getMaxParticipants())
+                .priorityBuyers(dto.getPriorityBuyers())
+                .winProbability(dto.getWinProbability())
+                .createdAt(LocalDateTime.now())
                 .build();
+        return eventRepository.save(event);
+    }
+
+    @Transactional
+    public Event updateEvent(Long id, EventRequestDto dto) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("이벤트를 찾을 수 없습니다."));
+
+        event.setTitle(dto.getTitle());
+        event.setDescription(dto.getDescription());
+        event.setEventType(dto.getEventType());
+        event.setStartDate(dto.getStartDate());
+        event.setEndDate(dto.getEndDate());
+        event.setDiscountRate(dto.getDiscountRate());
+        event.setCouponCode(dto.getCouponCode());
+        event.setPointAmount(dto.getPointAmount());
+        event.setMaxParticipants(dto.getMaxParticipants());
+        event.setPriorityBuyers(dto.getPriorityBuyers());
+        event.setWinProbability(dto.getWinProbability());
+
+        return event;
+    }
+
+    @Transactional
+    public void deleteEvent(Long id) {
+        eventRepository.deleteById(id);
     }
 }
