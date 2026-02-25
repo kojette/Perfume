@@ -157,7 +157,7 @@ const Signup = () => {
                     body: JSON.stringify({
                         email: formData.email,
                         name: formData.name,
-                        phoneformData.phone,
+                        phone: formData.phone,
                         gender: formData.gender,
                         birth: birthDate,
                         supabaseUid: data.user.id
