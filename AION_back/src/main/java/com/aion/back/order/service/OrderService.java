@@ -5,6 +5,7 @@ import com.aion.back.cart.repository.CartRepository;
 import com.aion.back.coupon.entity.UserCoupon;
 import com.aion.back.coupon.repository.UserCouponRepository;
 import com.aion.back.member.entity.Member;
+import com.aion.back.member.repository.MemberRepository;
 import com.aion.back.member.service.MemberService;
 import com.aion.back.order.dto.request.OrderCheckoutRequestDto;
 import com.aion.back.order.dto.response.OrderResponseDto;
@@ -12,6 +13,7 @@ import com.aion.back.order.entity.Order;
 import com.aion.back.order.entity.OrderItem;
 import com.aion.back.order.repository.OrderItemRepository;
 import com.aion.back.order.repository.OrderRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final UserCouponRepository userCouponRepository;
+    private final EntityManager entityManager;
+    private final MemberRepository memberRepository;
 
     @Transactional
     public OrderResponseDto checkout(String token, OrderCheckoutRequestDto requestDto) {
@@ -62,6 +66,7 @@ public class OrderService {
 
             userCoupon.setIsUsed(true);
             userCoupon.setUsedAt(LocalDateTime.now());
+            userCouponRepository.save(userCoupon);
         }
 
         int finalAmount = Math.max(0, totalAmount - discountAmount);
@@ -77,6 +82,27 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
+        int earnedPoints = (int) Math.floor(finalAmount * 0.01);
+
+        if (earnedPoints > 0) {
+            member.setTotalPoints((member.getTotalPoints() == null ? 0 : member.getTotalPoints()) + earnedPoints);
+            memberRepository.save(member);
+
+            try {
+                String insertSql = "INSERT INTO \"UserPoints\" (user_email, points, description, action_type, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
+                int inserted = entityManager.createNativeQuery(insertSql)
+                        .setParameter(1, member.getEmail())
+                        .setParameter(2, earnedPoints)
+                        .setParameter(3, "상품 구매 적립 (" + savedOrder.getOrderNumber() + ")")
+                        .setParameter(4, "EARN")
+                        .executeUpdate();
+            } catch (Exception e) {
+                System.err.println("UserPoints 내역 추가 실패: " + e.getMessage());
+            }
+        } else {
+            System.out.println("적립할 포인트 0 -> 적립 쿼리 스킵");
+        }
+
         List<OrderItem> orderItems = cartItems.stream().map(cart ->
                 OrderItem.builder()
                         .order(savedOrder)
@@ -89,7 +115,6 @@ public class OrderService {
         ).collect(Collectors.toList());
 
         orderItemRepository.saveAll(orderItems);
-
         cartRepository.deleteAll(cartItems);
 
         return OrderResponseDto.from(savedOrder);

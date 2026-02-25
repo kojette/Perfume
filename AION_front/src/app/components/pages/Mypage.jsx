@@ -71,15 +71,20 @@ const Mypage = () => {
       const result = await response.json();
       if (result.success) {
         setUserInfo(result.data);
+        setTotalPoints(result.data.totalPoints || 0);
+
       } else {
         throw new Error(result.message);
+
       }
     } catch (err) {
       console.error('Profile Fetch Error:', err);
       setError(err.message);
+
     } finally {
       setLoading(false);
     }
+
   };
 
   // Supabase: 쿠폰 데이터 조회
@@ -109,17 +114,26 @@ const Mypage = () => {
 
   // Supabase: 포인트 데이터 조회
   const fetchPoints = async () => {
-    const { data, error } = await supabase
-      .from('UserPoints')
-      .select('*')
-      .eq('user_email', userInfo?.email)
-      .order('created_at', { ascending: false });
+    try {
+      const token = sessionStorage.getItem('accessToken');
+      if (!token) return;
 
-    if (!error && data) {
-      setPoints(data);
-      const total = data.reduce((sum, p) => sum + p.points, 0);
-      setTotalPoints(total);
+      const response = await fetch(`${API_BASE_URL}/api/orders/points`, {
+        method: 'GET',
+        headers: {
+          'Authorization' : `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setPoints(result.data || []);
+      }
+    } catch (error) {
+      console.error('포인트 조회 에러: ', error);
     }
+  
   };
 
   // Supabase: 이벤트 참여 내역 조회

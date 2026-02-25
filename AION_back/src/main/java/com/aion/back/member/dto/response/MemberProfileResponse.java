@@ -17,4 +17,5 @@ public class MemberProfileResponse {
     private String profileImage;
     private AccountStatus accountStatus;
     private String role;
+    private Integer totalPoints;
 }

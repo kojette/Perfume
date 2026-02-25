@@ -132,6 +132,7 @@ public class MemberService {
                     .profileImage(member.getProfileImage())
                     .accountStatus(member.getAccountStatus())
                     .role(member.getRole())
+                    .totalPoints(member.getTotalPoints())
                     .build();
         } catch (Exception e) {
             log.error("프로필 조회 실패", e);
@@ -183,6 +184,7 @@ public class MemberService {
                     .gender(updated.getGender())
                     .profileImage(updated.getProfileImage())
                     .accountStatus(updated.getAccountStatus())
+                    .totalPoints(updated.getTotalPoints())
                     .build();
         } catch (Exception e) {
             log.error("회원 정보 수정 실패", e);

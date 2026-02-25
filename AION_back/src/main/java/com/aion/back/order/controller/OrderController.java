@@ -77,6 +77,17 @@ public class OrderController {
 
         cartRepository.deleteAll(myCarts);
 
+        int earnedPoints = (int)Math.floor(totalAmount * 0.01);
+        if (earnedPoints > 0){
+            orderRepository.updateTotalPoints(member.getEmail(), earnedPoints);
+            orderRepository.insertPointHistory(
+                    member.getEmail(),
+                    earnedPoints,
+                    "상품 구매 적립 (" + savedOrder.getOrderNumber() + ")",
+                    "EARN"
+            );
+        }
+
         OrderCheckoutResponse response = OrderCheckoutResponse.builder()
                 .orderId(savedOrder.getOrderId())
                 .orderNumber(savedOrder.getOrderNumber())
@@ -160,5 +171,14 @@ public class OrderController {
             e.printStackTrace();
             throw e;
         }
+    }
+
+    @GetMapping("/points")
+    public ApiResponse<List<Map<String, Object>>> getMyPoints(
+            @RequestHeader("Authorization") String token) {
+        Member member = memberService.getMemberEntityByToken(token);
+
+        List<Map<String, Object>> points = orderRepository.findPointsByEmail(member.getEmail());
+        return ApiResponse.success("포인트 내역 조회 성공", points);
     }
 }

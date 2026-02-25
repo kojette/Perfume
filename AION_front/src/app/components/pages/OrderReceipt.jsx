@@ -124,6 +124,13 @@ const OrderReceipt = () => {
                         <span className="font-serif italic text-[#c9a961] tracking-tighter">Total Amount</span>
                         <span className="text-2xl font-display tracking-tight">₩{(order.finalAmount || 0).toLocaleString()}</span>
                     </div>
+                    
+                    <div className="flex justify-between items-center text-sm mt-4">
+                        <span className="font-serif italic text-[#8b8278] tracking-widest">Points Earned (1%)</span>
+                        <span className="font-medium text-[#c9a961]">
+                            + {Math.floor((order.finalAmount || 0) * 0.01).toLocaleString()} P
+                        </span>
+                    </div>
                 </div>
 
                 {/* 5. 하단 버튼 (PRINT 삭제, 메인 이동으로 변경) */}

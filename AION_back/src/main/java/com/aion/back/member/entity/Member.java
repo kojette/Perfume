@@ -58,7 +58,14 @@ public class Member {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "total_points", columnDefinition = "integer default 0")
+    private Integer totalPoints = 0;
+
     public LocalDateTime getWithdrawDate() {
         return null;
+    }
+
+    public void addPoints(int amount) {
+        this.totalPoints = (this.totalPoints == null ? 0 : this.totalPoints) + amount;
     }
 }
