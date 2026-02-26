@@ -3,9 +3,13 @@ package com.aion.back.collection.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "\"Collections\"")
@@ -14,9 +18,11 @@ import java.time.LocalDateTime;
 public class CollectionEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "collection_id")
-    private Long collectionId;
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "collection_id", updatable = false, nullable = false, columnDefinition = "uuid")
+    private UUID collectionId;
 
     @Column(nullable = false)
     private String title;
@@ -45,4 +51,10 @@ public class CollectionEntity {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "visible_from")
+    private LocalDateTime visibleFrom;
+
+    @Column(name = "visible_until")
+    private LocalDateTime visibleUntil;
 }

@@ -6,13 +6,13 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Getter
 @Builder
 public class CollectionDetailResponse {
 
-    private Long collectionId;
+    private UUID collectionId;   // UUID
     private String title;
     private String description;
     private String type;
@@ -20,6 +20,8 @@ public class CollectionDetailResponse {
     private Boolean isPublished;
     private Boolean isActive;
     private LocalDateTime createdAt;
+    private LocalDateTime visibleFrom;
+    private LocalDateTime visibleUntil;
 
     private List<MediaDto> mediaList;
     private List<TextBlockDto> textBlocks;
@@ -69,7 +71,7 @@ public class CollectionDetailResponse {
 
     @Getter @Builder
     public static class PerfumeDto {
-        private Long perfumeId;
+        private Long perfumeId;    // bigint → Long
         private String name;
         private String nameEn;
         private Integer price;

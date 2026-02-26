@@ -2,6 +2,10 @@ package com.aion.back.collection.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.UUID;
 
 @Entity
 @Table(name = "\"Collection_Text_Blocks\"")
@@ -12,10 +16,12 @@ public class CollectionTextBlock {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "text_block_id")
+    @JdbcTypeCode(SqlTypes.BIGINT)
     private Long textBlockId;
 
-    @Column(name = "collection_id", nullable = false)
-    private Long collectionId;
+    @Column(name = "collection_id", nullable = false, columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.UUID)
+    private UUID collectionId;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
