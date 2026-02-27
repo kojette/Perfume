@@ -13,15 +13,15 @@ import java.util.UUID;
 @Repository
 public interface CollectionPerfumeRepository extends JpaRepository<CollectionPerfume, Long> {
 
-    @Query(value = "SELECT * FROM \"Collection_Perfumes\" WHERE collection_id = :collectionId ORDER BY display_order ASC", nativeQuery = true)
+    @Query(value = "SELECT * FROM \"Collection_Perfumes\" WHERE collection_id = :collectionId::uuid ORDER BY display_order ASC", nativeQuery = true)
     List<CollectionPerfume> findByCollectionIdOrderByDisplayOrderAsc(@Param("collectionId") UUID collectionId);
 
     @Modifying
-    @Query(value = "DELETE FROM \"Collection_Perfumes\" WHERE collection_id = :collectionId", nativeQuery = true)
+    @Query(value = "DELETE FROM \"Collection_Perfumes\" WHERE collection_id = :collectionId::uuid", nativeQuery = true)
     void deleteByCollectionId(@Param("collectionId") UUID collectionId);
 
     @Modifying
-    @Query(value = "INSERT INTO \"Collection_Perfumes\" (collection_id, perfume_id, display_order, is_featured) VALUES (:collectionId, :perfumeId, :displayOrder, :isFeatured)", nativeQuery = true)
+    @Query(value = "INSERT INTO \"Collection_Perfumes\" (collection_id, perfume_id, display_order, is_featured) VALUES (:collectionId::uuid, :perfumeId, :displayOrder, :isFeatured) ON CONFLICT (collection_id, perfume_id) DO UPDATE SET display_order = :displayOrder, is_featured = :isFeatured", nativeQuery = true)
     void insertPerfume(@Param("collectionId") UUID collectionId,
                        @Param("perfumeId") Long perfumeId,
                        @Param("displayOrder") Integer displayOrder,

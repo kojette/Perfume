@@ -18,6 +18,8 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,12 +41,71 @@ public class CollectionService {
         }
     }
 
+    // Collections 테이블도 모두 DataSource 직접 쿼리로 처리
+    private CollectionEntity findCollectionById(UUID id) {
+        String sql = "SELECT * FROM \"Collections\" WHERE collection_id = ?::uuid";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapCollectionEntity(rs);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 조회 오류: " + e.getMessage(), e);
+        }
+        throw new RuntimeException("컬렉션을 찾을 수 없습니다.");
+    }
+
+    private boolean collectionExists(UUID id) {
+        String sql = "SELECT COUNT(*) FROM \"Collections\" WHERE collection_id = ?::uuid";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 조회 오류: " + e.getMessage(), e);
+        }
+        return false;
+    }
+
+    private CollectionEntity mapCollectionEntity(ResultSet rs) throws Exception {
+        CollectionEntity e = new CollectionEntity();
+        e.setCollectionId(UUID.fromString(rs.getString("collection_id")));
+        e.setTitle(rs.getString("title"));
+        e.setDescription(rs.getString("description"));
+        e.setType(rs.getString("type"));
+        e.setTextColor(rs.getString("text_color"));
+        e.setIsPublished(rs.getBoolean("is_published"));
+        e.setIsActive(rs.getBoolean("is_active"));
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) e.setCreatedAt(createdAt.toLocalDateTime());
+        Timestamp visibleFrom = rs.getTimestamp("visible_from");
+        if (visibleFrom != null) e.setVisibleFrom(visibleFrom.toLocalDateTime());
+        Timestamp visibleUntil = rs.getTimestamp("visible_until");
+        if (visibleUntil != null) e.setVisibleUntil(visibleUntil.toLocalDateTime());
+        return e;
+    }
+
     @Transactional(readOnly = true)
     public List<CollectionSummaryResponse> getList(String type) {
-        return collectionRepository.findByTypeOrderByCreatedAtDesc(type)
-                .stream()
-                .map(CollectionSummaryResponse::from)
-                .collect(Collectors.toList());
+        String sql = "SELECT * FROM \"Collections\" WHERE type = ? ORDER BY created_at DESC";
+        List<CollectionSummaryResponse> result = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, type);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(CollectionSummaryResponse.from(mapCollectionEntity(rs)));
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("목록 조회 오류: " + e.getMessage(), e);
+        }
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -57,44 +118,52 @@ public class CollectionService {
     public CollectionDetailResponse create(String token, CollectionSaveRequest req) {
         validateAdmin(token);
 
-        CollectionEntity collection = CollectionEntity.builder()
-                .title(req.getTitle())
-                .description(req.getDescription())
-                .type(req.getType())
-                .textColor(req.getTextColor() != null ? req.getTextColor() : "#c9a961")
-                .isPublished(req.getIsPublished() != null ? req.getIsPublished() : false)
-                .isActive(req.getIsActive() != null ? req.getIsActive() : false)
-                .visibleFrom(req.getVisibleFrom())
-                .visibleUntil(req.getVisibleUntil())
-                .build();
+        UUID newId = UUID.randomUUID();
+        String sql = "INSERT INTO \"Collections\" (collection_id, title, description, type, text_color, is_published, is_active, visible_from, visible_until, created_at, updated_at) " +
+                     "VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newId.toString());
+            ps.setString(2, req.getTitle());
+            ps.setString(3, req.getDescription());
+            ps.setString(4, req.getType());
+            ps.setString(5, req.getTextColor() != null ? req.getTextColor() : "#c9a961");
+            ps.setBoolean(6, req.getIsPublished() != null ? req.getIsPublished() : false);
+            ps.setBoolean(7, req.getIsActive() != null ? req.getIsActive() : false);
+            ps.setObject(8, req.getVisibleFrom() != null ? Timestamp.valueOf(req.getVisibleFrom()) : null);
+            ps.setObject(9, req.getVisibleUntil() != null ? Timestamp.valueOf(req.getVisibleUntil()) : null);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 생성 오류: " + e.getMessage(), e);
+        }
 
-        collectionRepository.save(collection);
-        saveSubData(collection.getCollectionId(), req);
-
-        return buildDetail(collection.getCollectionId());
+        saveSubData(newId, req);
+        return buildDetail(newId);
     }
 
     @Transactional
     public CollectionDetailResponse update(String token, UUID collectionId, CollectionSaveRequest req) {
         validateAdmin(token);
 
-        CollectionEntity collection = collectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("컬렉션을 찾을 수 없습니다."));
-
-        collection.setTitle(req.getTitle());
-        collection.setDescription(req.getDescription());
-        collection.setTextColor(req.getTextColor());
-        collection.setIsPublished(req.getIsPublished() != null ? req.getIsPublished() : false);
-        collection.setVisibleFrom(req.getVisibleFrom());
-        collection.setVisibleUntil(req.getVisibleUntil());
-        if (req.getIsActive() != null) {
-            collection.setIsActive(req.getIsActive());
+        String sql = "UPDATE \"Collections\" SET title=?, description=?, text_color=?, is_published=?, is_active=?, visible_from=?, visible_until=?, updated_at=NOW() WHERE collection_id=?::uuid";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, req.getTitle());
+            ps.setString(2, req.getDescription());
+            ps.setString(3, req.getTextColor());
+            ps.setBoolean(4, req.getIsPublished() != null ? req.getIsPublished() : false);
+            ps.setBoolean(5, req.getIsActive() != null ? req.getIsActive() : false);
+            ps.setObject(6, req.getVisibleFrom() != null ? Timestamp.valueOf(req.getVisibleFrom()) : null);
+            ps.setObject(7, req.getVisibleUntil() != null ? Timestamp.valueOf(req.getVisibleUntil()) : null);
+            ps.setString(8, collectionId.toString());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 수정 오류: " + e.getMessage(), e);
         }
 
         mediaRepository.deleteByCollectionId(collectionId);
         textBlockRepository.deleteByCollectionId(collectionId);
         perfumeRepository.deleteByCollectionId(collectionId);
-
         saveSubData(collectionId, req);
         return buildDetail(collectionId);
     }
@@ -102,29 +171,65 @@ public class CollectionService {
     @Transactional
     public void toggleActive(String token, UUID collectionId, boolean activate) {
         validateAdmin(token);
-        CollectionEntity collection = collectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("컬렉션을 찾을 수 없습니다."));
-        collectionRepository.findByTypeOrderByCreatedAtDesc(collection.getType())
-                .forEach(c -> c.setIsActive(false));
-        if (activate) collection.setIsActive(true);
+
+        // 같은 type의 모든 컬렉션 비활성화 후 해당 컬렉션만 활성화
+        String type = findCollectionById(collectionId).getType();
+        String deactivateSql = "UPDATE \"Collections\" SET is_active = false WHERE type = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(deactivateSql)) {
+            ps.setString(1, type);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("비활성화 오류: " + e.getMessage(), e);
+        }
+
+        if (activate) {
+            String activateSql = "UPDATE \"Collections\" SET is_active = true WHERE collection_id = ?::uuid";
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(activateSql)) {
+                ps.setString(1, collectionId.toString());
+                ps.executeUpdate();
+            } catch (Exception e) {
+                throw new RuntimeException("활성화 오류: " + e.getMessage(), e);
+            }
+        }
     }
 
     @Transactional
     public void delete(String token, UUID collectionId) {
         validateAdmin(token);
-        if (!collectionRepository.existsById(collectionId))
-            throw new RuntimeException("컬렉션을 찾을 수 없습니다.");
+        if (!collectionExists(collectionId)) throw new RuntimeException("컬렉션을 찾을 수 없습니다.");
+
         mediaRepository.deleteByCollectionId(collectionId);
         textBlockRepository.deleteByCollectionId(collectionId);
         perfumeRepository.deleteByCollectionId(collectionId);
-        collectionRepository.deleteById(collectionId);
+
+        String sql = "DELETE FROM \"Collections\" WHERE collection_id = ?::uuid";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, collectionId.toString());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("삭제 오류: " + e.getMessage(), e);
+        }
     }
 
     @Transactional(readOnly = true)
     public CollectionDetailResponse getActiveCollection(String type) {
-        CollectionEntity collection = collectionRepository.findByTypeAndIsActiveTrue(type)
-                .orElseThrow(() -> new RuntimeException("활성화된 컬렉션이 없습니다."));
-        return buildDetail(collection.getCollectionId());
+        String sql = "SELECT * FROM \"Collections\" WHERE type = ? AND is_active = true LIMIT 1";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, type);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    CollectionEntity collection = mapCollectionEntity(rs);
+                    return buildDetail(collection.getCollectionId());
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("활성 컬렉션 조회 오류: " + e.getMessage(), e);
+        }
+        throw new RuntimeException("활성화된 컬렉션이 없습니다.");
     }
 
     // ========== 내부 헬퍼 ==========
@@ -152,10 +257,8 @@ public class CollectionService {
         }
     }
 
-    // 모든 하위 데이터를 DataSource 직접 쿼리로 조회 → Hibernate 타입 매핑 완전 우회
     private CollectionDetailResponse buildDetail(UUID collectionId) {
-        CollectionEntity collection = collectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("컬렉션을 찾을 수 없습니다."));
+        CollectionEntity collection = findCollectionById(collectionId);
 
         List<CollectionDetailResponse.MediaDto> mediaList = new ArrayList<>();
         List<CollectionDetailResponse.TextBlockDto> textBlocks = new ArrayList<>();
@@ -163,7 +266,6 @@ public class CollectionService {
 
         try (Connection conn = dataSource.getConnection()) {
 
-            // 미디어 조회
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT media_id, media_url, media_type, display_order FROM \"Collection_Media\" WHERE collection_id = ?::uuid ORDER BY display_order ASC")) {
                 ps.setString(1, collectionId.toString());
@@ -179,7 +281,6 @@ public class CollectionService {
                 }
             }
 
-            // 텍스트블록 조회
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT text_block_id, content, font_size, font_weight, is_italic, position_x, position_y, display_order FROM \"Collection_Text_Blocks\" WHERE collection_id = ?::uuid ORDER BY display_order ASC")) {
                 ps.setString(1, collectionId.toString());
@@ -199,7 +300,6 @@ public class CollectionService {
                 }
             }
 
-            // 향수 조회 (perfume 상세 포함)
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT cp.perfume_id, cp.display_order, cp.is_featured, " +
                     "p.name, p.name_en, p.price, p.sale_price, p.sale_rate, " +

@@ -13,15 +13,15 @@ import java.util.UUID;
 @Repository
 public interface CollectionMediaRepository extends JpaRepository<CollectionMedia, Long> {
 
-    @Query(value = "SELECT * FROM \"Collection_Media\" WHERE collection_id = :collectionId ORDER BY display_order ASC", nativeQuery = true)
+    @Query(value = "SELECT * FROM \"Collection_Media\" WHERE collection_id = :collectionId::uuid ORDER BY display_order ASC", nativeQuery = true)
     List<CollectionMedia> findByCollectionIdOrderByDisplayOrderAsc(@Param("collectionId") UUID collectionId);
 
     @Modifying
-    @Query(value = "DELETE FROM \"Collection_Media\" WHERE collection_id = :collectionId", nativeQuery = true)
+    @Query(value = "DELETE FROM \"Collection_Media\" WHERE collection_id = :collectionId::uuid", nativeQuery = true)
     void deleteByCollectionId(@Param("collectionId") UUID collectionId);
 
     @Modifying
-    @Query(value = "INSERT INTO \"Collection_Media\" (collection_id, media_url, media_type, display_order) VALUES (:collectionId, :mediaUrl, :mediaType, :displayOrder)", nativeQuery = true)
+    @Query(value = "INSERT INTO \"Collection_Media\" (collection_id, media_url, media_type, display_order) VALUES (:collectionId::uuid, :mediaUrl, :mediaType, :displayOrder)", nativeQuery = true)
     void insertMedia(@Param("collectionId") UUID collectionId,
                      @Param("mediaUrl") String mediaUrl,
                      @Param("mediaType") String mediaType,

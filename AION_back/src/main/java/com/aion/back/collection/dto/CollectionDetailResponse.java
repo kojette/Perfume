@@ -12,7 +12,7 @@ import java.util.UUID;
 @Builder
 public class CollectionDetailResponse {
 
-    private UUID collectionId;   // UUID
+    private UUID collectionId;
     private String title;
     private String description;
     private String type;
@@ -29,24 +29,15 @@ public class CollectionDetailResponse {
 
     @Getter @Builder
     public static class MediaDto {
-        private Long mediaId;
+        private UUID mediaId;       // uuid
         private String mediaUrl;
         private String mediaType;
         private Integer displayOrder;
-
-        public static MediaDto from(CollectionMedia m) {
-            return MediaDto.builder()
-                    .mediaId(m.getMediaId())
-                    .mediaUrl(m.getMediaUrl())
-                    .mediaType(m.getMediaType())
-                    .displayOrder(m.getDisplayOrder())
-                    .build();
-        }
     }
 
     @Getter @Builder
     public static class TextBlockDto {
-        private Long textBlockId;
+        private UUID textBlockId;   // uuid
         private String content;
         private String fontSize;
         private String fontWeight;
@@ -54,24 +45,11 @@ public class CollectionDetailResponse {
         private String positionX;
         private String positionY;
         private Integer displayOrder;
-
-        public static TextBlockDto from(CollectionTextBlock t) {
-            return TextBlockDto.builder()
-                    .textBlockId(t.getTextBlockId())
-                    .content(t.getContent())
-                    .fontSize(t.getFontSize())
-                    .fontWeight(t.getFontWeight())
-                    .isItalic(t.getIsItalic())
-                    .positionX(t.getPositionX())
-                    .positionY(t.getPositionY())
-                    .displayOrder(t.getDisplayOrder())
-                    .build();
-        }
     }
 
     @Getter @Builder
     public static class PerfumeDto {
-        private Long perfumeId;    // bigint → Long
+        private Long perfumeId;
         private String name;
         private String nameEn;
         private Integer price;

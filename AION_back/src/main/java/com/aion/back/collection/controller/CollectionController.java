@@ -21,20 +21,23 @@ public class CollectionController {
 
     private final CollectionService collectionService;
 
-    // ===== 공개 API =====
-
     @GetMapping("/active")
     public ResponseEntity<?> getActive(@RequestParam String type) {
         try {
             CollectionDetailResponse data = collectionService.getActiveCollection(type);
             return ResponseEntity.ok(ApiResponse.success("컬렉션 조회 성공", data));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.success(e.getMessage(), null));
+            String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            // 실제 에러 메시지를 포함해서 반환 (디버깅용)
+            if (msg.contains("활성화된 컬렉션이 없습니다")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.success(msg, null));
+            }
+            // 그 외 오류는 400으로 반환해서 프론트에서 에러 내용 확인 가능
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.success("오류: " + msg, null));
         }
     }
-
-    // ===== 관리자 API =====
 
     @GetMapping
     public ApiResponse<List<CollectionSummaryResponse>> getList(

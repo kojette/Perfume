@@ -13,15 +13,15 @@ import java.util.UUID;
 @Repository
 public interface CollectionTextBlockRepository extends JpaRepository<CollectionTextBlock, Long> {
 
-    @Query(value = "SELECT * FROM \"Collection_Text_Blocks\" WHERE collection_id = :collectionId ORDER BY display_order ASC", nativeQuery = true)
+    @Query(value = "SELECT * FROM \"Collection_Text_Blocks\" WHERE collection_id = :collectionId::uuid ORDER BY display_order ASC", nativeQuery = true)
     List<CollectionTextBlock> findByCollectionIdOrderByDisplayOrderAsc(@Param("collectionId") UUID collectionId);
 
     @Modifying
-    @Query(value = "DELETE FROM \"Collection_Text_Blocks\" WHERE collection_id = :collectionId", nativeQuery = true)
+    @Query(value = "DELETE FROM \"Collection_Text_Blocks\" WHERE collection_id = :collectionId::uuid", nativeQuery = true)
     void deleteByCollectionId(@Param("collectionId") UUID collectionId);
 
     @Modifying
-    @Query(value = "INSERT INTO \"Collection_Text_Blocks\" (collection_id, content, font_size, font_weight, is_italic, position_x, position_y, display_order) VALUES (:collectionId, :content, :fontSize, :fontWeight, :isItalic, :positionX, :positionY, :displayOrder)", nativeQuery = true)
+    @Query(value = "INSERT INTO \"Collection_Text_Blocks\" (collection_id, content, font_size, font_weight, is_italic, position_x, position_y, display_order) VALUES (:collectionId::uuid, :content, :fontSize, :fontWeight, :isItalic, :positionX, :positionY, :displayOrder)", nativeQuery = true)
     void insertTextBlock(@Param("collectionId") UUID collectionId,
                          @Param("content") String content,
                          @Param("fontSize") String fontSize,
