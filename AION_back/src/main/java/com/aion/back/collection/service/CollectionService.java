@@ -272,7 +272,7 @@ public class CollectionService {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         mediaList.add(CollectionDetailResponse.MediaDto.builder()
-                                .mediaId(rs.getLong("media_id"))
+                                .mediaId(UUID.fromString(rs.getString("media_id")))
                                 .mediaUrl(rs.getString("media_url"))
                                 .mediaType(rs.getString("media_type"))
                                 .displayOrder(rs.getObject("display_order") != null ? rs.getInt("display_order") : null)
@@ -287,7 +287,7 @@ public class CollectionService {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         textBlocks.add(CollectionDetailResponse.TextBlockDto.builder()
-                                .textBlockId(rs.getLong("text_block_id"))
+                                .textBlockId(UUID.fromString(rs.getString("text_block_id")))
                                 .content(rs.getString("content"))
                                 .fontSize(rs.getString("font_size"))
                                 .fontWeight(rs.getString("font_weight"))
