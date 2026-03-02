@@ -24,23 +24,21 @@ const Customization = () => {
 
   const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
   const token = sessionStorage.getItem('accessToken');
-  const userId = sessionStorage.getItem('userId');
 
   useEffect(() => {
     fetchMyDesigns();
   }, []);
 
   // ── 내 디자인 목록 조회 ─────────────────────────────────────────────
-  // GET /api/custom/designs  (Header: X-User-Id)
+  // GET /api/custom/designs  Authorization 토큰에서 백엔드가 직접 유저 식별
   const fetchMyDesigns = async () => {
     setLoading(true);
     try {
-      if (!userId) { setLoading(false); return; }
+      if (!token) { setLoading(false); return; }
 
       const res = await fetch(`${API_BASE_URL}/api/custom/designs`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'X-User-Id': userId,
         },
       });
 
@@ -56,7 +54,7 @@ const Customization = () => {
   };
 
   // ── 디자인 삭제 ────────────────────────────────────────────────────
-  // DELETE /api/custom/designs/{designId}  (Header: X-User-Id)
+  // DELETE /api/custom/designs/{designId}  Authorization 토큰으로 소유권 확인
   const handleDelete = async (designId) => {
     if (!window.confirm('이 디자인을 삭제하시겠습니까?')) return;
 
@@ -65,7 +63,6 @@ const Customization = () => {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'X-User-Id': userId,
         },
       });
 

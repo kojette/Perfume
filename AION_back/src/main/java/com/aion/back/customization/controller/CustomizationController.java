@@ -1,20 +1,24 @@
 package com.aion.back.customization.controller;
 
+import com.aion.back.common.response.ApiResponse;
 import com.aion.back.customization.dto.request.CustomBottleRequest;
 import com.aion.back.customization.dto.request.CustomDesignRequest;
 import com.aion.back.customization.dto.response.CustomBottleResponse;
 import com.aion.back.customization.dto.response.CustomDesignResponse;
 import com.aion.back.customization.service.DesignService;
+import com.aion.back.member.entity.Member;
+import com.aion.back.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 커스터마이징 API
+ * 인증 방식: CartController / OrderController 와 동일하게
+ *   @RequestHeader("Authorization") String token
+ *   → memberService.getMemberEntityByToken(token) 으로 Member 조회
+ *   → member.getUserId() 로 userId 사용
  *
  * [공병 템플릿]
  *   GET    /api/custom/bottles              - 활성 공병 목록 (일반 유저)
@@ -37,19 +41,19 @@ import java.util.Map;
 public class CustomizationController {
 
     private final DesignService designService;
+    private final MemberService memberService; // 기존 프로젝트 인증 방식 사용
 
-    // ────────────────────────────────────────────────────────
-    // 공병 템플릿 API
-    // ────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────
+    // 공병 템플릿 API (공병 목록은 토큰 불필요)
+    // ─────────────────────────────────────────────────────────
 
     /**
-     * 활성화된 관리자 추가 공병 목록 (일반 유저용)
+     * 활성화된 관리자 추가 공병 목록 (일반 유저용, 인증 불필요)
      * GET /api/custom/bottles
      */
     @GetMapping("/bottles")
-    public ResponseEntity<Map<String, Object>> getActiveBottles() {
-        List<CustomBottleResponse> bottles = designService.getActiveBottles();
-        return ResponseEntity.ok(successResponse(bottles));
+    public ApiResponse<List<CustomBottleResponse>> getActiveBottles() {
+        return ApiResponse.success("공병 목록 조회 성공", designService.getActiveBottles());
     }
 
     /**
@@ -57,20 +61,23 @@ public class CustomizationController {
      * GET /api/custom/bottles/all
      */
     @GetMapping("/bottles/all")
-    public ResponseEntity<Map<String, Object>> getAllBottles() {
-        List<CustomBottleResponse> bottles = designService.getAllBottles();
-        return ResponseEntity.ok(successResponse(bottles));
+    public ApiResponse<List<CustomBottleResponse>> getAllBottles(
+            @RequestHeader("Authorization") String token) {
+        // 관리자 여부는 추후 role 체크로 강화 가능. 현재는 로그인 여부만 확인
+        memberService.getMemberEntityByToken(token);
+        return ApiResponse.success("전체 공병 목록 조회 성공", designService.getAllBottles());
     }
 
     /**
      * 공병 추가 (관리자)
      * POST /api/custom/bottles
-     * Body: { name, shape, basePrice }
      */
     @PostMapping("/bottles")
-    public ResponseEntity<Map<String, Object>> createBottle(@RequestBody CustomBottleRequest request) {
-        CustomBottleResponse bottle = designService.createBottle(request);
-        return ResponseEntity.ok(successResponse(bottle));
+    public ApiResponse<CustomBottleResponse> createBottle(
+            @RequestHeader("Authorization") String token,
+            @RequestBody CustomBottleRequest request) {
+        memberService.getMemberEntityByToken(token); // 인증 확인
+        return ApiResponse.success("공병 추가 성공", designService.createBottle(request));
     }
 
     /**
@@ -78,9 +85,11 @@ public class CustomizationController {
      * PATCH /api/custom/bottles/{bottleId}/toggle
      */
     @PatchMapping("/bottles/{bottleId}/toggle")
-    public ResponseEntity<Map<String, Object>> toggleBottle(@PathVariable Long bottleId) {
-        CustomBottleResponse bottle = designService.toggleBottleActive(bottleId);
-        return ResponseEntity.ok(successResponse(bottle));
+    public ApiResponse<CustomBottleResponse> toggleBottle(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long bottleId) {
+        memberService.getMemberEntityByToken(token); // 인증 확인
+        return ApiResponse.success("공병 상태 변경 성공", designService.toggleBottleActive(bottleId));
     }
 
     /**
@@ -88,28 +97,28 @@ public class CustomizationController {
      * DELETE /api/custom/bottles/{bottleId}
      */
     @DeleteMapping("/bottles/{bottleId}")
-    public ResponseEntity<Map<String, Object>> deleteBottle(@PathVariable Long bottleId) {
+    public ApiResponse<String> deleteBottle(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long bottleId) {
+        memberService.getMemberEntityByToken(token); // 인증 확인
         designService.deleteBottle(bottleId);
-        return ResponseEntity.ok(successResponse("삭제되었습니다."));
+        return ApiResponse.success("공병 삭제 성공", "삭제되었습니다.");
     }
 
-    // ────────────────────────────────────────────────────────
-    // 커스텀 디자인 API (JWT로 userId 추출 필요)
-    // ────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────
+    // 커스텀 디자인 API
+    // CartController와 동일: token → getMemberEntityByToken → userId
+    // ─────────────────────────────────────────────────────────
 
     /**
      * 내 디자인 목록 조회
-     * GET /api/custom/designs?userId={userId}
-     *
-     * 실제 구현 시 JWT 필터에서 userId를 추출하여 사용.
-     * 기존 프로젝트의 JWT 유틸리티가 있다면 @AuthenticationPrincipal 또는
-     * HttpServletRequest에서 userId attribute를 꺼내는 방식으로 교체하세요.
+     * GET /api/custom/designs
      */
     @GetMapping("/designs")
-    public ResponseEntity<Map<String, Object>> getMyDesigns(
-            @RequestHeader("X-User-Id") Long userId) {
-        List<CustomDesignResponse> designs = designService.getMyDesigns(userId);
-        return ResponseEntity.ok(successResponse(designs));
+    public ApiResponse<List<CustomDesignResponse>> getMyDesigns(
+            @RequestHeader("Authorization") String token) {
+        Member member = memberService.getMemberEntityByToken(token);
+        return ApiResponse.success("디자인 목록 조회 성공", designService.getMyDesigns(member.getUserId()));
     }
 
     /**
@@ -117,38 +126,36 @@ public class CustomizationController {
      * GET /api/custom/designs/{designId}
      */
     @GetMapping("/designs/{designId}")
-    public ResponseEntity<Map<String, Object>> getDesign(
-            @PathVariable Long designId,
-            @RequestHeader("X-User-Id") Long userId) {
-        CustomDesignResponse design = designService.getDesign(designId, userId);
-        return ResponseEntity.ok(successResponse(design));
+    public ApiResponse<CustomDesignResponse> getDesign(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long designId) {
+        Member member = memberService.getMemberEntityByToken(token);
+        return ApiResponse.success("디자인 조회 성공", designService.getDesign(designId, member.getUserId()));
     }
 
     /**
-     * 디자인 저장
+     * 디자인 저장 (신규)
      * POST /api/custom/designs
-     * Body: CustomDesignRequest
      */
     @PostMapping("/designs")
-    public ResponseEntity<Map<String, Object>> saveDesign(
-            @RequestHeader("X-User-Id") Long userId,
+    public ApiResponse<CustomDesignResponse> saveDesign(
+            @RequestHeader("Authorization") String token,
             @RequestBody CustomDesignRequest request) {
-        CustomDesignResponse design = designService.saveDesign(userId, request);
-        return ResponseEntity.ok(successResponse(design));
+        Member member = memberService.getMemberEntityByToken(token);
+        return ApiResponse.success("디자인 저장 성공", designService.saveDesign(member.getUserId(), request));
     }
 
     /**
      * 디자인 수정
      * PUT /api/custom/designs/{designId}
-     * Body: CustomDesignRequest
      */
     @PutMapping("/designs/{designId}")
-    public ResponseEntity<Map<String, Object>> updateDesign(
+    public ApiResponse<CustomDesignResponse> updateDesign(
+            @RequestHeader("Authorization") String token,
             @PathVariable Long designId,
-            @RequestHeader("X-User-Id") Long userId,
             @RequestBody CustomDesignRequest request) {
-        CustomDesignResponse design = designService.updateDesign(designId, userId, request);
-        return ResponseEntity.ok(successResponse(design));
+        Member member = memberService.getMemberEntityByToken(token);
+        return ApiResponse.success("디자인 수정 성공", designService.updateDesign(designId, member.getUserId(), request));
     }
 
     /**
@@ -156,20 +163,11 @@ public class CustomizationController {
      * DELETE /api/custom/designs/{designId}
      */
     @DeleteMapping("/designs/{designId}")
-    public ResponseEntity<Map<String, Object>> deleteDesign(
-            @PathVariable Long designId,
-            @RequestHeader("X-User-Id") Long userId) {
-        designService.deleteDesign(designId, userId);
-        return ResponseEntity.ok(successResponse("삭제되었습니다."));
-    }
-
-    // ────────────────────────────────────────────────────────
-    // 공통 응답 헬퍼
-    // ────────────────────────────────────────────────────────
-    private Map<String, Object> successResponse(Object data) {
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("data", data);
-        return result;
+    public ApiResponse<String> deleteDesign(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long designId) {
+        Member member = memberService.getMemberEntityByToken(token);
+        designService.deleteDesign(designId, member.getUserId());
+        return ApiResponse.success("디자인 삭제 성공", "삭제되었습니다.");
     }
 }
