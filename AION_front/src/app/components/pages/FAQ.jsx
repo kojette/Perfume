@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Ornament } from '../Ornament';
 import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 
@@ -69,8 +69,14 @@ const FAQ_DATA = [
 
 const FAQ = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [openId, setOpenId] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState(location.state?.category || 'all');
+
+  useEffect(() => {
+    setSelectedCategory(location.state?.category || 'all');
+    window.scrollTo(0,0);
+  }, [location.state]);
 
   const categories = ['all', '주문/배송', '교환/환불', '제품', '회원/혜택'];
   const categoryLabels = {
