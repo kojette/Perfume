@@ -35,6 +35,7 @@ public class Member {
     @Column(name = "phone", nullable = false, unique = true)
     private String phone;
 
+    @org.hibernate.annotations.ColumnTransformer(write = "?::user_gender")
     @Column(name = "gender")
     private String gender;
 
@@ -44,9 +45,9 @@ public class Member {
     @Column(name = "profile_image", columnDefinition = "TEXT")
     private String profileImage;
 
-    // 이 부분을 수정! ENUM 타입 명시
+    @org.hibernate.annotations.ColumnTransformer(write = "?::user_account_status")
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_status", columnDefinition = "user_account_status")
+    @Column(name = "account_status")
     private AccountStatus accountStatus;
 
     @Column(name = "withdraw_date")
@@ -65,7 +66,18 @@ public class Member {
         return null;
     }
 
-    public void addPoints(int amount) {
-        this.totalPoints = (this.totalPoints == null ? 0 : this.totalPoints) + amount;
+    public void addPoints(int points) {
+        if(points <= 0) return;
+        this.totalPoints += points;
+    }
+
+    public void deductPoints(int points) {
+        if (points <= 0) return;
+        if (this.totalPoints < points) {
+            throw new IllegalStateException(
+                    "보유 포인트 부족 (보유: " + this.totalPoints + "P, 차감 요청: " + points + "P)"
+            );
+        }
+        this.totalPoints -= points;
     }
 }
