@@ -26,6 +26,8 @@ import Cart from './components/pages/Cart';
 import Wishlist from './components/pages/Wishlist';
 import SearchResult from './components/pages/SearchResult';
 import OrderReceipt from "./components/pages/OrderReceipt";
+import Terms from './components/pages/Terms';
+import Privacy from './components/pages/Privacy';
 
 import AdminDashboard from "./components/pages/AdminDashboard";
 import AdminRoute from './components/AdminRoute';
@@ -141,6 +143,11 @@ function AppLayout() {
             <Route path="/admin/story"          element={<AdminRoute><StoryManagement /></AdminRoute>} />
             {/* 커스터마이징 관리자: 공병 템플릿 추가/비활성/삭제 */}
             <Route path="/admin/bottles"        element={<AdminRoute><BottleManagement /></AdminRoute>} />
+            
+            {/* 페이지 하단부 */}
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            
           </Routes>
         </main>
       </div>
