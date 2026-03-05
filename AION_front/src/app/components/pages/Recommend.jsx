@@ -345,16 +345,29 @@ export default function Recommend() {
   };
 
   const handleQuickFilter = (filter) => {
+
     if (filter.type === 'gender') {
-      setSelectedGender(prev => prev === filter.value ? '' : filter.value);
-      setSelectedTags([]);
-    } else if (filter.type === 'tags') {
-      setSelectedGender('');
+      setSelectedGender(prev =>
+        prev === filter.value ? '' : filter.value
+      );
+
+      return;
+    }
+
+    if (filter.type === 'tags') {
+
+      const tag = filter.value;
+
       setSelectedTags(prev => {
-        const newTag = filter.value[0];
-        return prev.includes(newTag) ? prev.filter(t => t !== newTag) : [...prev, newTag];
+
+        if (prev.includes(tag)) {
+          return prev.filter(t => t !== tag);
+        }
+
+        return [...prev, tag];
       });
     }
+
   };
 
   const handleKeyDown = (e) => {
@@ -368,9 +381,17 @@ export default function Recommend() {
   };
 
   const isFilterActive = (filter) => {
-    if (filter.type === 'gender') return selectedGender === filter.value;
-    if (filter.type === 'tags') return selectedTags.includes(filter.value[0]);
+
+    if (filter.type === 'gender') {
+      return selectedGender === filter.value;
+    }
+
+    if (filter.type === 'tags') {
+      return selectedTags.includes(filter.value);
+    }
+
     return false;
+
   };
 
   const filteredPerfumes = useMemo(() => perfumeData, [perfumeData]);

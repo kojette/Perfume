@@ -10,6 +10,16 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
+  const role = sessionStorage.getItem('userRole');
+
+  const handleHomeClick = () => {
+    if (role === 'ADMIN') {
+      navigate('/admin');
+    } else {
+      navigate('/');
+    }
+  };
+
   const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
 
   const handleUserClick = () => {
@@ -50,8 +60,10 @@ export function Header() {
               >
                 {menuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
-              <h1 className="font-display text-2xl tracking-[0.4em] text-[#c9a961] cursor-pointer"
-                onClick = { () => navigate('/')}>
+              <h1
+                className="font-display text-2xl tracking-[0.4em] text-[#c9a961] cursor-pointer"
+                onClick={handleHomeClick}
+              >
                 AION
               </h1>
             </div>
