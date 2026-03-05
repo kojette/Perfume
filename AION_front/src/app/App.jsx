@@ -26,6 +26,8 @@ import Cart from './components/pages/Cart';
 import Wishlist from './components/pages/Wishlist';
 import SearchResult from './components/pages/SearchResult';
 import OrderReceipt from "./components/pages/OrderReceipt";
+import Terms from './components/pages/Terms';
+import Privacy from './components/pages/Privacy';
 
 import AdminDashboard from "./components/pages/AdminDashboard";
 import AdminRoute from './components/AdminRoute';
@@ -33,13 +35,16 @@ import AnnouncementManagement from './components/pages/AnnouncementManagement';
 import EventManagement from './components/pages/EventManagement';
 import CouponPointManagement from './components/pages/CouponPointManagement';
 
-
-import Collections from "./components/pages/Collections";//컬렉션과 시그니처
+import Collections from "./components/pages/Collections";
 import Signature from "./components/pages/Signature";
 import CollectionManagement from "./components/pages/CollectionManagement";
 
 import Story from './components/pages/Story';
 import StoryManagement from './components/pages/StoryManagement';
+
+// 커스터마이징 관련 페이지
+import Customization from './components/pages/Customization';
+import BottleManagement from './components/pages/BottleManagement';
 
 function AppLayout() {
   const location = useLocation();
@@ -49,7 +54,7 @@ function AppLayout() {
   const isHome = location.pathname === "/";
   const isAdmin = location.pathname.startsWith("/admin");
 
-  // [수정] ResizeObserver를 사용하여 내부 요소(배너 등)가 변하면 즉시 다시 측정
+  // ResizeObserver로 헤더+배너 높이 변화 감지 → paddingTop 즉시 재계산
   useEffect(() => {
     if (!navRef.current) return;
 
@@ -63,24 +68,27 @@ function AppLayout() {
     return () => resizeObserver.disconnect();
   }, []);
 
-return (
+  return (
     <>
+      {/* 고정 상단 영역: 헤더 + 이벤트 배너 */}
       <div ref={navRef} className="fixed top-0 w-full z-50 shadow-lg">
         <Header />
         <EventBanner />
       </div>
 
-      {/* Hero가 배너 뒤로 겹치게 하기 위해 padding-top을 navHeight보다 약간 적게 잡을 수도 있습니다 */}
+      {/* 헤더 높이만큼 본문 밀어내기 */}
       <div style={{ paddingTop: `${navHeight}px` }}>
+        {/* 홈 & 어드민 페이지에만 Hero 섹션 표시 */}
         {(isHome || isAdmin) && (
-          <Hero 
-            isAdmin={isAdmin} 
-            navHeight={navHeight} 
+          <Hero
+            isAdmin={isAdmin}
+            navHeight={navHeight}
           />
         )}
 
         <main>
           <Routes>
+            {/* ── 홈 ── */}
             <Route
               path="/"
               element={
@@ -91,36 +99,59 @@ return (
                 </>
               }
             />
-            <Route path="/recommend" element={<Recommend />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/collections" element={<Collections />} />
-            <Route path="/signature" element={<Signature />} />
-            <Route path="/admin/collections" element={<AdminRoute><CollectionManagement /></AdminRoute>} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/wishlist" element={<Wishlist />} />
-            <Route path="/search" element={<SearchResult />} />
-            <Route path="/orders/:id" element={<OrderReceipt/>} />
 
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/mypage" element={<Mypage />} />
-            <Route path="/find-password" element={<FindPassword />} />
-            <Route path="/profile/edit" element={<ProfileEdit />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/store" element={<Store />} />
-            <Route path="/customer/inquiry" element={<CustomerInquiry />} />
-            <Route path="/faq" element={<FAQ />} />
-            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            <Route path="/admin/support" element={<AdminRoute><CustomerSupport /></AdminRoute>} />
-            <Route path="/admin/perfumes" element={<AdminRoute><PerfumeManagement /></AdminRoute>} />
-            <Route path="/admin/announcements" element={<AdminRoute><AnnouncementManagement /></AdminRoute>} />
-            <Route path="/admin/events" element={<AdminRoute><EventManagement /></AdminRoute>} />
-            <Route path="/admin/coupons" element={<AdminRoute><CouponPointManagement /></AdminRoute>} />
+            {/* ── 향수 & 컬렉션 ── */}
+            <Route path="/collections" element={<Collections />} />
+            <Route path="/signature"   element={<Signature />} />
+            <Route path="/recommend"   element={<Recommend />} />
+
+            {/* ── 커스터마이징 ── */}
+            <Route path="/custom" element={<Customization />} />
+
+            {/* ── 스토리 ── */}
             <Route path="/story" element={<Story />} />
-<Route path="/admin/story" element={<AdminRoute><StoryManagement /></AdminRoute>} />
-         
+
+            {/* ── 매장 ── */}
+            <Route path="/store" element={<Store />} />
+
+            {/* ── 쇼핑 ── */}
+            <Route path="/cart"          element={<Cart />} />
+            <Route path="/wishlist"      element={<Wishlist />} />
+            <Route path="/search"        element={<SearchResult />} />
+            <Route path="/orders/:id"    element={<OrderReceipt />} />
+
+            {/* ── 회원 ── */}
+            <Route path="/login"          element={<Login />} />
+            <Route path="/signup"         element={<Signup />} />
+            <Route path="/mypage"         element={<Mypage />} />
+            <Route path="/find-password"  element={<FindPassword />} />
+            <Route path="/profile/edit"   element={<ProfileEdit />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* ── 고객센터 ── */}
+            <Route path="/customer/inquiry" element={<CustomerInquiry />} />
+            <Route path="/faq"              element={<FAQ />} />
+
+            {/* ── 관리자 ── */}
+            <Route path="/admin"                element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/admin/support"        element={<AdminRoute><CustomerSupport /></AdminRoute>} />
+            <Route path="/admin/perfumes"       element={<AdminRoute><PerfumeManagement /></AdminRoute>} />
+            <Route path="/admin/collections"    element={<AdminRoute><CollectionManagement /></AdminRoute>} />
+            <Route path="/admin/announcements"  element={<AdminRoute><AnnouncementManagement /></AdminRoute>} />
+            <Route path="/admin/events"         element={<AdminRoute><EventManagement /></AdminRoute>} />
+            <Route path="/admin/coupons"        element={<AdminRoute><CouponPointManagement /></AdminRoute>} />
+            <Route path="/admin/story"          element={<AdminRoute><StoryManagement /></AdminRoute>} />
+            {/* 커스터마이징 관리자: 공병 템플릿 추가/비활성/삭제 */}
+            <Route path="/admin/bottles"        element={<AdminRoute><BottleManagement /></AdminRoute>} />
+            
+            {/* 페이지 하단부 */}
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            
           </Routes>
         </main>
       </div>
+
       <Footer />
     </>
   );

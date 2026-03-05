@@ -11,4 +11,5 @@ public class OrderCheckoutRequestDto {
     private String receiverPhone;
     private String shippingAddress;
     private String shippingZipcode;
+    private int pointsToUse;
 }

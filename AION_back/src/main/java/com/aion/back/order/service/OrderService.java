@@ -13,7 +13,8 @@ import com.aion.back.order.entity.Order;
 import com.aion.back.order.entity.OrderItem;
 import com.aion.back.order.repository.OrderItemRepository;
 import com.aion.back.order.repository.OrderRepository;
-import jakarta.persistence.EntityManager;
+import com.aion.back.point.entity.Point;
+import com.aion.back.point.repository.PointHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,24 +33,28 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final UserCouponRepository userCouponRepository;
-    private final EntityManager entityManager;
     private final MemberRepository memberRepository;
+    private final PointHistoryRepository pointHistoryRepository; // 포인트 내역 기록용
 
     @Transactional
     public OrderResponseDto checkout(String token, OrderCheckoutRequestDto requestDto) {
+
+        // 1. 회원 조회
         Member member = memberService.getMemberEntityByToken(token);
 
+        // 2. 장바구니 조회
         List<Cart> cartItems = cartRepository.findByMember(member);
         if (cartItems.isEmpty()) {
             throw new RuntimeException("장바구니가 비어있어 주문을 진행할 수 없습니다.");
         }
 
+        // 3. 상품 금액 합산
         int totalAmount = cartItems.stream()
                 .mapToInt(item -> item.getPerfume().getPrice() * item.getQuantity())
                 .sum();
 
+        // 4. 쿠폰 할인 계산
         int discountAmount = 0;
-
         if (requestDto.getUserCouponId() != null) {
             UserCoupon userCoupon = userCouponRepository.findById(requestDto.getUserCouponId())
                     .orElseThrow(() -> new RuntimeException("쿠폰 정보를 찾을 수 없습니다."));
@@ -69,45 +74,73 @@ public class OrderService {
             userCouponRepository.save(userCoupon);
         }
 
-        int finalAmount = Math.max(0, totalAmount - discountAmount);
+        // 5. 포인트 사용 검증
+        int pointsToUse = requestDto.getPointsToUse();
+        if (pointsToUse < 0) {
+            throw new RuntimeException("포인트 사용량이 유효하지 않습니다.");
+        }
+        if (pointsToUse > 0) {
+            int currentPoints = member.getTotalPoints() == null ? 0 : member.getTotalPoints();
+            if (currentPoints < pointsToUse) {
+                throw new RuntimeException("보유 포인트가 부족합니다. (보유: " + currentPoints + "P, 요청: " + pointsToUse + "P)");
+            }
+            // 포인트 사용액이 결제 금액을 초과하지 않도록 방어
+            int maxUsable = Math.max(0, totalAmount - discountAmount);
+            if (pointsToUse > maxUsable) {
+                throw new RuntimeException("포인트 사용액이 결제 금액을 초과할 수 없습니다.");
+            }
+        }
 
+        // 6. 최종 결제 금액 계산
+        int finalAmount = Math.max(0, totalAmount - discountAmount - pointsToUse);
+
+        // 7. 주문 저장
         Order order = Order.builder()
                 .member(member)
                 .orderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .totalAmount(totalAmount)
+                .discountAmount(discountAmount)
+                .pointsUsed(pointsToUse)
                 .finalAmount(finalAmount)
-                .orderStatus("COMPLETED")
-                .createdAt(LocalDateTime.now())
+                .orderStatus("PAID")
+                .paymentMethod("CARD")
+                .receiverName(member.getName())
+                .receiverPhone(member.getPhone())
+                .shippingAddress("")
+                .shippingZipcode("")
                 .build();
 
         Order savedOrder = orderRepository.save(order);
 
-        int earnedPoints = (int) Math.floor(finalAmount * 0.01);
+        // 8. 포인트 차감 처리
+        if (pointsToUse > 0) {
+            int balanceAfterUse = (member.getTotalPoints() == null ? 0 : member.getTotalPoints()) - pointsToUse;
 
-        if (earnedPoints > 0) {
-            member.setTotalPoints((member.getTotalPoints() == null ? 0 : member.getTotalPoints()) + earnedPoints);
+            // Points_History 차감 기록 (amount: 음수)
+            Point useRecord = Point.builder()
+                    .member(member)
+                    .amount(-pointsToUse)
+                    .balanceAfter(balanceAfterUse)
+                    .reason("포인트 사용")
+                    .reasonDetail("주문 결제 포인트 차감 (" + savedOrder.getOrderNumber() + ")")
+                    .relatedOrderId(savedOrder.getOrderId())
+                    .status(Point.PointStatus.USED)
+                    .usedAt(LocalDateTime.now())
+                    .build();
+            pointHistoryRepository.save(useRecord);
+
+            // Users.total_points 차감
+            member.setTotalPoints(balanceAfterUse);
             memberRepository.save(member);
-
-            try {
-                String insertSql = "INSERT INTO \"UserPoints\" (user_email, points, description, action_type, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
-                int inserted = entityManager.createNativeQuery(insertSql)
-                        .setParameter(1, member.getEmail())
-                        .setParameter(2, earnedPoints)
-                        .setParameter(3, "상품 구매 적립 (" + savedOrder.getOrderNumber() + ")")
-                        .setParameter(4, "EARN")
-                        .executeUpdate();
-            } catch (Exception e) {
-                System.err.println("UserPoints 내역 추가 실패: " + e.getMessage());
-            }
-        } else {
-            System.out.println("적립할 포인트 0 -> 적립 쿼리 스킵");
         }
 
+        // 9. 주문 아이템 저장
         List<OrderItem> orderItems = cartItems.stream().map(cart ->
                 OrderItem.builder()
                         .order(savedOrder)
                         .perfume(cart.getPerfume())
                         .perfumeNameSnapshot(cart.getPerfume().getName())
+                        .volumeMl(cart.getPerfume().getVolumeMl() != null ? cart.getPerfume().getVolumeMl() : 50)
                         .quantity(cart.getQuantity())
                         .unitPrice(cart.getPerfume().getPrice())
                         .finalPrice(cart.getPerfume().getPrice() * cart.getQuantity())
@@ -115,7 +148,34 @@ public class OrderService {
         ).collect(Collectors.toList());
 
         orderItemRepository.saveAll(orderItems);
+
+        // 10. 장바구니 비우기
         cartRepository.deleteAll(cartItems);
+
+        // 11. 포인트 적립 처리 (최종 결제 금액의 0.1%)
+        int earnedPoints = (int) Math.floor(finalAmount * 0.001);
+        if (earnedPoints > 0) {
+            int currentBalance = member.getTotalPoints() == null ? 0 : member.getTotalPoints();
+            int balanceAfterEarn = currentBalance + earnedPoints;
+
+            // Points_History 적립 기록 (amount: 양수)
+            Point earnRecord = Point.builder()
+                    .member(member)
+                    .amount(earnedPoints)
+                    .balanceAfter(balanceAfterEarn)
+                    .reason("주문 포인트 적립")
+                    .reasonDetail("결제 금액 ₩" + String.format("%,d", finalAmount)
+                            + "의 0.1% 적립 (" + savedOrder.getOrderNumber() + ")")
+                    .relatedOrderId(savedOrder.getOrderId())
+                    .status(Point.PointStatus.AVAILABLE)
+                    .expireAt(LocalDateTime.now().plusYears(1))
+                    .build();
+            pointHistoryRepository.save(earnRecord);
+
+            // Users.total_points 적립
+            member.setTotalPoints(balanceAfterEarn);
+            memberRepository.save(member);
+        }
 
         return OrderResponseDto.from(savedOrder);
     }

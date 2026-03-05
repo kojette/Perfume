@@ -4,9 +4,6 @@ import com.aion.back.collection.dto.CollectionDetailResponse;
 import com.aion.back.collection.dto.CollectionSaveRequest;
 import com.aion.back.collection.dto.CollectionSummaryResponse;
 import com.aion.back.collection.entity.CollectionEntity;
-import com.aion.back.collection.entity.CollectionMedia;
-import com.aion.back.collection.entity.CollectionPerfume;
-import com.aion.back.collection.entity.CollectionTextBlock;
 import com.aion.back.collection.repository.CollectionMediaRepository;
 import com.aion.back.collection.repository.CollectionPerfumeRepository;
 import com.aion.back.collection.repository.CollectionRepository;
@@ -21,11 +18,9 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,18 +41,75 @@ public class CollectionService {
         }
     }
 
-    // ========== 관리자용 ==========
+    // Collections 테이블도 모두 DataSource 직접 쿼리로 처리
+    private CollectionEntity findCollectionById(UUID id) {
+        String sql = "SELECT * FROM \"Collections\" WHERE collection_id = ?::uuid";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapCollectionEntity(rs);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 조회 오류: " + e.getMessage(), e);
+        }
+        throw new RuntimeException("컬렉션을 찾을 수 없습니다.");
+    }
 
-    @Transactional(readOnly = true)
-    public List<CollectionSummaryResponse> getList(String type) {
-        return collectionRepository.findByTypeOrderByCreatedAtDesc(type)
-                .stream()
-                .map(CollectionSummaryResponse::from)
-                .collect(Collectors.toList());
+    private boolean collectionExists(UUID id) {
+        String sql = "SELECT COUNT(*) FROM \"Collections\" WHERE collection_id = ?::uuid";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 조회 오류: " + e.getMessage(), e);
+        }
+        return false;
+    }
+
+    private CollectionEntity mapCollectionEntity(ResultSet rs) throws Exception {
+        CollectionEntity e = new CollectionEntity();
+        e.setCollectionId(UUID.fromString(rs.getString("collection_id")));
+        e.setTitle(rs.getString("title"));
+        e.setDescription(rs.getString("description"));
+        e.setType(rs.getString("type"));
+        e.setTextColor(rs.getString("text_color"));
+        e.setIsPublished(rs.getBoolean("is_published"));
+        e.setIsActive(rs.getBoolean("is_active"));
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) e.setCreatedAt(createdAt.toLocalDateTime());
+        Timestamp visibleFrom = rs.getTimestamp("visible_from");
+        if (visibleFrom != null) e.setVisibleFrom(visibleFrom.toLocalDateTime());
+        Timestamp visibleUntil = rs.getTimestamp("visible_until");
+        if (visibleUntil != null) e.setVisibleUntil(visibleUntil.toLocalDateTime());
+        return e;
     }
 
     @Transactional(readOnly = true)
-    public CollectionDetailResponse getDetail(String token, Long collectionId) {
+    public List<CollectionSummaryResponse> getList(String type) {
+        String sql = "SELECT * FROM \"Collections\" WHERE type = ? ORDER BY created_at DESC";
+        List<CollectionSummaryResponse> result = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, type);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(CollectionSummaryResponse.from(mapCollectionEntity(rs)));
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("목록 조회 오류: " + e.getMessage(), e);
+        }
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public CollectionDetailResponse getDetail(String token, UUID collectionId) {
         validateAdmin(token);
         return buildDetail(collectionId);
     }
@@ -66,159 +118,219 @@ public class CollectionService {
     public CollectionDetailResponse create(String token, CollectionSaveRequest req) {
         validateAdmin(token);
 
-        CollectionEntity collection = CollectionEntity.builder()
-                .title(req.getTitle())
-                .description(req.getDescription())
-                .type(req.getType())
-                .textColor(req.getTextColor() != null ? req.getTextColor() : "#c9a961")
-                .isPublished(req.getIsPublished() != null ? req.getIsPublished() : false)
-                .isActive(false)
-                .build();
+        UUID newId = UUID.randomUUID();
+        String sql = "INSERT INTO \"Collections\" (collection_id, title, description, type, text_color, is_published, is_active, visible_from, visible_until, created_at, updated_at) " +
+                     "VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newId.toString());
+            ps.setString(2, req.getTitle());
+            ps.setString(3, req.getDescription());
+            ps.setString(4, req.getType());
+            ps.setString(5, req.getTextColor() != null ? req.getTextColor() : "#c9a961");
+            ps.setBoolean(6, req.getIsPublished() != null ? req.getIsPublished() : false);
+            ps.setBoolean(7, req.getIsActive() != null ? req.getIsActive() : false);
+            ps.setObject(8, req.getVisibleFrom() != null ? Timestamp.valueOf(req.getVisibleFrom()) : null);
+            ps.setObject(9, req.getVisibleUntil() != null ? Timestamp.valueOf(req.getVisibleUntil()) : null);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 생성 오류: " + e.getMessage(), e);
+        }
 
-        collectionRepository.save(collection);
-        saveSubData(collection.getCollectionId(), req);
-
-        return buildDetail(collection.getCollectionId());
+        saveSubData(newId, req);
+        return buildDetail(newId);
     }
 
     @Transactional
-    public CollectionDetailResponse update(String token, Long collectionId, CollectionSaveRequest req) {
+    public CollectionDetailResponse update(String token, UUID collectionId, CollectionSaveRequest req) {
         validateAdmin(token);
 
-        CollectionEntity collection = collectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("컬렉션을 찾을 수 없습니다."));
-
-        collection.setTitle(req.getTitle());
-        collection.setDescription(req.getDescription());
-        collection.setTextColor(req.getTextColor());
-        collection.setIsPublished(req.getIsPublished() != null ? req.getIsPublished() : false);
+        String sql = "UPDATE \"Collections\" SET title=?, description=?, text_color=?, is_published=?, is_active=?, visible_from=?, visible_until=?, updated_at=NOW() WHERE collection_id=?::uuid";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, req.getTitle());
+            ps.setString(2, req.getDescription());
+            ps.setString(3, req.getTextColor());
+            ps.setBoolean(4, req.getIsPublished() != null ? req.getIsPublished() : false);
+            ps.setBoolean(5, req.getIsActive() != null ? req.getIsActive() : false);
+            ps.setObject(6, req.getVisibleFrom() != null ? Timestamp.valueOf(req.getVisibleFrom()) : null);
+            ps.setObject(7, req.getVisibleUntil() != null ? Timestamp.valueOf(req.getVisibleUntil()) : null);
+            ps.setString(8, collectionId.toString());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 수정 오류: " + e.getMessage(), e);
+        }
 
         mediaRepository.deleteByCollectionId(collectionId);
         textBlockRepository.deleteByCollectionId(collectionId);
         perfumeRepository.deleteByCollectionId(collectionId);
-
         saveSubData(collectionId, req);
-
         return buildDetail(collectionId);
     }
 
     @Transactional
-    public void toggleActive(String token, Long collectionId, boolean activate) {
+    public void toggleActive(String token, UUID collectionId, boolean activate) {
         validateAdmin(token);
 
-        CollectionEntity collection = collectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("컬렉션을 찾을 수 없습니다."));
-
-        // 같은 타입의 모든 컬렉션 비활성화
-        collectionRepository.findByTypeOrderByCreatedAtDesc(collection.getType())
-                .forEach(c -> c.setIsActive(false));
+        // 같은 type의 모든 컬렉션 비활성화 후 해당 컬렉션만 활성화
+        String type = findCollectionById(collectionId).getType();
+        String deactivateSql = "UPDATE \"Collections\" SET is_active = false WHERE type = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(deactivateSql)) {
+            ps.setString(1, type);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("비활성화 오류: " + e.getMessage(), e);
+        }
 
         if (activate) {
-            collection.setIsActive(true);
+            String activateSql = "UPDATE \"Collections\" SET is_active = true WHERE collection_id = ?::uuid";
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(activateSql)) {
+                ps.setString(1, collectionId.toString());
+                ps.executeUpdate();
+            } catch (Exception e) {
+                throw new RuntimeException("활성화 오류: " + e.getMessage(), e);
+            }
         }
     }
 
     @Transactional
-    public void delete(String token, Long collectionId) {
+    public void delete(String token, UUID collectionId) {
         validateAdmin(token);
-
-        if (!collectionRepository.existsById(collectionId)) {
-            throw new RuntimeException("컬렉션을 찾을 수 없습니다.");
-        }
+        if (!collectionExists(collectionId)) throw new RuntimeException("컬렉션을 찾을 수 없습니다.");
 
         mediaRepository.deleteByCollectionId(collectionId);
         textBlockRepository.deleteByCollectionId(collectionId);
         perfumeRepository.deleteByCollectionId(collectionId);
-        collectionRepository.deleteById(collectionId);
-    }
 
-    // ========== 공개용 ==========
+        String sql = "DELETE FROM \"Collections\" WHERE collection_id = ?::uuid";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, collectionId.toString());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("삭제 오류: " + e.getMessage(), e);
+        }
+    }
 
     @Transactional(readOnly = true)
     public CollectionDetailResponse getActiveCollection(String type) {
-        CollectionEntity collection = collectionRepository.findByTypeAndIsActiveTrue(type)
-                .orElseThrow(() -> new RuntimeException("활성화된 컬렉션이 없습니다."));
-
-        return buildDetail(collection.getCollectionId());
+        String sql = "SELECT * FROM \"Collections\" WHERE type = ? AND is_active = true LIMIT 1";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, type);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    CollectionEntity collection = mapCollectionEntity(rs);
+                    return buildDetail(collection.getCollectionId());
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("활성 컬렉션 조회 오류: " + e.getMessage(), e);
+        }
+        throw new RuntimeException("활성화된 컬렉션이 없습니다.");
     }
 
     // ========== 내부 헬퍼 ==========
 
-    private void saveSubData(Long collectionId, CollectionSaveRequest req) {
+    private void saveSubData(UUID collectionId, CollectionSaveRequest req) {
         if (req.getMediaList() != null) {
-            List<CollectionMedia> mediaEntities = req.getMediaList().stream()
-                    .map(m -> CollectionMedia.builder()
-                            .collectionId(collectionId)
-                            .mediaUrl(m.getMediaUrl())
-                            .mediaType(m.getMediaType() != null ? m.getMediaType() : "IMAGE")
-                            .displayOrder(m.getDisplayOrder())
-                            .build())
-                    .collect(Collectors.toList());
-            mediaRepository.saveAll(mediaEntities);
+            for (CollectionSaveRequest.MediaItem m : req.getMediaList()) {
+                mediaRepository.insertMedia(collectionId, m.getMediaUrl(),
+                        m.getMediaType() != null ? m.getMediaType() : "IMAGE", m.getDisplayOrder());
+            }
         }
-
         if (req.getTextBlocks() != null) {
-            List<CollectionTextBlock> textEntities = req.getTextBlocks().stream()
-                    .map(t -> CollectionTextBlock.builder()
-                            .collectionId(collectionId)
-                            .content(t.getContent())
-                            .fontSize(t.getFontSize())
-                            .fontWeight(t.getFontWeight())
-                            .isItalic(t.getIsItalic() != null ? t.getIsItalic() : false)
-                            .positionX(t.getPositionX())
-                            .positionY(t.getPositionY())
-                            .displayOrder(t.getDisplayOrder())
-                            .build())
-                    .collect(Collectors.toList());
-            textBlockRepository.saveAll(textEntities);
+            for (CollectionSaveRequest.TextBlockItem t : req.getTextBlocks()) {
+                textBlockRepository.insertTextBlock(collectionId, t.getContent(),
+                        t.getFontSize(), t.getFontWeight(),
+                        t.getIsItalic() != null ? t.getIsItalic() : false,
+                        t.getPositionX(), t.getPositionY(), t.getDisplayOrder());
+            }
         }
-
         if (req.getPerfumes() != null) {
-            List<CollectionPerfume> perfumeEntities = req.getPerfumes().stream()
-                    .map(p -> CollectionPerfume.builder()
-                            .collectionId(collectionId)
-                            .perfumeId(p.getPerfumeId())
-                            .displayOrder(p.getDisplayOrder())
-                            .isFeatured(p.getIsFeatured() != null ? p.getIsFeatured() : false)
-                            .build())
-                    .collect(Collectors.toList());
-            perfumeRepository.saveAll(perfumeEntities);
+            for (CollectionSaveRequest.PerfumeItem p : req.getPerfumes()) {
+                perfumeRepository.insertPerfume(collectionId, p.getPerfumeId(),
+                        p.getDisplayOrder(), p.getIsFeatured() != null ? p.getIsFeatured() : false);
+            }
         }
     }
 
-    private CollectionDetailResponse buildDetail(Long collectionId) {
-        CollectionEntity collection = collectionRepository.findById(collectionId)
-                .orElseThrow(() -> new RuntimeException("컬렉션을 찾을 수 없습니다."));
+    private CollectionDetailResponse buildDetail(UUID collectionId) {
+        CollectionEntity collection = findCollectionById(collectionId);
 
-        List<CollectionMedia> mediaList = mediaRepository.findByCollectionIdOrderByDisplayOrderAsc(collectionId);
-        List<CollectionTextBlock> textBlocks = textBlockRepository.findByCollectionIdOrderByDisplayOrderAsc(collectionId);
-        List<CollectionPerfume> collectionPerfumes = perfumeRepository.findByCollectionIdOrderByDisplayOrderAsc(collectionId);
+        List<CollectionDetailResponse.MediaDto> mediaList = new ArrayList<>();
+        List<CollectionDetailResponse.TextBlockDto> textBlocks = new ArrayList<>();
+        List<CollectionDetailResponse.PerfumeDto> perfumeDtos = new ArrayList<>();
 
-        List<Long> perfumeIds = collectionPerfumes.stream()
-                .map(CollectionPerfume::getPerfumeId)
-                .collect(Collectors.toList());
+        try (Connection conn = dataSource.getConnection()) {
 
-        Map<Long, CollectionDetailResponse.PerfumeDto> perfumeMap = fetchPerfumeDetails(perfumeIds);
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT media_id, media_url, media_type, display_order FROM \"Collection_Media\" WHERE collection_id = ?::uuid ORDER BY display_order ASC")) {
+                ps.setString(1, collectionId.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        mediaList.add(CollectionDetailResponse.MediaDto.builder()
+                                .mediaId(UUID.fromString(rs.getString("media_id")))
+                                .mediaUrl(rs.getString("media_url"))
+                                .mediaType(rs.getString("media_type"))
+                                .displayOrder(rs.getObject("display_order") != null ? rs.getInt("display_order") : null)
+                                .build());
+                    }
+                }
+            }
 
-        List<CollectionDetailResponse.PerfumeDto> perfumeDtos = collectionPerfumes.stream()
-                .map(cp -> {
-                    CollectionDetailResponse.PerfumeDto base = perfumeMap.get(cp.getPerfumeId());
-                    if (base == null) return null;
-                    return CollectionDetailResponse.PerfumeDto.builder()
-                            .perfumeId(base.getPerfumeId())
-                            .name(base.getName())
-                            .nameEn(base.getNameEn())
-                            .price(base.getPrice())
-                            .salePrice(base.getSalePrice())
-                            .saleRate(base.getSaleRate())
-                            .brandName(base.getBrandName())
-                            .thumbnail(base.getThumbnail())
-                            .displayOrder(cp.getDisplayOrder())
-                            .isFeatured(cp.getIsFeatured())
-                            .build();
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT text_block_id, content, font_size, font_weight, is_italic, position_x, position_y, display_order FROM \"Collection_Text_Blocks\" WHERE collection_id = ?::uuid ORDER BY display_order ASC")) {
+                ps.setString(1, collectionId.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        textBlocks.add(CollectionDetailResponse.TextBlockDto.builder()
+                                .textBlockId(UUID.fromString(rs.getString("text_block_id")))
+                                .content(rs.getString("content"))
+                                .fontSize(rs.getString("font_size"))
+                                .fontWeight(rs.getString("font_weight"))
+                                .isItalic(rs.getBoolean("is_italic"))
+                                .positionX(rs.getString("position_x"))
+                                .positionY(rs.getString("position_y"))
+                                .displayOrder(rs.getObject("display_order") != null ? rs.getInt("display_order") : null)
+                                .build());
+                    }
+                }
+            }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT cp.perfume_id, cp.display_order, cp.is_featured, " +
+                    "p.name, p.name_en, p.price, p.sale_price, p.sale_rate, " +
+                    "b.brand_name, pi.image_url as thumbnail " +
+                    "FROM \"Collection_Perfumes\" cp " +
+                    "LEFT JOIN \"Perfumes\" p ON cp.perfume_id = p.perfume_id " +
+                    "LEFT JOIN \"Brands\" b ON p.brand_id = b.brand_id " +
+                    "LEFT JOIN \"Perfume_Images\" pi ON p.perfume_id = pi.perfume_id AND pi.is_thumbnail = true " +
+                    "WHERE cp.collection_id = ?::uuid ORDER BY cp.display_order ASC")) {
+                ps.setString(1, collectionId.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        perfumeDtos.add(CollectionDetailResponse.PerfumeDto.builder()
+                                .perfumeId(rs.getLong("perfume_id"))
+                                .name(rs.getString("name"))
+                                .nameEn(rs.getString("name_en"))
+                                .price(rs.getObject("price") != null ? rs.getInt("price") : null)
+                                .salePrice(rs.getObject("sale_price") != null ? rs.getInt("sale_price") : null)
+                                .saleRate(rs.getObject("sale_rate") != null ? rs.getInt("sale_rate") : null)
+                                .brandName(rs.getString("brand_name"))
+                                .thumbnail(rs.getString("thumbnail"))
+                                .displayOrder(rs.getObject("display_order") != null ? rs.getInt("display_order") : null)
+                                .isFeatured(rs.getBoolean("is_featured"))
+                                .build());
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("컬렉션 상세 조회 중 오류: " + e.getMessage(), e);
+        }
 
         return CollectionDetailResponse.builder()
                 .collectionId(collection.getCollectionId())
@@ -228,52 +340,12 @@ public class CollectionService {
                 .textColor(collection.getTextColor())
                 .isPublished(collection.getIsPublished())
                 .isActive(collection.getIsActive())
+                .visibleFrom(collection.getVisibleFrom())
+                .visibleUntil(collection.getVisibleUntil())
                 .createdAt(collection.getCreatedAt())
-                .mediaList(mediaList.stream().map(CollectionDetailResponse.MediaDto::from).collect(Collectors.toList()))
-                .textBlocks(textBlocks.stream().map(CollectionDetailResponse.TextBlockDto::from).collect(Collectors.toList()))
+                .mediaList(mediaList)
+                .textBlocks(textBlocks)
                 .perfumes(perfumeDtos)
                 .build();
-    }
-
-    private Map<Long, CollectionDetailResponse.PerfumeDto> fetchPerfumeDetails(List<Long> perfumeIds) {
-        if (perfumeIds.isEmpty()) return Collections.emptyMap();
-
-        Map<Long, CollectionDetailResponse.PerfumeDto> result = new HashMap<>();
-
-        String placeholders = perfumeIds.stream().map(id -> "?").collect(Collectors.joining(","));
-        String sql = "SELECT p.perfume_id, p.name, p.name_en, p.price, p.sale_price, p.sale_rate, " +
-                "b.brand_name, pi.image_url as thumbnail " +
-                "FROM \"Perfumes\" p " +
-                "LEFT JOIN \"Brands\" b ON p.brand_id = b.brand_id " +
-                "LEFT JOIN \"Perfume_Images\" pi ON p.perfume_id = pi.perfume_id AND pi.is_thumbnail = true " +
-                "WHERE p.perfume_id IN (" + placeholders + ")";
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            for (int i = 0; i < perfumeIds.size(); i++) {
-                ps.setLong(i + 1, perfumeIds.get(i));
-            }
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Long id = rs.getLong("perfume_id");
-                    result.put(id, CollectionDetailResponse.PerfumeDto.builder()
-                            .perfumeId(id)
-                            .name(rs.getString("name"))
-                            .nameEn(rs.getString("name_en"))
-                            .price(rs.getObject("price") != null ? rs.getInt("price") : null)
-                            .salePrice(rs.getObject("sale_price") != null ? rs.getInt("sale_price") : null)
-                            .saleRate(rs.getObject("sale_rate") != null ? rs.getInt("sale_rate") : null)
-                            .brandName(rs.getString("brand_name"))
-                            .thumbnail(rs.getString("thumbnail"))
-                            .build());
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("향수 정보 조회 중 오류가 발생했습니다: " + e.getMessage(), e);
-        }
-
-        return result;
     }
 }

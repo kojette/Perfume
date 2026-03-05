@@ -5,16 +5,19 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Builder
 public class CollectionSummaryResponse {
-    private Long collectionId;
+    private UUID collectionId;   // UUID
     private String title;
     private String description;
     private String type;
     private Boolean isPublished;
     private Boolean isActive;
+    private LocalDateTime visibleFrom;
+    private LocalDateTime visibleUntil;
     private LocalDateTime createdAt;
 
     public static CollectionSummaryResponse from(CollectionEntity c) {
@@ -25,6 +28,8 @@ public class CollectionSummaryResponse {
                 .type(c.getType())
                 .isPublished(c.getIsPublished())
                 .isActive(c.getIsActive())
+                .visibleFrom(c.getVisibleFrom())
+                .visibleUntil(c.getVisibleUntil())
                 .createdAt(c.getCreatedAt())
                 .build();
     }

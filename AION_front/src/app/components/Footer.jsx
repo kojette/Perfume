@@ -60,12 +60,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/shipping" className="hover:text-[#c9a961] italic">
+                <Link to="/faq" state={{category: '주문/배송'}} className="hover:text-[#c9a961] italic">
                   배송 안내
                 </Link>
               </li>
               <li>
-                <Link to="/refund" className="hover:text-[#c9a961] italic">
+                <Link to="/faq" state={{category: '교환/환불'}} className="hover:text-[#c9a961] italic">
                   반품 및 교환
                 </Link>
               </li>

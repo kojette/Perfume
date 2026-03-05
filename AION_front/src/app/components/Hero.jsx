@@ -8,7 +8,6 @@ import img11 from "../../assets/11.png";
 import img12 from "../../assets/12.jpg";
 import img13 from "../../assets/13.jpg";
 
-// App.js에서 계산된 navHeight를 전달받습니다.
 export function Hero({ navHeight = 0 }) {
   const [heroData, setHeroData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,33 +16,37 @@ export function Hero({ navHeight = 0 }) {
 
   const isAdmin = window.location.pathname.startsWith("/admin");
 
-  /**
-   * [핵심] 겹침 강도 설정
-   * 사용자의 요청대로 배너 전체 높이의 20%를 계산합니다.
-   * 이 값만큼 Hero 섹션을 위로(-marginTop) 끌어올립니다.
-   */
   const overlapHeight = navHeight * 0.02;
 
   useEffect(() => {
     const fetchActiveHero = async () => {
-      const { data, error } = await supabase
-        .from("hero_history")
-        .select(`
-          *,
-          hero_images(image_url)
-        `)
-        .eq("is_active", true)
-        .single();
+      try {
+        // single() 대신 limit(1) 사용 → 결과 없어도 406 대신 빈 배열 반환
+        const { data, error } = await supabase
+          .from("hero_history")
+          .select(`
+            *,
+            hero_images(image_url)
+          `)
+          .eq("is_active", true)
+          .limit(1);
 
-      if (data) {
-        setHeroData({
-          title: data.title,
-          subtitle: data.subtitle,
-          tagline: data.tagline,
-          images: data.hero_images?.map(img => img.image_url) || []
-        });
+        if (error) throw error;
+
+        const item = data?.[0];
+        if (item) {
+          setHeroData({
+            title: item.title,
+            subtitle: item.subtitle,
+            tagline: item.tagline,
+            images: item.hero_images?.map(img => img.image_url) || []
+          });
+        }
+      } catch (err) {
+        console.error("Hero 로드 실패:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchActiveHero();
@@ -58,7 +61,6 @@ export function Hero({ navHeight = 0 }) {
     const timer = setInterval(() => {
       setCurrentIdx((prevIdx) => (prevIdx + 1) % images.length);
     }, 5000);
-
     return () => clearInterval(timer);
   }, [images.length]);
 
@@ -88,11 +90,7 @@ export function Hero({ navHeight = 0 }) {
           hero_id: newHero.id,
           image_url: imgUrl
         }));
-
-        const { error: imgError } = await supabase
-          .from("hero_images")
-          .insert(imageInserts);
-
+        const { error: imgError } = await supabase.from("hero_images").insert(imageInserts);
         if (imgError) throw imgError;
       }
 
@@ -105,18 +103,15 @@ export function Hero({ navHeight = 0 }) {
   };
 
   return (
-    <section 
+    <section
       className="relative flex items-center justify-center overflow-hidden"
-      style={{ 
-        // 1. 배너의 2%만큼 위로 강제 이동
-        marginTop: `-${overlapHeight}px`, 
-        // 2. 위로 올라간 만큼 하단이 비지 않도록 높이 보정
+      style={{
+        marginTop: `-${overlapHeight}px`,
         height: `calc(100vh + ${overlapHeight}px)`,
-        // 3. 배너보다 뒤에 위치하도록 설정 (배너는 z-50임)
         zIndex: 1
       }}
     >
-      {/* ================= 배경 이미지 ================= */}
+      {/* 배경 이미지 */}
       <div className="absolute inset-0 z-0 bg-[#2a2620]">
         {images.map((img, index) => (
           <div
@@ -132,21 +127,18 @@ export function Hero({ navHeight = 0 }) {
             />
           </div>
         ))}
-        {/* 상단 겹치는 부분의 자연스러움을 위해 그라데이션 강화 */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#2a2620]/90 via-[#2a2620]/40 to-[#2a2620]/70" />
       </div>
 
-      {/* ================= 장식 ================= */}
       <CornerOrnament position="top-left" className="opacity-60" />
       <CornerOrnament position="top-right" className="opacity-60" />
       <CornerOrnament position="bottom-left" className="opacity-60" />
       <CornerOrnament position="bottom-right" className="opacity-60" />
 
-      {/* ================= 콘텐츠 ================= */}
-      <div 
+      {/* 콘텐츠 */}
+      <div
         className="relative z-10 text-center px-4 max-w-5xl mx-auto"
-        // 배너 뒤로 겹쳐지는 만큼 텍스트가 가려지지 않게 안쪽 여백 추가
-        style={{ paddingTop: `${overlapHeight}px` }} 
+        style={{ paddingTop: `${overlapHeight}px` }}
       >
         <div className="flex items-center justify-center mb-8">
           <div className="h-[1px] w-20 bg-gradient-to-r from-transparent to-[#c9a961]" />
@@ -178,7 +170,7 @@ export function Hero({ navHeight = 0 }) {
         </button>
       </div>
 
-      {/* ================= 스크롤 표시 ================= */}
+      {/* 스크롤 표시 */}
       <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-[#c9a961] animate-bounce">
         <div className="text-xs tracking-[0.3em]">SCROLL</div>
         <div className="w-[1px] h-12 bg-gradient-to-b from-[#c9a961] to-transparent" />
@@ -187,7 +179,7 @@ export function Hero({ navHeight = 0 }) {
       {isAdmin && (
         <button
           onClick={() => setEditorOpen(true)}
-           style={{ transform: `translateY(calc(${overlapHeight}px - 4px))` }}
+          style={{ transform: `translateY(calc(${overlapHeight}px - 4px))` }}
           className="absolute top-8 right-8 z-20 px-4 py-2 bg-black/60 text-[#c9a961] border border-[#c9a961]/40 text-sm tracking-widest hover:bg-black"
         >
           Hero 편집
@@ -195,13 +187,9 @@ export function Hero({ navHeight = 0 }) {
       )}
 
       {isAdmin && editorOpen && (
-        <HeroAdminOverlay 
-          onClose={() => setEditorOpen(false)} 
-          currentData={{
-            title: displayTitle,
-            subtitle: displaySubtitle,
-            tagline: displayTagline
-          }}
+        <HeroAdminOverlay
+          onClose={() => setEditorOpen(false)}
+          currentData={{ title: displayTitle, subtitle: displaySubtitle, tagline: displayTagline }}
           onSave={handleSave}
         />
       )}
