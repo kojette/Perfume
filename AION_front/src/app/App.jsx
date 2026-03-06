@@ -37,12 +37,10 @@ import CouponPointManagement from './components/pages/CouponPointManagement';
 
 import Collections from "./components/pages/Collections";
 import Signature from "./components/pages/Signature";
-import CollectionManagement from "./components/pages/CollectionManagement";
 
 import Story from './components/pages/Story';
 import StoryManagement from './components/pages/StoryManagement';
 
-// 커스터마이징 관련 페이지
 import Customization from './components/pages/Customization';
 import BottleManagement from './components/pages/BottleManagement';
 
@@ -54,51 +52,29 @@ function AppLayout() {
   const isHome = location.pathname === "/";
   const isAdmin = location.pathname.startsWith("/admin");
 
-  // ResizeObserver로 헤더+배너 높이 변화 감지 → paddingTop 즉시 재계산
   useEffect(() => {
     if (!navRef.current) return;
-
     const resizeObserver = new ResizeObserver(() => {
-      if (navRef.current) {
-        setNavHeight(navRef.current.offsetHeight);
-      }
+      if (navRef.current) setNavHeight(navRef.current.offsetHeight);
     });
-
     resizeObserver.observe(navRef.current);
     return () => resizeObserver.disconnect();
   }, []);
 
   return (
     <>
-      {/* 고정 상단 영역: 헤더 + 이벤트 배너 */}
       <div ref={navRef} className="fixed top-0 w-full z-50 shadow-lg">
         <Header />
         <EventBanner />
       </div>
 
-      {/* 헤더 높이만큼 본문 밀어내기 */}
       <div style={{ paddingTop: `${navHeight}px` }}>
-        {/* 홈 & 어드민 페이지에만 Hero 섹션 표시 */}
-        {(isHome || isAdmin) && (
-          <Hero
-            isAdmin={isAdmin}
-            navHeight={navHeight}
-          />
-        )}
+        {(isHome || isAdmin) && <Hero isAdmin={isAdmin} navHeight={navHeight} />}
 
         <main>
           <Routes>
             {/* ── 홈 ── */}
-            <Route
-              path="/"
-              element={
-                <>
-                  <FeaturedProducts />
-                  <About />
-                  <Newsletter />
-                </>
-              }
-            />
+            <Route path="/" element={<><FeaturedProducts /><About /><Newsletter /></>} />
 
             {/* ── 향수 & 컬렉션 ── */}
             <Route path="/collections" element={<Collections />} />
@@ -115,10 +91,10 @@ function AppLayout() {
             <Route path="/store" element={<Store />} />
 
             {/* ── 쇼핑 ── */}
-            <Route path="/cart"          element={<Cart />} />
-            <Route path="/wishlist"      element={<Wishlist />} />
-            <Route path="/search"        element={<SearchResult />} />
-            <Route path="/orders/:id"    element={<OrderReceipt />} />
+            <Route path="/cart"       element={<Cart />} />
+            <Route path="/wishlist"   element={<Wishlist />} />
+            <Route path="/search"     element={<SearchResult />} />
+            <Route path="/orders/:id" element={<OrderReceipt />} />
 
             {/* ── 회원 ── */}
             <Route path="/login"          element={<Login />} />
@@ -133,21 +109,18 @@ function AppLayout() {
             <Route path="/faq"              element={<FAQ />} />
 
             {/* ── 관리자 ── */}
-            <Route path="/admin"                element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            <Route path="/admin/support"        element={<AdminRoute><CustomerSupport /></AdminRoute>} />
-            <Route path="/admin/perfumes"       element={<AdminRoute><PerfumeManagement /></AdminRoute>} />
-            <Route path="/admin/collections"    element={<AdminRoute><CollectionManagement /></AdminRoute>} />
-            <Route path="/admin/announcements"  element={<AdminRoute><AnnouncementManagement /></AdminRoute>} />
-            <Route path="/admin/events"         element={<AdminRoute><EventManagement /></AdminRoute>} />
-            <Route path="/admin/coupons"        element={<AdminRoute><CouponPointManagement /></AdminRoute>} />
-            <Route path="/admin/story"          element={<AdminRoute><StoryManagement /></AdminRoute>} />
-            {/* 커스터마이징 관리자: 공병 템플릿 추가/비활성/삭제 */}
-            <Route path="/admin/bottles"        element={<AdminRoute><BottleManagement /></AdminRoute>} />
-            
-            {/* 페이지 하단부 */}
-            <Route path="/terms" element={<Terms />} />
+            <Route path="/admin"               element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/admin/support"       element={<AdminRoute><CustomerSupport /></AdminRoute>} />
+            <Route path="/admin/perfumes"      element={<AdminRoute><PerfumeManagement /></AdminRoute>} />
+            <Route path="/admin/announcements" element={<AdminRoute><AnnouncementManagement /></AdminRoute>} />
+            <Route path="/admin/events"        element={<AdminRoute><EventManagement /></AdminRoute>} />
+            <Route path="/admin/coupons"       element={<AdminRoute><CouponPointManagement /></AdminRoute>} />
+            <Route path="/admin/story"         element={<AdminRoute><StoryManagement /></AdminRoute>} />
+            <Route path="/admin/bottles"       element={<AdminRoute><BottleManagement /></AdminRoute>} />
+
+            {/* ── 약관 ── */}
+            <Route path="/terms"   element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
-            
           </Routes>
         </main>
       </div>

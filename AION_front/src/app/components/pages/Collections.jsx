@@ -1,1008 +1,938 @@
 /**
- * Collections.jsx — 리뉴얼
- * - 관리자/유저 모두 전체 활성 컬렉션 목록 표시
- * - 상단 히어로: 5초마다 컬렉션 대표이미지+문구 자동 전환
- * - 하단 그리드: 컬렉션별 카드(대표이미지 + 향수 최대3개 + 제목)
+ * Collections.jsx — 리뉴얼 v2 (레이아웃 좌표 완전 수정)
+ *
+ * 핵심 수정사항:
+ * 1. 배경 이미지를 contain → cover로 변경 (또는 양피지 비율에 맞게 aspect-ratio 2.8:1 고정)
+ *    - 양피지 이미지 비율: 약 2.8:1 (가로 1310 × 세로 460 픽셀 기준)
+ *    - aspect-ratio를 이미지 실제 비율에 맞추면 % 좌표가 정확히 대응됨
+ *
+ * 2. DEFAULT_LAYOUT 수치 완전 재계산
+ *    - 양피지 글쓰기 영역: x 14%~86%, y 20%~80%
+ *    - 좌측(이미지+이름): x 중심 약 30%, 우측(노트): x 시작 약 55%
+ *    - 구분선: x 50%
+ *
+ * 3. 레이아웃 에디터에 실시간 미리보기 추가
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
-import {
-  Plus, X, Search, Check, ChevronUp, ChevronDown,
-  Star, Save, Eye, Filter, Edit2, Trash2,
-  Calendar, Upload, Link, ChevronLeft, ChevronRight,
-} from 'lucide-react';
+import { Upload, Settings, X, Save, Check } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// ─────────────────────────────────────
+// 상수
+// ─────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────
-// 유틸리티
-// ─────────────────────────────────────────────────────────────
-const FONT_SIZE_CLASS = {
-  small:  'text-sm md:text-base',
-  medium: 'text-lg md:text-xl',
-  large:  'text-2xl md:text-3xl',
-  xlarge: 'text-3xl md:text-5xl',
-};
-const FONT_WEIGHT_CLASS = {
-  light:  'font-light',
-  normal: 'font-normal',
-  medium: 'font-medium',
-  bold:   'font-bold',
-};
+const SHELF_SIZE = 16;
 
-const fmtKRW = (n) => n != null ? `₩${Number(n).toLocaleString()}` : '-';
-
-const fmtDatetimeLocal = (iso) => {
-  if (!iso) return '';
-  if (Array.isArray(iso)) {
-    const [y, mo, d, h = 0, mi = 0] = iso;
-    return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(h).padStart(2,'0')}:${String(mi).padStart(2,'0')}`;
-  }
-  return iso.slice(0, 16);
-};
-const localToISO = (local) => (!local ? null : local.length === 16 ? local + ':00' : local);
-
+const fmtKRW = (n) => (n != null ? `₩${Number(n).toLocaleString()}` : '-');
 const checkIsAdmin = () =>
   sessionStorage.getItem('isAdmin') === 'true' &&
   sessionStorage.getItem('isLoggedIn') === 'true';
 
-const getAuthHeader = async () => {
-  const { data } = await supabase.auth.getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}` };
+const SPINE_PALETTE = [
+  { bg: '#4a2c10', accent: '#c9a961', grain: '#3a2008' },
+  { bg: '#2e1a06', accent: '#d4a853', grain: '#221302' },
+  { bg: '#5c3518', accent: '#e0c070', grain: '#482810' },
+  { bg: '#3a2410', accent: '#b8954f', grain: '#2c1c0a' },
+  { bg: '#6b3f1e', accent: '#f0d080', grain: '#542e14' },
+  { bg: '#4f3015', accent: '#c9a961', grain: '#3c2410' },
+  { bg: '#382010', accent: '#ddb870', grain: '#2c180c' },
+  { bg: '#5a3820', accent: '#cfaa4a', grain: '#452c18' },
+  { bg: '#3c2812', accent: '#e0be78', grain: '#2c1e0e' },
+  { bg: '#622e14', accent: '#c9a961', grain: '#4c2210' },
+];
+
+const SPINE_HEIGHTS = [108, 124, 96, 132, 112, 104, 128, 90, 118, 108, 134, 98, 120, 110, 100, 130];
+
+// ─────────────────────────────────────
+// DEFAULT_LAYOUT — 양피지 기준 완전 재계산
+//
+// 양피지 이미지 분석 (ChatGPT_Image 기준):
+//   전체 비율: ~2.8:1 (가로:세로)
+//   롤(두루마리 봉) 좌우 각 약 9% 차지
+//   글쓰기 가능 영역: x 13%~87%, y 18%~82%
+//
+// 레이아웃:
+//   좌측 절반(글쓰기 영역): x 13%~50% → 중심 약 31%
+//   우측 절반(글쓰기 영역): x 50%~87% → 시작 약 53%
+//   수직 중앙선: y 50%
+// ─────────────────────────────────────
+const DEFAULT_LAYOUT = {
+  // ── 향수 이미지 위치/크기
+  // 좌측 글쓰기영역(x 14%~50%) 중심 = 약 32%
+  // 세로 중앙 = 50%이지만 이미지가 크면 이름과 겹치므로 43% 정도
+  imgLeft: '31',
+  imgTop:  '44',
+  imgMaxHeight: '58%',
+  imgMaxWidth:  '19%',
+
+  // ── 향수 이름 위치
+  // 이미지 아래, 글쓰기 영역 하단 안쪽 (y 70~76%)
+  nameLeft:  '31',
+  nameTop:   '72',
+  nameWidth: '28%',
+  nameAlign: 'center',
+
+  // ── 향수 이름 스타일
+  nameFontSize:      '1.1rem',
+  nameFontWeight:    '600',
+  nameColor:         '#3d1f08',
+  nameLetterSpacing: '0.06em',
+
+  // ── 브랜드명
+  brandFontSize:      '0.62rem',
+  brandColor:         '#7a4a1e',
+  brandLetterSpacing: '0.35em',
+
+  // ── 가운데 구분선
+  // 글쓰기 영역 정중앙 x=50%, 글쓰기 영역 y 범위(18%~82%)
+  dividerLeft:       '50',
+  dividerTopPct:     '20',
+  dividerBottomPct:  '80',
+  dividerColor:      'rgba(100,60,20,0.4)',
+
+  // ── 노트 영역 위치
+  // 구분선 오른쪽 시작, 글쓰기 영역 상단
+  noteLeft:  '53',
+  noteTop:   '22',
+  noteWidth: '29%',
+
+  // ── 노트 라벨
+  noteLabelFontSize:      '0.7rem',
+  noteLabelColor:         '#7a4a1e',
+  noteLabelLetterSpacing: '0.28em',
+
+  // ── 노트 값
+  noteValueFontSize:   '0.84rem',
+  noteValueColor:      '#3d1f08',
+  noteValueLineHeight: '1.65',
+  noteGap:             '0.9rem',
+  noteDividerColor:    'rgba(100,60,20,0.2)',
 };
 
-const uploadImageToSupabase = async (file) => {
+const uploadToSupabase = async (file) => {
   const ext = file.name.split('.').pop();
   const path = `collections/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await supabase.storage.from('images').upload(path, file, { cacheControl: '3600', upsert: false });
   if (error) throw new Error('업로드 실패: ' + error.message);
-  const { data } = supabase.storage.from('images').getPublicUrl(path);
-  return data.publicUrl;
+  return supabase.storage.from('images').getPublicUrl(path).data.publicUrl;
 };
 
-// ─────────────────────────────────────────────────────────────
-// 미디어 업로더
-// ─────────────────────────────────────────────────────────────
-function MediaUploader({ onAdd }) {
-  const [mode, setMode] = useState('drop');
+// ─────────────────────────────────────
+// 배경 이미지 패널 (관리자)
+// ─────────────────────────────────────
+function BgImagePanel({ currentUrl, onUploaded, onClose }) {
+  const [mode, setMode] = useState('file');
   const [urlInput, setUrlInput] = useState('');
-  const [mediaType, setMediaType] = useState('IMAGE');
-  const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const handleFiles = async (files) => {
+  const handleFile = async (files) => {
+    if (!files?.[0]) return;
     setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        if (!file.type.startsWith('image/')) continue;
-        const url = await uploadImageToSupabase(file);
-        onAdd({ mediaUrl: url, mediaType: file.type === 'image/gif' ? 'GIF' : 'IMAGE' });
-      }
-    } catch (err) { alert(err.message); }
+    try { const url = await uploadToSupabase(files[0]); onUploaded(url); onClose(); }
+    catch (err) { alert(err.message); }
     finally { setUploading(false); }
   };
 
-  const addByUrl = () => {
-    if (!urlInput.trim()) return;
-    onAdd({ mediaUrl: urlInput.trim(), mediaType });
-    setUrlInput('');
+  const css = {
+    panel: { width: '280px', background: 'rgba(14,8,2,0.97)', border: '1px solid rgba(201,169,97,0.4)' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid rgba(201,169,97,0.2)' },
+    label: { fontSize: '0.58rem', letterSpacing: '0.45em', color: '#c9a961' },
+    tab: (active) => ({
+      flex: 1, padding: '6px 0', fontSize: '0.58rem', letterSpacing: '0.2em',
+      border: '1px solid', cursor: 'pointer',
+      borderColor: active ? 'rgba(201,169,97,0.6)' : 'rgba(201,169,97,0.2)',
+      color: active ? '#c9a961' : 'rgba(250,246,239,0.35)',
+      background: active ? 'rgba(201,169,97,0.12)' : 'transparent',
+    }),
+    dropzone: { border: '2px dashed rgba(201,169,97,0.3)', padding: '24px 12px', textAlign: 'center', cursor: 'pointer' },
+    input: { flex: 1, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(201,169,97,0.25)', padding: '7px 10px', fontSize: '0.72rem', color: '#faf6ef', outline: 'none' },
   };
 
   return (
-    <div className="border border-[#c9a961]/20 p-5 space-y-3">
-      <div className="flex gap-2 mb-3">
-        {[['drop','파일 업로드',<Upload size={11}/>],['url','URL 입력',<Link size={11}/>]].map(([m,label,icon])=>(
-          <button key={m} onClick={()=>setMode(m)}
-            className={`px-4 py-1.5 text-[10px] tracking-widest border transition-all flex items-center gap-1.5 ${mode===m?'bg-[#c9a961]/20 border-[#c9a961]/60 text-[#c9a961]':'border-[#c9a961]/20 text-[#e8dcc8]/40 hover:border-[#c9a961]/40'}`}>
-            {icon} {label}
-          </button>
-        ))}
+    <div style={{ ...css.panel, position: 'absolute', top: '112px', right: 0, zIndex: 40 }}>
+      <div style={css.header}>
+        <span style={css.label}>BACKGROUND IMAGE</span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(250,246,239,0.4)', cursor: 'pointer' }}><X size={13} /></button>
       </div>
-      {mode === 'drop' && (
-        <div onDragOver={e=>{e.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)}
-          onDrop={e=>{e.preventDefault();setDragging(false);handleFiles(e.dataTransfer.files);}}
-          onClick={()=>document.getElementById('col-img-upload').click()}
-          className={`border-2 border-dashed p-8 text-center cursor-pointer transition-all ${dragging?'border-[#c9a961] bg-[#c9a961]/10':'border-[#c9a961]/30 hover:bg-white/5'}`}>
-          {uploading
-            ? <p className="text-[#c9a961] text-sm tracking-widest animate-pulse">업로드 중...</p>
-            : <><Upload size={24} className="mx-auto mb-2 text-[#c9a961]/40"/>
-               <p className="text-sm text-[#c9a961] tracking-widest mb-1">이미지를 드래그하거나 클릭</p>
-               <p className="text-[10px] text-[#e8dcc8]/30">JPG · PNG · GIF · 여러 장 가능</p></>
-          }
-          <input id="col-img-upload" type="file" accept="image/*" multiple hidden onChange={e=>handleFiles(e.target.files)}/>
-        </div>
-      )}
-      {mode === 'url' && (
-        <div className="flex gap-2">
-          <select value={mediaType} onChange={e=>setMediaType(e.target.value)}
-            className="bg-black/30 border border-[#c9a961]/25 px-3 py-2.5 text-sm text-[#e8dcc8] outline-none">
-            <option value="IMAGE">이미지</option>
-            <option value="GIF">GIF</option>
-          </select>
-          <input value={urlInput} onChange={e=>setUrlInput(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&addByUrl()} placeholder="https://..."
-            className="flex-1 bg-black/30 border border-[#c9a961]/25 px-4 py-2.5 text-sm focus:border-[#c9a961] outline-none placeholder:text-[#e8dcc8]/25"/>
-          <button onClick={addByUrl}
-            className="px-4 py-2.5 bg-[#c9a961]/20 border border-[#c9a961]/40 text-[#c9a961] hover:bg-[#c9a961]/30 transition-all">
-            <Plus size={16}/>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// 컬렉션 에디터 (기존과 동일, type 고정)
-// ─────────────────────────────────────────────────────────────
-function CollectionEditor({ collectionId, onClose, onSaved }) {
-  const isNew = !collectionId;
-  const [activeTab, setActiveTab] = useState('basic');
-  const [saving, setSaving] = useState(false);
-  const [loadingData, setLoadingData] = useState(!isNew);
-  const [form, setForm] = useState({
-    title: '', description: '', textColor: '#c9a961',
-    isPublished: false, isActive: false,
-    visibleFrom: '', visibleUntil: '',
-  });
-  const [mediaList, setMediaList] = useState([]);
-  const [textBlocks, setTextBlocks] = useState([]);
-  const [textInput, setTextInput] = useState({
-    content: '', fontSize: 'xlarge', fontWeight: 'bold',
-    isItalic: false, positionX: '50%', positionY: '45%',
-  });
-  const [allPerfumes, setAllPerfumes] = useState([]);
-  const [allBrands, setAllBrands] = useState([]);
-  const [allTags, setAllTags] = useState([]);
-  const [selectedPerfumes, setSelectedPerfumes] = useState([]);
-  const [perfumeSearch, setPerfumeSearch] = useState('');
-  const [brandFilter, setBrandFilter] = useState('');
-  const [tagFilter, setTagFilter] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
-
-  useEffect(() => {
-    loadMasterData();
-    if (!isNew) loadCollection();
-    else setLoadingData(false);
-  }, []);
-
-  const loadMasterData = async () => {
-    try {
-      const { data: perfumes } = await supabase.from('Perfumes')
-        .select('perfume_id, name, name_en, price, sale_price, sale_rate, brand_id')
-        .eq('is_active', true).order('name');
-      const brandIds = [...new Set(perfumes?.map(p => p.brand_id).filter(Boolean))];
-      const { data: brands } = await supabase.from('Brands').select('brand_id, brand_name').in('brand_id', brandIds).order('brand_name');
-      const brandMap = Object.fromEntries(brands?.map(b => [b.brand_id, b.brand_name]) || []);
-      const perfumeIds = perfumes?.map(p => p.perfume_id) || [];
-      const { data: images } = await supabase.from('Perfume_Images').select('perfume_id, image_url').in('perfume_id', perfumeIds).eq('is_thumbnail', true);
-      const imgMap = Object.fromEntries(images?.map(i => [i.perfume_id, i.image_url]) || []);
-      const { data: ptags } = await supabase.from('Perfume_Tags').select('perfume_id, tag_id').in('perfume_id', perfumeIds);
-      const tagMap = {};
-      ptags?.forEach(pt => { if (!tagMap[pt.perfume_id]) tagMap[pt.perfume_id] = []; tagMap[pt.perfume_id].push(pt.tag_id); });
-      setAllBrands(brands || []);
-      setAllPerfumes(perfumes?.map(p => ({ ...p, brand_name: brandMap[p.brand_id]||'브랜드 없음', thumbnail: imgMap[p.perfume_id], tag_ids: tagMap[p.perfume_id]||[] })) || []);
-      const { data: tags } = await supabase.from('Preference_Tags').select('tag_id, tag_name').eq('is_active', true).order('tag_name');
-      setAllTags(tags || []);
-    } catch (err) { console.error('마스터 데이터 로드 실패:', err); }
-  };
-
-  const loadCollection = async () => {
-    setLoadingData(true);
-    try {
-      const authHeader = await getAuthHeader();
-      if (!authHeader) throw new Error('로그인이 필요합니다');
-      const res = await fetch(`${API_BASE}/api/collections/${collectionId}`, { headers: authHeader });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
-      const c = json.data;
-      setForm({ title: c.title, description: c.description||'', textColor: c.textColor||'#c9a961', isPublished: c.isPublished??false, isActive: c.isActive??false, visibleFrom: fmtDatetimeLocal(c.visibleFrom), visibleUntil: fmtDatetimeLocal(c.visibleUntil) });
-      setMediaList((c.mediaList||[]).map(m=>({...m,_id:m.mediaId})));
-      setTextBlocks((c.textBlocks||[]).map(t=>({...t,_id:t.textBlockId})));
-      setSelectedPerfumes((c.perfumes||[]).map(p=>({ perfume_id:p.perfumeId, name:p.name, name_en:p.nameEn, price:p.price, sale_price:p.salePrice, sale_rate:p.saleRate, brand_name:p.brandName, thumbnail:p.thumbnail, display_order:p.displayOrder, is_featured:p.isFeatured })));
-    } catch (err) { alert('컬렉션 로드 실패: ' + err.message); }
-    finally { setLoadingData(false); }
-  };
-
-  const addMedia = ({ mediaUrl, mediaType }) =>
-    setMediaList(prev => [...prev, { _id:`tmp_${Date.now()}`, mediaUrl, mediaType:mediaType||'IMAGE', displayOrder:prev.length }]);
-
-  const moveMedia = (idx, dir) => setMediaList(prev => {
-    const list = [...prev]; const ni = dir==='up'?idx-1:idx+1;
-    if (ni<0||ni>=list.length) return prev;
-    [list[idx],list[ni]]=[list[ni],list[idx]];
-    return list.map((m,i)=>({...m,displayOrder:i}));
-  });
-
-  const addTextBlock = () => {
-    if (!textInput.content.trim()) { alert('텍스트를 입력하세요'); return; }
-    setTextBlocks(prev=>[...prev,{_id:`tmp_${Date.now()}`,...textInput,displayOrder:prev.length}]);
-    setTextInput({ content:'', fontSize:'xlarge', fontWeight:'bold', isItalic:false, positionX:'50%', positionY:'45%' });
-  };
-
-  const filteredPerfumes = allPerfumes.filter(p => {
-    const q = perfumeSearch.toLowerCase();
-    return (!q || p.name?.toLowerCase().includes(q) || p.name_en?.toLowerCase().includes(q) || p.brand_name?.toLowerCase().includes(q))
-      && (!brandFilter || String(p.brand_id)===brandFilter)
-      && (!tagFilter || p.tag_ids?.includes(Number(tagFilter)));
-  });
-
-  const togglePerfume = (p) => setSelectedPerfumes(prev => {
-    const exists = prev.some(sp=>sp.perfume_id===p.perfume_id);
-    return exists ? prev.filter(sp=>sp.perfume_id!==p.perfume_id) : [...prev,{...p,display_order:prev.length,is_featured:false}];
-  });
-
-  const movePerfume = (idx, dir) => setSelectedPerfumes(prev => {
-    const list=[...prev]; const ni=dir==='up'?idx-1:idx+1;
-    if(ni<0||ni>=list.length) return prev;
-    [list[idx],list[ni]]=[list[ni],list[idx]];
-    return list.map((p,i)=>({...p,display_order:i}));
-  });
-
-  const handleSave = async () => {
-    if (!form.title.trim()) { alert('제목을 입력하세요'); return; }
-    if (mediaList.length === 0) { alert('배경 이미지를 최소 1개 추가하세요'); return; }
-    const authHeader = await getAuthHeader();
-    if (!authHeader) { alert('로그인이 필요합니다.'); return; }
-    setSaving(true);
-    const body = {
-      title: form.title, description: form.description||null, type: 'COLLECTION',
-      textColor: form.textColor, isPublished: form.isPublished, isActive: form.isActive,
-      visibleFrom: localToISO(form.visibleFrom), visibleUntil: localToISO(form.visibleUntil),
-      mediaList: mediaList.map((m,i)=>({ mediaUrl:m.mediaUrl, mediaType:m.mediaType||'IMAGE', displayOrder:i })),
-      textBlocks: textBlocks.map((t,i)=>({ content:t.content, fontSize:t.fontSize, fontWeight:t.fontWeight, isItalic:t.isItalic??false, positionX:t.positionX, positionY:t.positionY, displayOrder:i })),
-      perfumes: selectedPerfumes.map((p,i)=>({ perfumeId:p.perfume_id, displayOrder:i, isFeatured:p.is_featured||false })),
-    };
-    try {
-      const url = isNew ? `${API_BASE}/api/collections` : `${API_BASE}/api/collections/${collectionId}`;
-      const res = await fetch(url, { method:isNew?'POST':'PUT', headers:{'Content-Type':'application/json',...authHeader}, body:JSON.stringify(body) });
-      if (!res.ok) { const text=await res.text(); throw new Error(`HTTP ${res.status}: ${text.slice(0,200)}`); }
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
-      if (json.data?.collectionId) {
-        await fetch(`${API_BASE}/api/collections/${json.data.collectionId}/active?activate=${form.isActive}`, { method:'PATCH', headers:authHeader });
-      }
-      alert(isNew ? '컬렉션이 생성되었습니다!' : '수정 사항이 저장되었습니다!');
-      onSaved?.(); onClose();
-    } catch (err) { alert('저장 실패: ' + err.message); }
-    finally { setSaving(false); }
-  };
-
-  if (loadingData) return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#c9a961]"/>
-    </div>
-  );
-
-  const TABS = [
-    { id:'basic', label:'기본 정보' },
-    { id:'media', label:`배경 미디어${mediaList.length?` (${mediaList.length})`:''}` },
-    { id:'text',  label:`문구 (선택)${textBlocks.length?` · ${textBlocks.length}개`:''}` },
-    { id:'perfumes', label:`향수 선택${selectedPerfumes.length?` (${selectedPerfumes.length})`:''}` },
-  ];
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center overflow-y-auto py-6 px-4">
-      <div className="w-full max-w-5xl bg-[#1a1714] text-[#e8dcc8] border border-[#c9a961]/30 shadow-2xl my-auto">
-        <div className="flex justify-between items-center px-8 py-5 border-b border-[#c9a961]/20">
-          <div>
-            <p className="text-[#c9a961] text-[9px] tracking-[0.6em] mb-1">ADMIN · COLLECTION EDITOR</p>
-            <h2 className="text-base tracking-[0.25em]">{isNew ? '새 컬렉션 만들기' : '컬렉션 수정'}</h2>
-          </div>
-          <div className="flex gap-3 items-center">
-            <button onClick={()=>setShowPreview(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-[#c9a961]/30 text-[#c9a961] text-[10px] tracking-widest hover:bg-[#c9a961]/10 transition-all">
-              <Eye size={13}/> 미리보기
-            </button>
-            <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-2 px-6 py-2 bg-[#c9a961] text-[#1a1714] text-[10px] tracking-widest hover:bg-[#b89851] transition-all disabled:opacity-50">
-              <Save size={13}/> {saving ? '저장중...' : '저장'}
-            </button>
-            <button onClick={onClose} className="p-2 text-[#e8dcc8]/40 hover:text-white"><X size={18}/></button>
-          </div>
-        </div>
-
-        <div className="flex border-b border-[#c9a961]/15 overflow-x-auto">
-          {TABS.map(tab=>(
-            <button key={tab.id} onClick={()=>setActiveTab(tab.id)}
-              className={`px-5 py-3.5 text-[10px] tracking-[0.2em] border-b-2 transition-colors whitespace-nowrap ${activeTab===tab.id?'text-[#c9a961] border-[#c9a961]':'text-[#e8dcc8]/40 border-transparent hover:text-[#e8dcc8]/70'}`}>
-              {tab.label}
-            </button>
+      <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {[['file', '파일 업로드'], ['url', 'URL 입력']].map(([m, l]) => (
+            <button key={m} onClick={() => setMode(m)} style={css.tab(mode === m)}>{l}</button>
           ))}
         </div>
-
-        <div className="p-8">
-          {activeTab === 'basic' && (
-            <div className="space-y-5">
-              <div>
-                <label className="block text-[10px] tracking-[0.4em] text-[#c9a961] mb-2">제목 *</label>
-                <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="예: 2026 Spring Collection"
-                  className="w-full bg-black/30 border border-[#c9a961]/25 px-4 py-3 text-sm focus:border-[#c9a961] outline-none placeholder:text-[#e8dcc8]/25"/>
-              </div>
-              <div>
-                <label className="block text-[10px] tracking-[0.4em] text-[#c9a961] mb-2">소개 문구</label>
-                <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} rows={3}
-                  className="w-full bg-black/30 border border-[#c9a961]/25 px-4 py-3 text-sm focus:border-[#c9a961] outline-none resize-none placeholder:text-[#e8dcc8]/25"/>
-              </div>
-              <div>
-                <label className="block text-[10px] tracking-[0.4em] text-[#c9a961] mb-2">텍스트 색상</label>
-                <div className="flex gap-3 items-center">
-                  <input type="color" value={form.textColor} onChange={e=>setForm({...form,textColor:e.target.value})}
-                    className="h-11 w-16 bg-transparent border border-[#c9a961]/25 cursor-pointer"/>
-                  <input type="text" value={form.textColor} onChange={e=>setForm({...form,textColor:e.target.value})}
-                    className="w-32 bg-black/30 border border-[#c9a961]/25 px-3 py-3 text-sm focus:border-[#c9a961] outline-none"/>
-                </div>
-              </div>
-              <div className="border border-[#c9a961]/20 p-5 space-y-4">
-                <p className="text-[10px] tracking-[0.4em] text-[#c9a961] flex items-center gap-2"><Calendar size={12}/> 가시 기간</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[['visibleFrom','노출 시작일시'],['visibleUntil','노출 종료일시']].map(([key,label])=>(
-                    <div key={key}>
-                      <label className="block text-[9px] text-[#e8dcc8]/50 mb-1.5">{label}</label>
-                      <input type="datetime-local" value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}
-                        className="w-full bg-black/30 border border-[#c9a961]/25 px-3 py-2.5 text-sm text-[#e8dcc8] focus:border-[#c9a961] outline-none"/>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex gap-8">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={form.isPublished} onChange={e=>setForm({...form,isPublished:e.target.checked})} className="w-4 h-4 accent-[#c9a961]"/>
-                  <span className="text-sm text-[#e8dcc8]/70">공개</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})} className="w-4 h-4 accent-[#c9a961]"/>
-                  <span className="text-sm text-[#e8dcc8]/70">활성화 (메인 표시)</span>
-                </label>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'media' && (
-            <div className="space-y-5">
-              <MediaUploader onAdd={addMedia}/>
-              <div className="space-y-2">
-                {mediaList.map((m,i)=>(
-                  <div key={m._id||i} className="flex items-center gap-3 p-3 border border-[#c9a961]/15 bg-black/20">
-                    <div className="w-16 h-16 overflow-hidden bg-black/40 flex-shrink-0">
-                      <img src={m.mediaUrl} alt="" className="w-full h-full object-cover" onError={e=>{e.target.style.display='none';}}/>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] text-[#c9a961]">{i+1}번째</span>
-                      <p className="text-xs text-[#e8dcc8]/40 truncate">{m.mediaUrl}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button onClick={()=>moveMedia(i,'up')} disabled={i===0} className="p-1.5 hover:text-[#c9a961] disabled:opacity-20"><ChevronUp size={14}/></button>
-                      <button onClick={()=>moveMedia(i,'down')} disabled={i===mediaList.length-1} className="p-1.5 hover:text-[#c9a961] disabled:opacity-20"><ChevronDown size={14}/></button>
-                      <button onClick={()=>setMediaList(prev=>prev.filter((_,j)=>j!==i))} className="p-1.5 text-red-400/70 hover:text-red-400"><X size={14}/></button>
-                    </div>
-                  </div>
-                ))}
-                {mediaList.length === 0 && <p className="text-center text-[#e8dcc8]/25 py-10 italic text-sm">배경 이미지를 추가하세요</p>}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'text' && (
-            <div className="space-y-5">
-              <div className="bg-[#c9a961]/5 border border-[#c9a961]/20 px-4 py-3 text-[10px] text-[#c9a961]/70 tracking-wider">
-                💡 문구는 선택사항입니다. 여러 개 추가 시 5초마다 슬라이드됩니다.
-              </div>
-              <div className="border border-[#c9a961]/20 p-5">
-                <div className="space-y-3">
-                  <input value={textInput.content} onChange={e=>setTextInput({...textInput,content:e.target.value})} placeholder="예: SPRING 2026"
-                    className="w-full bg-black/30 border border-[#c9a961]/25 px-4 py-2.5 text-sm focus:border-[#c9a961] outline-none placeholder:text-[#e8dcc8]/25"/>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-[9px] text-[#c9a961]/60 mb-1">크기</label>
-                      <select value={textInput.fontSize} onChange={e=>setTextInput({...textInput,fontSize:e.target.value})}
-                        className="w-full bg-black/30 border border-[#c9a961]/25 px-2 py-2 text-xs text-[#e8dcc8] outline-none">
-                        {[['small','작게'],['medium','보통'],['large','크게'],['xlarge','매우 크게']].map(([v,l])=><option key={v} value={v}>{l}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] text-[#c9a961]/60 mb-1">두께</label>
-                      <select value={textInput.fontWeight} onChange={e=>setTextInput({...textInput,fontWeight:e.target.value})}
-                        className="w-full bg-black/30 border border-[#c9a961]/25 px-2 py-2 text-xs text-[#e8dcc8] outline-none">
-                        {[['light','얇게'],['normal','보통'],['medium','중간'],['bold','굵게']].map(([v,l])=><option key={v} value={v}>{l}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] text-[#c9a961]/60 mb-1">X 위치</label>
-                      <input value={textInput.positionX} onChange={e=>setTextInput({...textInput,positionX:e.target.value})} placeholder="50%"
-                        className="w-full bg-black/30 border border-[#c9a961]/25 px-2 py-2 text-xs text-[#e8dcc8] outline-none"/>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] text-[#c9a961]/60 mb-1">Y 위치</label>
-                      <input value={textInput.positionY} onChange={e=>setTextInput({...textInput,positionY:e.target.value})} placeholder="45%"
-                        className="w-full bg-black/30 border border-[#c9a961]/25 px-2 py-2 text-xs text-[#e8dcc8] outline-none"/>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={textInput.isItalic} onChange={e=>setTextInput({...textInput,isItalic:e.target.checked})} className="w-3.5 h-3.5 accent-[#c9a961]"/>
-                      <span className="text-xs text-[#e8dcc8]/60 italic">이탤릭체</span>
-                    </label>
-                    <button onClick={addTextBlock} className="px-5 py-2 bg-[#c9a961]/20 border border-[#c9a961]/40 text-[#c9a961] text-[10px] tracking-widest hover:bg-[#c9a961]/30 transition-all">+ 추가</button>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {textBlocks.map((block,i)=>(
-                  <div key={block._id||i} className="flex items-center gap-4 p-4 border border-[#c9a961]/15 bg-black/20">
-                    <span className="text-[10px] text-[#c9a961]/40 w-4">{i+1}</span>
-                    <p className={`flex-1 ${FONT_SIZE_CLASS[block.fontSize]} ${FONT_WEIGHT_CLASS[block.fontWeight]} ${block.isItalic?'italic':''}`} style={{color:form.textColor}}>{block.content}</p>
-                    <div className="flex gap-1">
-                      <button onClick={()=>setTextBlocks(prev=>{const l=[...prev];if(i>0){[l[i],l[i-1]]=[l[i-1],l[i]];}return l;})} disabled={i===0} className="p-1.5 hover:text-[#c9a961] disabled:opacity-20"><ChevronUp size={14}/></button>
-                      <button onClick={()=>setTextBlocks(prev=>{const l=[...prev];if(i<l.length-1){[l[i],l[i+1]]=[l[i+1],l[i]];}return l;})} disabled={i===textBlocks.length-1} className="p-1.5 hover:text-[#c9a961] disabled:opacity-20"><ChevronDown size={14}/></button>
-                      <button onClick={()=>setTextBlocks(prev=>prev.filter((_,j)=>j!==i))} className="p-1.5 text-red-400/70 hover:text-red-400"><X size={14}/></button>
-                    </div>
-                  </div>
-                ))}
-                {textBlocks.length === 0 && <p className="text-center text-[#e8dcc8]/25 py-10 italic text-sm">문구를 추가하세요 (없으면 컬렉션 제목 표시)</p>}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'perfumes' && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="relative">
-                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#e8dcc8]/30"/>
-                  <input value={perfumeSearch} onChange={e=>setPerfumeSearch(e.target.value)} placeholder="향수명 · 브랜드 검색"
-                    className="w-full bg-black/30 border border-[#c9a961]/25 pl-9 pr-4 py-2.5 text-sm focus:border-[#c9a961] outline-none placeholder:text-[#e8dcc8]/25"/>
-                </div>
-                <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} className="bg-black/30 border border-[#c9a961]/25 px-3 py-2.5 text-sm text-[#e8dcc8] outline-none">
-                  <option value="">전체 브랜드</option>
-                  {allBrands.map(b=><option key={b.brand_id} value={String(b.brand_id)}>{b.brand_name}</option>)}
-                </select>
-                <select value={tagFilter} onChange={e=>setTagFilter(e.target.value)} className="bg-black/30 border border-[#c9a961]/25 px-3 py-2.5 text-sm text-[#e8dcc8] outline-none">
-                  <option value="">전체 태그</option>
-                  {allTags.map(t=><option key={t.tag_id} value={String(t.tag_id)}>{t.tag_name}</option>)}
-                </select>
-              </div>
-              <div className="border border-[#c9a961]/15 bg-black/20 max-h-72 overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2">
-                  {filteredPerfumes.map(p => {
-                    const selected = selectedPerfumes.some(sp=>sp.perfume_id===p.perfume_id);
-                    return (
-                      <div key={p.perfume_id} onClick={()=>togglePerfume(p)}
-                        className={`flex items-center gap-3 p-3 cursor-pointer border-b border-[#c9a961]/10 transition-colors ${selected?'bg-[#c9a961]/15':'hover:bg-white/5'}`}>
-                        <div className="w-10 h-10 flex-shrink-0 overflow-hidden bg-black/40">
-                          {p.thumbnail ? <img src={p.thumbnail} alt={p.name} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-[#c9a961]/30 text-lg">{p.name?.charAt(0)}</div>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-[#e8dcc8] truncate">{p.name}</p>
-                          <p className="text-[10px] text-[#e8dcc8]/40">{p.brand_name} · {fmtKRW(p.price)}</p>
-                        </div>
-                        {selected && <Check size={14} className="text-[#c9a961] flex-shrink-0"/>}
-                      </div>
-                    );
-                  })}
-                  {filteredPerfumes.length === 0 && <div className="col-span-2 text-center py-10 text-[#e8dcc8]/25 italic text-sm">검색 결과가 없습니다</div>}
-                </div>
-              </div>
-              {selectedPerfumes.length > 0 && (
-                <div>
-                  <p className="text-[10px] tracking-[0.4em] text-[#c9a961] mb-3">선택된 향수 ({selectedPerfumes.length}개)</p>
-                  <div className="space-y-1.5">
-                    {selectedPerfumes.map((p,i)=>(
-                      <div key={p.perfume_id} className="flex items-center gap-3 px-4 py-2.5 border border-[#c9a961]/15 bg-black/20">
-                        <span className="text-[10px] text-[#c9a961]/60 w-5 text-center">{i+1}</span>
-                        <div className="w-8 h-8 flex-shrink-0 overflow-hidden bg-black/40">
-                          {p.thumbnail ? <img src={p.thumbnail} alt={p.name} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-[#c9a961]/30">{p.name?.charAt(0)}</div>}
-                        </div>
-                        <p className="flex-1 text-xs text-[#e8dcc8] truncate">{p.name}</p>
-                        <button onClick={()=>setSelectedPerfumes(prev=>prev.map(sp=>sp.perfume_id===p.perfume_id?{...sp,is_featured:!sp.is_featured}:sp))}
-                          className={`flex items-center gap-1 px-2 py-1 text-[9px] border transition-all ${p.is_featured?'border-[#c9a961] text-[#c9a961] bg-[#c9a961]/15':'border-[#e8dcc8]/20 text-[#e8dcc8]/30 hover:border-[#c9a961]/40'}`}>
-                          <Star size={9} className={p.is_featured?'fill-[#c9a961]':''}/> {p.is_featured?'FEATURED':'일반'}
-                        </button>
-                        <button onClick={()=>movePerfume(i,'up')} disabled={i===0} className="p-1 hover:text-[#c9a961] disabled:opacity-20"><ChevronUp size={13}/></button>
-                        <button onClick={()=>movePerfume(i,'down')} disabled={i===selectedPerfumes.length-1} className="p-1 hover:text-[#c9a961] disabled:opacity-20"><ChevronDown size={13}/></button>
-                        <button onClick={()=>togglePerfume(p)} className="p-1 text-red-400/60 hover:text-red-400"><X size={13}/></button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showPreview && (
-        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-6">
-          <div className="bg-[#faf8f3] max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-[#2a2620] tracking-widest">PREVIEW</h3>
-              <button onClick={()=>setShowPreview(false)} className="p-2 hover:bg-gray-100"><X size={18}/></button>
-            </div>
-            <div className="p-6">
-              <div className="relative h-72 overflow-hidden mb-6 bg-[#2a2620]">
-                {mediaList[0] && <img src={mediaList[0].mediaUrl} alt="" className="w-full h-full object-cover"/>}
-                <div className="absolute inset-0 bg-black/30"/>
-                {textBlocks.length > 0
-                  ? textBlocks.map((b,i)=>(
-                    <div key={i} className="absolute" style={{left:b.positionX,top:b.positionY,transform:'translate(-50%,-50%)',color:form.textColor}}>
-                      <p className={`${FONT_SIZE_CLASS[b.fontSize]} ${FONT_WEIGHT_CLASS[b.fontWeight]} ${b.isItalic?'italic':''} tracking-widest drop-shadow-lg text-center px-4`}>{b.content}</p>
-                    </div>))
-                  : form.title && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-3xl tracking-[0.3em] drop-shadow-lg" style={{color:form.textColor}}>{form.title}</p>
-                    </div>)
-                }
-              </div>
-            </div>
+        {mode === 'file' ? (
+          <div style={css.dropzone} onClick={() => document.getElementById('bg-upload-inp').click()}>
+            {uploading
+              ? <p style={{ color: '#c9a961', fontSize: '0.78rem', letterSpacing: '0.15em' }}>업로드 중...</p>
+              : <>
+                <Upload size={16} style={{ margin: '0 auto 6px', color: 'rgba(201,169,97,0.5)' }} />
+                <p style={{ fontSize: '0.72rem', color: 'rgba(250,246,239,0.55)' }}>클릭하여 이미지 선택</p>
+                <p style={{ fontSize: '0.62rem', color: 'rgba(250,246,239,0.25)', marginTop: '3px' }}>JPG · PNG · WEBP</p>
+              </>}
+            <input id="bg-upload-inp" type="file" accept="image/*" hidden onChange={e => handleFile(e.target.files)} />
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <input value={urlInput} onChange={e => setUrlInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && urlInput.trim()) { onUploaded(urlInput.trim()); onClose(); } }}
+              placeholder="https://..." style={css.input} />
+            <button onClick={() => { if (urlInput.trim()) { onUploaded(urlInput.trim()); onClose(); } }}
+              style={{ padding: '7px 10px', background: 'rgba(201,169,97,0.2)', border: '1px solid rgba(201,169,97,0.4)', color: '#c9a961', cursor: 'pointer' }}>
+              <Check size={13} />
+            </button>
+          </div>
+        )}
+        {currentUrl && (
+          <div style={{ borderTop: '1px solid rgba(201,169,97,0.15)', paddingTop: '10px' }}>
+            <p style={{ fontSize: '0.58rem', color: 'rgba(250,246,239,0.28)', letterSpacing: '0.2em', marginBottom: '5px' }}>현재 이미지</p>
+            <img src={currentUrl} alt="" style={{ width: '100%', height: '56px', objectFit: 'cover', opacity: 0.55 }} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// 컬렉션 목록 관리 패널 (관리자용)
-// ─────────────────────────────────────────────────────────────
-function CollectionListPanel({ onClose, onEdit, onRefresh }) {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
+// ─────────────────────────────────────
+// 레이아웃 에디터 (관리자) — 실시간 미리보기 포함
+// ─────────────────────────────────────
+function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
+  const [local, setLocal] = useState({ ...layout });
+  const set = (k, v) => setLocal(p => ({ ...p, [k]: v }));
 
-  useEffect(() => { fetchList(); }, []);
-
-  const fetchList = async () => {
-    setLoading(true);
-    try {
-      const authHeader = await getAuthHeader();
-      if (!authHeader) return;
-      const res = await fetch(`${API_BASE}/api/collections?type=COLLECTION`, { headers: authHeader });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json.success) setList(json.data || []);
-    } catch (err) { console.error('목록 로드 실패:', err); }
-    finally { setLoading(false); }
+  // 미리보기용 더미 데이터
+  const PREVIEW = {
+    name: '향수 이름 예시',
+    brand_name: 'BRAND NAME',
+    thumbnail: null,
+    notes: {
+      top:    ['베르가못', '레몬', '네롤리'],
+      middle: ['로즈', '재스민', '아이리스'],
+      base:   ['머스크', '샌달우드', '앰버'],
+    },
   };
 
-  const toggleActive = async (id, current) => {
-    const authHeader = await getAuthHeader();
-    if (!authHeader) return;
-    await fetch(`${API_BASE}/api/collections/${id}/active?activate=${!current}`, { method: 'PATCH', headers: authHeader });
-    fetchList(); onRefresh?.();
+  const SECTIONS = [
+    {
+      title: '향수 이미지 — 위치 (컨테이너 기준 %)',
+      fields: [
+        ['imgLeft',      '중심 X (0~100)'],
+        ['imgTop',       '중심 Y (0~100)'],
+        ['imgMaxHeight', '최대 높이 (예: 55%)'],
+        ['imgMaxWidth',  '최대 너비 (예: 20%)'],
+      ],
+    },
+    {
+      title: '향수 이름 — 위치 (컨테이너 기준 %)',
+      fields: [
+        ['nameLeft',  '중심 X (0~100)'],
+        ['nameTop',   'Y (0~100)'],
+        ['nameWidth', '박스 너비 (예: 30%)'],
+        ['nameAlign', '정렬 (left/center/right)'],
+      ],
+    },
+    {
+      title: '향수 이름 — 스타일',
+      fields: [
+        ['nameFontSize',      '크기'],
+        ['nameFontWeight',    '굵기'],
+        ['nameColor',         '색',   'color'],
+        ['nameLetterSpacing', '자간'],
+        ['brandFontSize',     '브랜드 크기'],
+        ['brandColor',        '브랜드 색', 'color'],
+        ['brandLetterSpacing','브랜드 자간'],
+      ],
+    },
+    {
+      title: '가운데 구분선 — 위치 (컨테이너 기준 %)',
+      fields: [
+        ['dividerLeft',       'X 위치 (0~100)'],
+        ['dividerTopPct',     '시작 Y (0~100)'],
+        ['dividerBottomPct',  '끝 Y (0~100)'],
+        ['dividerColor',      '선 색', 'color'],
+      ],
+    },
+    {
+      title: '노트 영역 — 위치 (컨테이너 기준 %)',
+      fields: [
+        ['noteLeft',  '시작 X (0~100)'],
+        ['noteTop',   '시작 Y (0~100)'],
+        ['noteWidth', '박스 너비 (예: 30%)'],
+      ],
+    },
+    {
+      title: '노트 — 라벨 스타일',
+      fields: [
+        ['noteLabelFontSize',      '라벨 크기'],
+        ['noteLabelColor',         '라벨 색',  'color'],
+        ['noteLabelLetterSpacing', '라벨 자간'],
+      ],
+    },
+    {
+      title: '노트 — 값 스타일',
+      fields: [
+        ['noteValueFontSize',   '값 크기'],
+        ['noteValueColor',      '값 색',    'color'],
+        ['noteValueLineHeight', '줄 높이'],
+        ['noteGap',             '섹션 간격'],
+        ['noteDividerColor',    '구분선 색', 'color'],
+      ],
+    },
+  ];
+
+  const inputStyle = {
+    background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(201,169,97,0.22)',
+    padding: '4px 8px', fontSize: '0.68rem', color: '#faf6ef', outline: 'none', flex: 1,
   };
 
-  const deleteCollection = async (id, title) => {
-    if (!confirm(`"${title}" 컬렉션을 삭제하시겠습니까?`)) return;
-    const authHeader = await getAuthHeader();
-    if (!authHeader) return;
-    try {
-      const res = await fetch(`${API_BASE}/api/collections/${id}`, { method: 'DELETE', headers: authHeader });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
-      fetchList(); onRefresh?.();
-    } catch (err) { alert('삭제 실패: ' + err.message); }
-  };
+  const l = local;
 
   return (
-    <div className="w-80 bg-[#1a1714] border border-[#c9a961]/30 shadow-2xl max-h-[80vh] overflow-y-auto">
-      <div className="px-5 py-4 border-b border-[#c9a961]/20 flex justify-between items-center sticky top-0 bg-[#1a1714]">
-        <span className="text-[10px] tracking-widest text-[#c9a961]">컬렉션 목록 관리</span>
-        <button onClick={onClose} className="text-[#e8dcc8]/40 hover:text-white"><X size={16}/></button>
-      </div>
-      {loading
-        ? <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#c9a961]"/></div>
-        : list.length === 0
-          ? <p className="text-center text-[#e8dcc8]/30 py-10 text-xs italic">등록된 컬렉션 없음</p>
-          : list.map(col=>(
-            <div key={col.collectionId} className={`border-b border-[#c9a961]/10 px-5 py-4 ${col.isActive?'bg-[#c9a961]/5':''}`}>
-              <p className="text-xs text-[#e8dcc8] font-medium truncate mb-1">{col.title}</p>
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                {col.isActive && <span className="text-[9px] text-[#c9a961] border border-[#c9a961]/40 px-1.5 py-0.5">활성화</span>}
-                {col.isPublished
-                  ? <span className="text-[9px] text-emerald-400 border border-emerald-400/40 px-1.5 py-0.5">공개중</span>
-                  : <span className="text-[9px] text-[#e8dcc8]/30 border border-[#e8dcc8]/15 px-1.5 py-0.5">비공개</span>}
-              </div>
-              <div className="flex gap-1.5 flex-wrap">
-                <button onClick={()=>onEdit(col.collectionId)}
-                  className="flex items-center gap-1 px-2 py-1 text-[9px] border border-[#c9a961]/40 text-[#c9a961] hover:bg-[#c9a961]/20 transition-all">
-                  <Edit2 size={9}/> 편집
-                </button>
-                <button onClick={()=>toggleActive(col.collectionId, col.isActive)}
-                  className={`px-2 py-1 text-[9px] border transition-all ${col.isActive?'border-[#e8dcc8]/20 text-[#e8dcc8]/40 hover:bg-white/5':'border-[#c9a961]/40 text-[#c9a961] hover:bg-[#c9a961]/20'}`}>
-                  {col.isActive ? '비활성화' : '활성화'}
-                </button>
-                <button onClick={()=>deleteCollection(col.collectionId, col.title)}
-                  className="px-2 py-1 text-[9px] border border-red-400/30 text-red-400/60 hover:bg-red-400/10 transition-all">
-                  <Trash2 size={9}/>
-                </button>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(5px)', display: 'flex', gap: 0, overflow: 'hidden' }}>
+
+      {/* 좌측: 컨트롤 패널 */}
+      <div style={{ width: '420px', flexShrink: 0, background: '#0e0802', borderRight: '1px solid rgba(201,169,97,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* 헤더 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid rgba(201,169,97,0.2)', flexShrink: 0 }}>
+          <div>
+            <p style={{ fontSize: '0.52rem', letterSpacing: '0.5em', color: '#c9a961', marginBottom: '3px', margin: '0 0 3px' }}>ADMIN · LAYOUT EDITOR</p>
+            <h2 style={{ fontSize: '0.85rem', letterSpacing: '0.2em', color: '#faf6ef', fontWeight: 400, margin: 0 }}>오버레이 레이아웃 수정</h2>
+          </div>
+          <div style={{ display: 'flex', gap: '7px' }}>
+            <button onClick={() => onSave(local)}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 16px', background: '#c9a961', color: '#0e0802', fontSize: '0.58rem', letterSpacing: '0.3em', border: 'none', cursor: 'pointer' }}>
+              <Save size={10} /> 저장
+            </button>
+            <button onClick={() => setLocal({ ...DEFAULT_LAYOUT })}
+              style={{ padding: '7px 10px', background: 'transparent', border: '1px solid rgba(201,169,97,0.3)', color: 'rgba(201,169,97,0.6)', fontSize: '0.58rem', letterSpacing: '0.2em', cursor: 'pointer' }}>
+              초기화
+            </button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(250,246,239,0.4)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
+          </div>
+        </div>
+
+        {/* 필드 스크롤 */}
+        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {SECTIONS.map(sec => (
+            <div key={sec.title}>
+              <p style={{ fontSize: '0.52rem', letterSpacing: '0.35em', color: '#c9a961', paddingBottom: '7px', borderBottom: '1px solid rgba(201,169,97,0.2)', marginBottom: '10px', margin: '0 0 10px' }}>
+                {sec.title.toUpperCase()}
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px' }}>
+                {sec.fields.map(([k, label, type]) => (
+                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <label style={{ fontSize: '0.58rem', color: 'rgba(201,169,97,0.65)', minWidth: '64px', flexShrink: 0 }}>{label}</label>
+                    {type === 'color' ? (
+                      <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
+                        <input type="color" value={(() => {
+                          // rgba/gradient 값은 color picker에 안 맞으니 hex만 표시
+                          const v = local[k];
+                          return v?.startsWith('#') ? v : '#c9a961';
+                        })()} onChange={e => set(k, e.target.value)}
+                          style={{ height: '24px', width: '28px', border: '1px solid rgba(201,169,97,0.3)', background: 'none', cursor: 'pointer', padding: 0 }} />
+                        <input type="text" value={local[k]} onChange={e => set(k, e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+                      </div>
+                    ) : (
+                      <input type="text" value={local[k]} onChange={e => set(k, e.target.value)} style={inputStyle} />
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
-          ))
-      }
+          ))}
+        </div>
+      </div>
+
+      {/* 우측: 실시간 미리보기 */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', overflow: 'hidden' }}>
+        <p style={{ fontSize: '0.52rem', letterSpacing: '0.45em', color: 'rgba(201,169,97,0.5)', marginBottom: '12px' }}>LIVE PREVIEW</p>
+
+        {/* 미리보기 컨테이너 — 실제 이미지 비율과 동일하게 */}
+        <div style={{ position: 'relative', width: '100%', maxWidth: '860px', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
+          {/* 배경 */}
+          {bgUrl
+            ? <img src={bgUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
+            : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1a0c04, #3d2010)' }} />
+          }
+
+          {/* 미리보기 오버레이 */}
+          <div style={{ position: 'absolute', inset: 0 }}>
+            {/* 이미지 자리 (썸네일 없으므로 사각형으로 대체) */}
+            <div style={{
+              position: 'absolute',
+              left: `${l.imgLeft}%`, top: `${l.imgTop}%`,
+              transform: 'translate(-50%, -50%)',
+              width: l.imgMaxWidth, height: l.imgMaxHeight,
+              background: 'rgba(100,60,20,0.25)',
+              border: '2px dashed rgba(201,169,97,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ color: 'rgba(201,169,97,0.6)', fontSize: '1.2rem' }}>✦</span>
+            </div>
+
+            {/* 이름 */}
+            <div style={{
+              position: 'absolute',
+              left: `${l.nameLeft}%`, top: `${l.nameTop}%`,
+              transform: 'translate(-50%, -50%)',
+              width: l.nameWidth,
+              textAlign: l.nameAlign,
+            }}>
+              <h2 style={{ fontSize: l.nameFontSize, fontWeight: l.nameFontWeight, color: l.nameColor, letterSpacing: l.nameLetterSpacing, margin: '0 0 3px', lineHeight: 1.2 }}>
+                {PREVIEW.name}
+              </h2>
+              <p style={{ fontSize: l.brandFontSize, color: l.brandColor, letterSpacing: l.brandLetterSpacing, textTransform: 'uppercase', margin: 0 }}>
+                {PREVIEW.brand_name}
+              </p>
+            </div>
+
+            {/* 구분선 */}
+            <div style={{
+              position: 'absolute',
+              left: `${l.dividerLeft}%`,
+              top: `${l.dividerTopPct}%`,
+              bottom: `${100 - parseFloat(l.dividerBottomPct)}%`,
+              width: '1px',
+              background: `linear-gradient(to bottom, transparent, ${l.dividerColor} 15%, ${l.dividerColor} 85%, transparent)`,
+            }} />
+
+            {/* 노트 */}
+            <div style={{
+              position: 'absolute',
+              left: `${l.noteLeft}%`, top: `${l.noteTop}%`,
+              width: l.noteWidth,
+            }}>
+              {[
+                { key: 'top',    label: 'Top',    items: PREVIEW.notes.top },
+                { key: 'middle', label: 'Middle', items: PREVIEW.notes.middle },
+                { key: 'base',   label: 'Base',   items: PREVIEW.notes.base },
+              ].map(({ key, label, items }, idx) => (
+                <div key={key} style={{ marginBottom: idx < 2 ? l.noteGap : 0 }}>
+                  {idx > 0 && <div style={{ height: '0.5px', background: l.noteDividerColor, marginBottom: l.noteGap }} />}
+                  <p style={{ fontSize: l.noteLabelFontSize, fontWeight: '600', fontStyle: 'italic', color: l.noteLabelColor, letterSpacing: l.noteLabelLetterSpacing, margin: '0 0 3px' }}>
+                    {label}
+                  </p>
+                  <p style={{ fontSize: l.noteValueFontSize, color: l.noteValueColor, lineHeight: l.noteValueLineHeight, margin: 0 }}>
+                    {items.join('  ·  ')}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* 좌표 가이드 오버레이 */}
+            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.25 }}>
+              {/* 양피지 글쓰기 영역 표시 */}
+              <rect x="13%" y="20%" width="74%" height="60%" fill="none" stroke="#c9a961" strokeWidth="0.8" strokeDasharray="4,4" />
+              {/* 중앙 가이드선 */}
+              <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#c9a961" strokeWidth="0.5" strokeDasharray="2,6" />
+              <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#c9a961" strokeWidth="0.5" strokeDasharray="2,6" />
+            </svg>
+          </div>
+
+          {/* 가이드 레전드 */}
+          <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '16px', height: '1px', background: '#c9a961', opacity: 0.4, borderTop: '1px dashed #c9a961' }} />
+            <span style={{ fontSize: '0.48rem', color: 'rgba(201,169,97,0.4)', letterSpacing: '0.2em' }}>양피지 글쓰기 영역 가이드</span>
+          </div>
+        </div>
+
+        <p style={{ fontSize: '0.52rem', color: 'rgba(250,246,239,0.2)', letterSpacing: '0.25em', marginTop: '10px' }}>
+          좌측 수치 변경 시 실시간 반영됩니다
+        </p>
+      </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// 메인 Collections 컴포넌트
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────
+// 책등 컴포넌트
+// ─────────────────────────────────────
+function SpineBook({ perfume, isSelected, onClick, globalIdx }) {
+  const [hovered, setHovered] = useState(false);
+  const pal = SPINE_PALETTE[globalIdx % SPINE_PALETTE.length];
+  const h = SPINE_HEIGHTS[globalIdx % SPINE_HEIGHTS.length];
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      title={`${perfume.brand_name ? perfume.brand_name + ' · ' : ''}${perfume.name}`}
+      style={{
+        width: '54px', height: `${h + 20}px`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+        cursor: 'pointer', flexShrink: 0, position: 'relative',
+        transform: isSelected ? 'translateY(-14px) scale(1.05)' : hovered ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)',
+        transition: 'transform 0.28s cubic-bezier(0.34,1.56,0.64,1)',
+      }}
+    >
+      <div style={{
+        width: '100%', height: `${h}px`,
+        background: `linear-gradient(to right, ${pal.grain} 0%, ${pal.bg} 12%, ${pal.bg} 88%, ${pal.grain} 100%)`,
+        borderLeft: `2.5px solid ${pal.accent}55`,
+        borderRight: `1px solid rgba(0,0,0,0.6)`,
+        borderTop: `1px solid ${pal.accent}33`,
+        borderRadius: '1px 1px 0 0',
+        boxShadow: isSelected
+          ? `0 -10px 28px rgba(201,169,97,0.35), 3px 3px 10px rgba(0,0,0,0.7)`
+          : `2px 3px 8px rgba(0,0,0,0.55)`,
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.15, backgroundImage: `repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4px, transparent 4px, transparent 9px, rgba(0,0,0,0.18) 9px, rgba(0,0,0,0.18) 10px)` }} />
+        {perfume.thumbnail && (
+          <img src={perfume.thumbnail} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.15, mixBlendMode: 'luminosity' }} />
+        )}
+        <div style={{ position: 'absolute', top: '9px', left: 0, right: 0, height: '1px', background: pal.accent, opacity: 0.5 }} />
+        <div style={{ position: 'absolute', top: '12px', left: '4px', right: '4px', height: '0.5px', background: pal.accent, opacity: 0.2 }} />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 4px 8px' }}>
+          <p style={{
+            writingMode: 'vertical-rl', textOrientation: 'mixed',
+            fontSize: '8.5px', letterSpacing: '0.1em', color: pal.accent,
+            fontWeight: '500', fontFamily: "'Georgia', serif",
+            maxHeight: '75%', overflow: 'hidden', textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap', textShadow: '0 1px 4px rgba(0,0,0,0.9)', margin: 0,
+          }}>{perfume.name}</p>
+        </div>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px', background: pal.accent, opacity: 0.7 }} />
+        {isSelected && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: '#c9a961' }} />}
+      </div>
+      <div style={{ width: '100%', height: '5px', background: `linear-gradient(to bottom, ${pal.bg}, ${pal.grain})`, borderBottom: `1.5px solid ${pal.accent}55`, boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────
+// 메인 컴포넌트
+// ─────────────────────────────────────
 export default function Collections() {
   const isAdmin = checkIsAdmin();
 
-  // 관리자: 전체 목록, 유저: 활성화된 컬렉션 목록
-  const [collections, setCollections] = useState([]);
+  const [allPerfumes, setAllPerfumes] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // 히어로 슬라이드: 컬렉션 단위로 5초마다 전환
-  const [heroIdx, setHeroIdx] = useState(0);
-  // 현재 히어로 컬렉션 내 미디어 슬라이드
-  const [mediaIdx, setMediaIdx] = useState(0);
-
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [listPanelOpen, setListPanelOpen] = useState(false);
-
-  // ── 데이터 로드 ──
-  const fetchCollections = useCallback(async () => {
-    setLoading(true);
+  const [selectedPerfume, setSelectedPerfume] = useState(null);
+  const [notes, setNotes] = useState({ top: [], middle: [], base: [] });
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [bgUrl, setBgUrl] = useState(null);
+  const [bgRatio, setBgRatio] = useState(2.65); // 이미지 실제 가로/세로 비율 (동적으로 업데이트됨)
+  const [showBgPanel, setShowBgPanel] = useState(false);
+  const [layout, setLayout] = useState(() => {
     try {
-      let data = [];
-      if (isAdmin) {
-        // 관리자: 전체 목록 가져온 후 각 상세 로드
-        const authHeader = await getAuthHeader();
-        if (!authHeader) { setCollections([]); return; }
-        const res = await fetch(`${API_BASE}/api/collections?type=COLLECTION`, { headers: authHeader });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        const summaries = json.success ? (json.data || []) : [];
+      const s = localStorage.getItem('collections_layout_v3');
+      return s ? { ...DEFAULT_LAYOUT, ...JSON.parse(s) } : { ...DEFAULT_LAYOUT };
+    } catch { return { ...DEFAULT_LAYOUT }; }
+  });
+  const [showLayoutEditor, setShowLayoutEditor] = useState(false);
 
-        // 각 컬렉션의 상세(미디어+향수) 병렬 로드
-        const details = await Promise.all(
-          summaries.map(async (s) => {
-            try {
-              const r = await fetch(`${API_BASE}/api/collections/${s.collectionId}`, { headers: authHeader });
-              if (!r.ok) return s;
-              const j = await r.json();
-              return j.success ? j.data : s;
-            } catch { return s; }
-          })
-        );
-        data = details;
-      } else {
-        // 유저: 활성화된 단일 컬렉션 → 같은 type의 활성 컬렉션이 여러 개일 경우 대비해 목록 API도 병행
-        // 일단 활성화된 컬렉션 단일 조회
-        const res = await fetch(`${API_BASE}/api/collections/active?type=COLLECTION`);
-        if (!res.ok) { setCollections([]); return; }
-        const json = await res.json();
-        data = json.data ? [json.data] : [];
-      }
-      setCollections(data);
-      setHeroIdx(0);
-      setMediaIdx(0);
-    } catch (err) {
-      console.error('컬렉션 로드 실패:', err);
-      setCollections([]);
-    } finally {
-      setLoading(false);
+  // 배경 이미지 로드
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('Signature_config').select('value').eq('key', 'collections_bg_image').maybeSingle();
+        if (data?.value) setBgUrl(typeof data.value === 'string' ? data.value : null);
+      } catch {}
+    })();
+  }, []);
+
+  const saveBgUrl = async (url) => {
+    setBgUrl(url);
+    try {
+      const { data: ex } = await supabase.from('Signature_config').select('id').eq('key', 'collections_bg_image').maybeSingle();
+      if (ex) await supabase.from('Signature_config').update({ value: url }).eq('key', 'collections_bg_image');
+      else await supabase.from('Signature_config').insert({ key: 'collections_bg_image', value: url });
+    } catch (e) { console.error('배경 저장 실패:', e); }
+  };
+
+  const handleSaveLayout = (l) => {
+    setLayout(l);
+    localStorage.setItem('collections_layout_v3', JSON.stringify(l));
+    setShowLayoutEditor(false);
+  };
+
+  // 향수 전체 로드
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const { data: perfumes } = await supabase
+          .from('Perfumes')
+          .select('perfume_id, name, name_en, description, price, sale_price, sale_rate, brand_id')
+          .eq('is_active', true).order('name');
+        if (!perfumes?.length) { setAllPerfumes([]); setLoading(false); return; }
+
+        const brandIds = [...new Set(perfumes.map(p => p.brand_id).filter(Boolean))];
+        const { data: brands } = await supabase.from('Brands').select('brand_id, brand_name').in('brand_id', brandIds);
+        const brandMap = Object.fromEntries((brands || []).map(b => [b.brand_id, b.brand_name]));
+
+        const pIds = perfumes.map(p => p.perfume_id);
+        const { data: imgs } = await supabase.from('Perfume_Images').select('perfume_id, image_url').in('perfume_id', pIds).eq('is_thumbnail', true);
+        const imgMap = Object.fromEntries((imgs || []).map(i => [i.perfume_id, i.image_url]));
+
+        setAllPerfumes(perfumes.map(p => ({ ...p, brand_name: brandMap[p.brand_id] || '', thumbnail: imgMap[p.perfume_id] || null })));
+      } catch (e) { console.error('향수 로드 실패:', e); }
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  // 향수 노트 로드
+  const loadNotes = useCallback(async (perfumeId) => {
+    setLoadingNotes(true);
+    setNotes({ top: [], middle: [], base: [] });
+    try {
+      const { data: noteRows } = await supabase.from('Perfume_Notes').select('note_type, scent_id').eq('perfume_id', perfumeId);
+      if (!noteRows?.length) return;
+      const scentIds = [...new Set(noteRows.map(n => n.scent_id))];
+      const { data: scents } = await supabase.from('Scents').select('scent_id, scent_name').in('scent_id', scentIds);
+      const scentMap = Object.fromEntries((scents || []).map(s => [s.scent_id, s.scent_name]));
+      const grouped = { top: [], middle: [], base: [] };
+      noteRows.forEach(n => {
+        const name = scentMap[n.scent_id];
+        if (!name) return;
+        if (n.note_type === 'TOP') grouped.top.push(name);
+        else if (n.note_type === 'MIDDLE') grouped.middle.push(name);
+        else if (n.note_type === 'BASE') grouped.base.push(name);
+      });
+      setNotes(grouped);
+    } catch (e) { console.error('노트 로드 실패:', e); }
+    finally { setLoadingNotes(false); }
+  }, []);
+
+  const handleSelect = (p) => {
+    if (selectedPerfume?.perfume_id === p.perfume_id) {
+      setSelectedPerfume(null);
+      setNotes({ top: [], middle: [], base: [] });
+    } else {
+      setSelectedPerfume(p);
+      loadNotes(p.perfume_id);
     }
-  }, [isAdmin]);
-
-  useEffect(() => { fetchCollections(); }, [fetchCollections]);
-
-  // ── 히어로 자동 전환: 5초마다 컬렉션 순환 ──
-  useEffect(() => {
-    if (collections.length <= 1) return;
-    const t = setInterval(() => {
-      setHeroIdx(prev => (prev + 1) % collections.length);
-      setMediaIdx(0);
-    }, 5000);
-    return () => clearInterval(t);
-  }, [collections.length]);
-
-  // ── 현재 히어로 컬렉션 내 미디어 슬라이드 ──
-  const heroCollection = collections[heroIdx] || null;
-  const heroMedia = heroCollection?.mediaList || [];
-  const heroBlocks = heroCollection?.textBlocks || [];
-
-  useEffect(() => {
-    if (heroMedia.length <= 1) return;
-    const t = setInterval(() => setMediaIdx(p => (p + 1) % heroMedia.length), 5000);
-    return () => clearInterval(t);
-  }, [heroMedia.length, heroIdx]);
-
-  const handleOpenEditor = (id = null) => {
-    setEditingId(id); setEditorOpen(true); setListPanelOpen(false);
   };
 
-  // ── 히어로 수동 이동 ──
-  const goHero = (dir) => {
-    setHeroIdx(prev => {
-      const next = dir === 'prev'
-        ? (prev - 1 + collections.length) % collections.length
-        : (prev + 1) % collections.length;
-      return next;
-    });
-    setMediaIdx(0);
+  const selectedIdx = selectedPerfume
+    ? allPerfumes.findIndex(p => p.perfume_id === selectedPerfume.perfume_id)
+    : -1;
+  const canPrev = selectedIdx > 0;
+  const canNext = selectedIdx >= 0 && selectedIdx < allPerfumes.length - 1;
+
+  const moveTo = (idx) => {
+    const p = allPerfumes[idx];
+    if (!p) return;
+    setSelectedPerfume(p);
+    loadNotes(p.perfume_id);
   };
+
+  const shelves = [];
+  for (let i = 0; i < allPerfumes.length; i += SHELF_SIZE) shelves.push(allPerfumes.slice(i, i + SHELF_SIZE));
+
+  const l = layout;
 
   return (
-    <div className="min-h-screen bg-[#faf8f3]">
+    <div style={{ minHeight: '100vh', background: '#f5ede0', fontFamily: "'Georgia', 'Times New Roman', serif" }}>
 
-      {/* ══════════════════════════════════════════════════
-          히어로 섹션: 5초마다 컬렉션 대표이미지+문구 교체
-      ══════════════════════════════════════════════════ */}
-      <div className="relative h-[72vh] overflow-hidden">
+      {/* ─────── 상단: 배경 + 오버레이 ─────── */}
+      {/*
+        핵심 수정: aspect-ratio를 2.8/1로 고정
+        objectFit: 'fill' 사용 → 이미지가 컨테이너를 꽉 채워
+        % 좌표가 실제 이미지 픽셀 위치와 1:1 대응됨
+        (contain은 letterbox 생겨서 좌표 불일치 발생)
+      */}
+      {/*
+        ★ 핵심 원리:
+        - 컨테이너 aspect-ratio를 이미지 실제 비율(bgRatio)로 동적 설정
+        - 이미지는 width/height 100% + objectFit:'fill' → 컨테이너를 픽셀 단위로 꽉 채움
+        - 결과: 오버레이 % 좌표 = 이미지 픽셀 위치와 완벽히 1:1 대응
+        - bgUrl 없을 때는 fallback 비율 2.65 사용
+      */}
+      <div style={{ position: 'relative', width: '100%', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
 
-        {/* 빈 상태 */}
-        {!loading && collections.length === 0 && (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#2a2620] via-[#3d3228] to-[#2a2620] flex items-center justify-center">
-            <div className="text-center">
-              <div className="flex items-center justify-center mb-6">
-                <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#c9a961]/40"/>
-                <div className="mx-3 text-[#c9a961]/40 text-sm">✦</div>
-                <div className="h-[1px] w-12 bg-gradient-to-l from-transparent to-[#c9a961]/40"/>
-              </div>
-              <h1 className="text-4xl md:text-6xl tracking-[0.4em] mb-4 text-[#c9a961]/60 font-light">COLLECTION</h1>
-              <p className="text-sm text-[#e8dcc8]/30 italic tracking-widest">
-                {isAdmin ? '컬렉션을 만들어보세요' : '준비 중입니다'}
-              </p>
-            </div>
+        {/* 배경 이미지 — 컨테이너와 동일 비율이므로 fill로 완벽히 채워짐 */}
+        {bgUrl ? (
+          <img
+            src={bgUrl}
+            alt=""
+            onLoad={e => {
+              const { naturalWidth, naturalHeight } = e.currentTarget;
+              if (naturalWidth && naturalHeight) {
+                setBgRatio(naturalWidth / naturalHeight);
+              }
+            }}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              objectFit: 'fill',
+            }}
+          />
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1a0c04 0%, #3d2010 25%, #2a1508 55%, #4a2e14 80%, #1a0c04 100%)' }}>
+            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.07 }}>
+              <defs><pattern id="wp" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+                <path d="M0,40 Q20,35 40,40 Q60,45 80,40" stroke="#c9a961" strokeWidth="0.8" fill="none" />
+                <path d="M0,20 Q20,15 40,20 Q60,25 80,20" stroke="#c9a961" strokeWidth="0.5" fill="none" />
+                <path d="M0,60 Q20,57 40,60 Q60,63 80,60" stroke="#c9a961" strokeWidth="0.5" fill="none" />
+              </pattern></defs>
+              <rect width="100%" height="100%" fill="url(#wp)" />
+            </svg>
           </div>
         )}
 
-        {/* 히어로 배경 이미지들 - 컬렉션별 페이드 */}
-        {collections.map((col, ci) => {
-          const media = col.mediaList || [];
-          const curMedia = media[ci === heroIdx ? mediaIdx : 0];
-          return (
-            <div key={col.collectionId}
-              className={`absolute inset-0 transition-opacity duration-[2000ms] ${ci === heroIdx ? 'opacity-100' : 'opacity-0'}`}>
-              {media.map((m, mi) => (
-                <div key={m.mediaId || mi}
-                  className={`absolute inset-0 transition-opacity duration-[1500ms] ${mi === (ci === heroIdx ? mediaIdx : 0) ? 'opacity-100' : 'opacity-0'}`}>
-                  <img src={m.mediaUrl} alt="" className="w-full h-full object-cover"/>
-                </div>
-              ))}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60"/>
+        {/* 미선택 안내 */}
+        {!selectedPerfume && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ height: '1px', width: '44px', background: 'rgba(100,60,20,0.3)' }} />
+              <span style={{ color: 'rgba(100,60,20,0.45)', fontSize: '11px' }}>✦</span>
+              <div style={{ height: '1px', width: '44px', background: 'rgba(100,60,20,0.3)' }} />
             </div>
-          );
-        })}
-
-        {/* 히어로 텍스트 */}
-        {heroCollection && (
-          <div className="relative h-full pointer-events-none">
-            {heroBlocks.length > 0 ? (
-              heroBlocks.map((b, i) => (
-                <div key={b.textBlockId || i} className="absolute"
-                  style={{ left: b.positionX, top: b.positionY, transform: 'translate(-50%,-50%)', color: heroCollection.textColor }}>
-                  <p className={`${FONT_SIZE_CLASS[b.fontSize]} ${FONT_WEIGHT_CLASS[b.fontWeight]} ${b.isItalic ? 'italic' : ''} tracking-widest drop-shadow-lg text-center px-4`}>
-                    {b.content}
-                  </p>
-                </div>
-              ))
-            ) : heroCollection && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center px-8">
-                  <div className="flex items-center justify-center mb-6">
-                    <div className="h-[1px] w-10 bg-gradient-to-r from-transparent to-[#c9a961]/60"/>
-                    <div className="mx-3 text-[#c9a961]/60 text-xs">✦</div>
-                    <div className="h-[1px] w-10 bg-gradient-to-l from-transparent to-[#c9a961]/60"/>
-                  </div>
-                  <h1 className="text-4xl md:text-6xl tracking-[0.3em] mb-3 drop-shadow-lg"
-                    style={{ color: heroCollection.textColor }}>
-                    {heroCollection.title}
-                  </h1>
-                  {heroCollection.description && (
-                    <p className="text-base italic tracking-wider drop-shadow-lg opacity-80"
-                      style={{ color: heroCollection.textColor }}>
-                      {heroCollection.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+            <p style={{ color: 'rgba(100,60,20,0.55)', fontSize: '0.72rem', letterSpacing: '0.5em', fontStyle: 'italic', margin: 0 }}>
+              아래 향수를 선택하세요
+            </p>
           </div>
         )}
 
-        {/* 컬렉션 인디케이터 (하단 도트) */}
-        {collections.length > 1 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-10">
-            <button onClick={() => goHero('prev')}
-              className="p-1.5 bg-black/30 text-white/60 hover:text-white hover:bg-black/50 transition-all rounded-full">
-              <ChevronLeft size={16}/>
-            </button>
-            <div className="flex gap-2">
-              {collections.map((col, i) => (
-                <button key={col.collectionId} onClick={() => { setHeroIdx(i); setMediaIdx(0); }}
-                  className={`transition-all duration-300 rounded-full ${i === heroIdx ? 'bg-[#c9a961] w-6 h-2' : 'bg-white/40 w-2 h-2 hover:bg-white/70'}`}/>
-              ))}
-            </div>
-            <button onClick={() => goHero('next')}
-              className="p-1.5 bg-black/30 text-white/60 hover:text-white hover:bg-black/50 transition-all rounded-full">
-              <ChevronRight size={16}/>
-            </button>
-          </div>
-        )}
+        {/* ── 향수 선택 오버레이 ── */}
+        {selectedPerfume && (
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
 
-        {/* 컬렉션 제목 탭 (하단 타이틀 목록) */}
-        {collections.length > 1 && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-12 pb-14">
-            <div className="flex items-center justify-center gap-1 px-4 overflow-x-auto">
-              {collections.map((col, i) => (
-                <button key={col.collectionId} onClick={() => { setHeroIdx(i); setMediaIdx(0); }}
-                  className={`px-4 py-1.5 text-[10px] tracking-widest whitespace-nowrap transition-all border-b-2 ${
-                    i === heroIdx ? 'text-[#c9a961] border-[#c9a961]' : 'text-white/50 border-transparent hover:text-white/80'
-                  }`}>
-                  {col.title}
-                </button>
-              ))}
+            {/* 향수 이미지 */}
+            <div style={{
+              position: 'absolute',
+              left: `${l.imgLeft}%`, top: `${l.imgTop}%`,
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'auto',
+            }}>
+              {selectedPerfume.thumbnail ? (
+                <img
+                  src={selectedPerfume.thumbnail}
+                  alt={selectedPerfume.name}
+                  style={{
+                    maxHeight: l.imgMaxHeight,
+                    maxWidth: l.imgMaxWidth,
+                    width: 'auto', height: 'auto',
+                    objectFit: 'contain',
+                    display: 'block',
+                    filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.3))',
+                    transition: 'opacity 0.3s',
+                  }}
+                />
+              ) : (
+                <div style={{ width: '80px', height: '110px', background: 'rgba(100,60,20,0.1)', border: '1px dashed rgba(100,60,20,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: 'rgba(100,60,20,0.3)', fontSize: '1.5rem' }}>✦</span>
+                </div>
+              )}
+            </div>
+
+            {/* 향수 이름 + 브랜드 */}
+            <div style={{
+              position: 'absolute',
+              left: `${l.nameLeft}%`, top: `${l.nameTop}%`,
+              transform: 'translate(-50%, -50%)',
+              width: l.nameWidth,
+              textAlign: l.nameAlign,
+              pointerEvents: 'auto',
+            }}>
+              <h2 style={{ fontSize: l.nameFontSize, fontWeight: l.nameFontWeight, color: l.nameColor, letterSpacing: l.nameLetterSpacing, margin: '0 0 4px', lineHeight: 1.2 }}>
+                {selectedPerfume.name}
+              </h2>
+              {selectedPerfume.brand_name && (
+                <p style={{ fontSize: l.brandFontSize, color: l.brandColor, letterSpacing: l.brandLetterSpacing, textTransform: 'uppercase', margin: 0 }}>
+                  {selectedPerfume.brand_name}
+                </p>
+              )}
+            </div>
+
+            {/* 가운데 세로 구분선 */}
+            <div style={{
+              position: 'absolute',
+              left: `${l.dividerLeft}%`,
+              top: `${l.dividerTopPct}%`,
+              bottom: `${100 - parseFloat(l.dividerBottomPct)}%`,
+              width: '1px',
+              background: `linear-gradient(to bottom, transparent, ${l.dividerColor} 15%, ${l.dividerColor} 85%, transparent)`,
+            }} />
+
+            {/* 노트 영역 */}
+            <div style={{
+              position: 'absolute',
+              left: `${l.noteLeft}%`, top: `${l.noteTop}%`,
+              width: l.noteWidth,
+              pointerEvents: 'auto',
+            }}>
+              {loadingNotes ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '11px', height: '11px', borderRadius: '50%', border: '2px solid rgba(100,60,20,0.3)', borderTopColor: '#7a4a1e', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: '0.65rem', color: '#7a4a1e' }}>로딩 중…</span>
+                </div>
+              ) : (
+                <div>
+                  {[
+                    { key: 'top',    label: 'Top',    items: notes.top },
+                    { key: 'middle', label: 'Middle', items: notes.middle },
+                    { key: 'base',   label: 'Base',   items: notes.base },
+                  ].map(({ key, label, items }, idx) => (
+                    <div key={key} style={{ marginBottom: idx < 2 ? l.noteGap : 0 }}>
+                      {idx > 0 && <div style={{ height: '0.5px', background: l.noteDividerColor, marginBottom: l.noteGap }} />}
+                      <p style={{ fontSize: l.noteLabelFontSize, fontWeight: '600', fontStyle: 'italic', color: l.noteLabelColor, letterSpacing: l.noteLabelLetterSpacing, margin: '0 0 4px' }}>
+                        {label}
+                      </p>
+                      <p style={{ fontSize: l.noteValueFontSize, color: items.length ? l.noteValueColor : 'rgba(100,60,20,0.3)', fontStyle: items.length ? 'normal' : 'italic', lineHeight: l.noteValueLineHeight, letterSpacing: '0.02em', margin: 0 }}>
+                        {items.length ? items.join('  ·  ') : '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* 관리자 버튼 */}
         {isAdmin && (
-          <div className="absolute top-5 right-5 z-30 flex flex-col gap-2 items-end">
-            <button onClick={() => handleOpenEditor(null)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-black/75 text-[#c9a961] border border-[#c9a961]/60 text-[10px] tracking-widest hover:bg-[#c9a961] hover:text-black transition-all shadow-lg">
-              <Plus size={13}/> 새 컬렉션 만들기
+          <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 30, display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+            <button
+              onClick={() => setShowBgPanel(p => !p)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: showBgPanel ? '#c9a961' : 'rgba(0,0,0,0.72)', border: '1px solid rgba(201,169,97,0.5)', color: showBgPanel ? '#0e0802' : '#c9a961', fontSize: '0.58rem', letterSpacing: '0.28em', cursor: 'pointer' }}
+              onMouseOver={e => { e.currentTarget.style.background = '#c9a961'; e.currentTarget.style.color = '#0e0802'; }}
+              onMouseOut={e => { if (!showBgPanel) { e.currentTarget.style.background = 'rgba(0,0,0,0.72)'; e.currentTarget.style.color = '#c9a961'; } }}
+            >
+              <Upload size={10} /> 이미지 교체
             </button>
-            {heroCollection && (
-              <button onClick={() => handleOpenEditor(heroCollection.collectionId)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-black/75 text-[#c9a961] border border-[#c9a961]/60 text-[10px] tracking-widest hover:bg-[#c9a961] hover:text-black transition-all shadow-lg">
-                <Edit2 size={13}/> 현재 컬렉션 편집
-              </button>
+            <button
+              onClick={() => setShowLayoutEditor(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'rgba(0,0,0,0.72)', border: '1px solid rgba(201,169,97,0.5)', color: '#c9a961', fontSize: '0.58rem', letterSpacing: '0.28em', cursor: 'pointer' }}
+              onMouseOver={e => { e.currentTarget.style.background = '#c9a961'; e.currentTarget.style.color = '#0e0802'; }}
+              onMouseOut={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.72)'; e.currentTarget.style.color = '#c9a961'; }}
+            >
+              <Settings size={10} /> 레이아웃 수정
+            </button>
+            {showBgPanel && (
+              <BgImagePanel currentUrl={bgUrl} onUploaded={saveBgUrl} onClose={() => setShowBgPanel(false)} />
             )}
-            <button onClick={() => setListPanelOpen(p => !p)}
-              className={`flex items-center gap-2 px-4 py-2.5 border text-[10px] tracking-widest transition-all shadow-lg ${
-                listPanelOpen ? 'bg-[#c9a961] text-black border-[#c9a961]' : 'bg-black/75 text-[#c9a961] border-[#c9a961]/60 hover:bg-[#c9a961] hover:text-black'
-              }`}>
-              <Filter size={13}/> 컬렉션 목록 관리
-            </button>
-            {listPanelOpen && (
-              <CollectionListPanel
-                onClose={() => setListPanelOpen(false)}
-                onEdit={handleOpenEditor}
-                onRefresh={fetchCollections}
-              />
+          </div>
+        )}
+
+        {/* 하단 페이드 */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '55px', background: 'linear-gradient(to bottom, transparent, rgba(10,5,0,0.72))' }} />
+
+        {/* 좌우 화살표 */}
+        {selectedPerfume && (
+          <>
+            <button
+              onClick={() => moveTo(selectedIdx - 1)}
+              disabled={!canPrev}
+              style={{
+                position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 20,
+                width: '40px', height: '40px',
+                background: canPrev ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.2)',
+                border: `1px solid ${canPrev ? 'rgba(201,169,97,0.6)' : 'rgba(201,169,97,0.15)'}`,
+                color: canPrev ? '#c9a961' : 'rgba(201,169,97,0.2)',
+                cursor: canPrev ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.18s', fontSize: '18px', lineHeight: 1,
+              }}
+              onMouseOver={e => { if (canPrev) e.currentTarget.style.background = 'rgba(201,169,97,0.25)'; }}
+              onMouseOut={e => { if (canPrev) e.currentTarget.style.background = 'rgba(0,0,0,0.55)'; }}
+            >‹</button>
+
+            <button
+              onClick={() => moveTo(selectedIdx + 1)}
+              disabled={!canNext}
+              style={{
+                position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 20,
+                width: '40px', height: '40px',
+                background: canNext ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.2)',
+                border: `1px solid ${canNext ? 'rgba(201,169,97,0.6)' : 'rgba(201,169,97,0.15)'}`,
+                color: canNext ? '#c9a961' : 'rgba(201,169,97,0.2)',
+                cursor: canNext ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.18s', fontSize: '18px', lineHeight: 1,
+              }}
+              onMouseOver={e => { if (canNext) e.currentTarget.style.background = 'rgba(201,169,97,0.25)'; }}
+              onMouseOut={e => { if (canNext) e.currentTarget.style.background = 'rgba(0,0,0,0.55)'; }}
+            >›</button>
+
+            <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, fontSize: '0.6rem', letterSpacing: '0.3em', color: 'rgba(201,169,97,0.6)' }}>
+              {selectedIdx + 1} / {allPerfumes.length}
+            </div>
+          </>
+        )}
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* ─────── 하단: 책장 ─────── */}
+      <div style={{ background: 'linear-gradient(to bottom, #1a0c04 0%, #f5ede0 7%)', paddingBottom: '80px' }}>
+        <div style={{ textAlign: 'center', padding: '50px 24px 22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', marginBottom: '14px' }}>
+            <div style={{ height: '1px', width: '54px', background: 'linear-gradient(to right, transparent, #8b6030)' }} />
+            <span style={{ color: '#8b6030', fontSize: '12px' }}>✦</span>
+            <div style={{ height: '1px', width: '54px', background: 'linear-gradient(to left, transparent, #8b6030)' }} />
+          </div>
+          <h2 style={{ fontSize: '1.45rem', letterSpacing: '0.42em', color: '#3d2010', fontWeight: '400', margin: '0 0 6px' }}>FRAGRANCE LIBRARY</h2>
+          <p style={{ fontSize: '0.75rem', color: '#8b6030', fontStyle: 'italic', letterSpacing: '0.06em', margin: 0 }}>
+            {allPerfumes.length}개의 향수
+          </p>
+        </div>
+
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '50px 0' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '50%', border: '2px solid rgba(139,96,48,0.3)', borderTopColor: '#8b6030', animation: 'spin 0.9s linear infinite', margin: '0 auto 12px' }} />
+              <p style={{ color: '#8b6030', fontStyle: 'italic', fontSize: '0.82rem' }}>향수를 불러오는 중…</p>
+            </div>
+          </div>
+        )}
+
+        {!loading && (
+          <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 20px' }}>
+            {shelves.map((shelf, si) => (
+              <div key={si} style={{ marginBottom: '18px' }}>
+                <div style={{ height: '11px', background: 'linear-gradient(to bottom, #7a5228, #8b6030)', borderRadius: '2px 2px 0 0', boxShadow: '0 2px 8px rgba(0,0,0,0.35)' }} />
+                <div style={{ background: 'linear-gradient(to bottom, #4a2e0f, #5c3a18)', borderLeft: '10px solid #3a2010', borderRight: '10px solid #3a2010', minHeight: '145px', padding: '10px 14px 6px', display: 'flex', alignItems: 'flex-end', gap: '3px', flexWrap: 'wrap', position: 'relative', boxShadow: 'inset 0 -8px 22px rgba(0,0,0,0.4)' }}>
+                  <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to right, rgba(0,0,0,0.35) 0%, transparent 9%, transparent 91%, rgba(0,0,0,0.35) 100%)' }} />
+                  {shelf.map((p, i) => (
+                    <SpineBook key={p.perfume_id} perfume={p} isSelected={selectedPerfume?.perfume_id === p.perfume_id} onClick={() => handleSelect(p)} globalIdx={si * SHELF_SIZE + i} />
+                  ))}
+                </div>
+                <div style={{ height: '18px', background: 'linear-gradient(to bottom, #8b6030 0%, #6b4820 65%, #5a3c18 100%)', boxShadow: '0 5px 14px rgba(0,0,0,0.5)', borderRadius: '0 0 2px 2px' }} />
+                <div style={{ height: '5px', background: '#3d2410', margin: '0 10px', borderRadius: '0 0 4px 4px', boxShadow: '0 3px 8px rgba(0,0,0,0.4)' }} />
+              </div>
+            ))}
+
+            {selectedPerfume && (
+              <div style={{ marginTop: '28px', padding: '18px 22px', background: 'linear-gradient(135deg, #faf6ef, #f0e6d4)', border: '1px solid rgba(201,169,97,0.3)', boxShadow: '0 4px 20px rgba(139,96,48,0.1)', display: 'flex', alignItems: 'center', gap: '18px', position: 'relative' }}>
+                <button onClick={() => { setSelectedPerfume(null); setNotes({ top: [], middle: [], base: [] }); }}
+                  style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: 'rgba(139,96,48,0.4)', cursor: 'pointer', padding: '3px' }}
+                  onMouseOver={e => e.currentTarget.style.color = '#3d2010'}
+                  onMouseOut={e => e.currentTarget.style.color = 'rgba(139,96,48,0.4)'}>
+                  <X size={14} />
+                </button>
+                {selectedPerfume.thumbnail && (
+                  <img src={selectedPerfume.thumbnail} alt={selectedPerfume.name} style={{ width: '60px', height: '60px', objectFit: 'cover', border: '1px solid rgba(201,169,97,0.3)', flexShrink: 0 }} />
+                )}
+                <div>
+                  {selectedPerfume.brand_name && (
+                    <p style={{ fontSize: '0.6rem', letterSpacing: '0.4em', color: '#c9a961', textTransform: 'uppercase', margin: '0 0 4px' }}>{selectedPerfume.brand_name}</p>
+                  )}
+                  <h3 style={{ fontSize: '1.05rem', color: '#3d2010', fontWeight: '600', margin: '0 0 6px' }}>{selectedPerfume.name}</h3>
+                  <p style={{ fontSize: '0.83rem', color: '#c9a961', fontWeight: '600', margin: 0 }}>
+                    {selectedPerfume.sale_rate > 0 ? fmtKRW(selectedPerfume.sale_price) : fmtKRW(selectedPerfume.price)}
+                    {selectedPerfume.sale_rate > 0 && <span style={{ marginLeft: '8px', textDecoration: 'line-through', opacity: 0.38, fontSize: '0.76em' }}>{fmtKRW(selectedPerfume.price)}</span>}
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          하단: 컬렉션 카드 그리드
-          각 카드 = 대표이미지(상단 절반) + 향수 목록(최대 3개) + 제목
-      ══════════════════════════════════════════════════ */}
-      {!loading && collections.length > 0 && (
-        <div className="max-w-7xl mx-auto px-6 py-20">
-
-          {/* 섹션 헤더 */}
-          <div className="text-center mb-16">
-            <div className="flex items-center justify-center mb-4">
-              <div className="h-[1px] w-16 bg-gradient-to-r from-transparent via-[#c9a961] to-transparent"/>
-              <div className="mx-4 text-[#c9a961] text-xs">✦</div>
-              <div className="h-[1px] w-16 bg-gradient-to-l from-transparent via-[#c9a961] to-transparent"/>
-            </div>
-            <h2 className="font-display text-3xl tracking-[0.3em] text-[#2a2620] mb-2">COLLECTIONS</h2>
-            <p className="text-sm italic text-[#8b8278] tracking-wide">{collections.length}개의 컬렉션</p>
-          </div>
-
-          {/* 컬렉션 카드 그리드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {collections.map((col) => {
-              const repMedia = col.mediaList?.[0];
-              const perfumes = (col.perfumes || []).slice(0, 3);
-              const perfCount = perfumes.length;
-
-              return (
-                <div key={col.collectionId} className="group">
-                  {/* 카드 본체 */}
-                  <div className="border border-[#c9a961]/15 bg-white shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-
-                    {/* 상단: 대표이미지 (카드 높이의 절반) */}
-                    <div className="relative overflow-hidden" style={{ aspectRatio: '16/9' }}>
-                      {repMedia ? (
-                        <img src={repMedia.mediaUrl} alt={col.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"/>
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-[#2a2620] via-[#3d3228] to-[#2a2620] flex items-center justify-center">
-                          <span className="text-[#c9a961]/30 text-4xl tracking-widest">COLLECTION</span>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
-                      {/* 활성화 뱃지 */}
-                      {col.isActive && (
-                        <div className="absolute top-4 left-4 bg-[#c9a961] text-white text-[9px] tracking-widest px-2.5 py-1">
-                          ACTIVE
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 하단: 향수 목록 */}
-                    <div className="p-0">
-                      {perfCount === 0 ? (
-                        <div className="py-8 text-center text-[#8b8278]/50 text-xs italic">등록된 향수가 없습니다</div>
-                      ) : (
-                        <div className={`grid divide-x divide-[#c9a961]/10`}
-                          style={{ gridTemplateColumns: `repeat(${perfCount}, 1fr)` }}>
-                          {perfumes.map((p) => (
-                            <div key={p.perfumeId} className="group/perf cursor-pointer p-3 hover:bg-[#faf8f3] transition-colors">
-                              {/* 향수 이미지 */}
-                              <div className="relative overflow-hidden mb-2" style={{ aspectRatio: '1/1' }}>
-                                {p.thumbnail ? (
-                                  <img src={p.thumbnail} alt={p.name}
-                                    className="w-full h-full object-cover group-hover/perf:scale-110 transition-transform duration-500"/>
-                                ) : (
-                                  <div className="w-full h-full bg-gradient-to-br from-[#e8e2d6] to-[#d4cfc3] flex items-center justify-center">
-                                    <span className="text-2xl text-[#c9a961]/20">{p.name?.charAt(0)}</span>
-                                  </div>
-                                )}
-                                {p.isFeatured && (
-                                  <div className="absolute top-1 right-1 bg-[#c9a961] text-white p-0.5">
-                                    <Star size={8} className="fill-white"/>
-                                  </div>
-                                )}
-                                {p.saleRate > 0 && (
-                                  <div className="absolute bottom-0 left-0 right-0 bg-red-500/80 text-white text-[8px] text-center py-0.5 tracking-wider">
-                                    {p.saleRate}% OFF
-                                  </div>
-                                )}
-                              </div>
-                              {/* 향수 정보 */}
-                              <div className="text-center">
-                                <p className="text-[9px] text-[#8b8278] truncate">{p.brandName}</p>
-                                <p className="text-[10px] font-medium text-[#2a2620] truncate leading-tight mt-0.5">{p.name}</p>
-                                <p className="text-[10px] text-[#c9a961] font-semibold mt-1">
-                                  {p.saleRate > 0 ? fmtKRW(p.salePrice) : fmtKRW(p.price)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 카드 하단: 컬렉션 제목 */}
-                  <div className="mt-4 text-center">
-                    <div className="flex items-center justify-center mb-2">
-                      <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-[#c9a961]/40"/>
-                      <div className="mx-2 text-[#c9a961]/40 text-[10px]">✦</div>
-                      <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-[#c9a961]/40"/>
-                    </div>
-                    <h3 className="text-base tracking-[0.25em] text-[#2a2620] font-medium">{col.title}</h3>
-                    {col.description && (
-                      <p className="text-xs italic text-[#8b8278] mt-1 tracking-wide line-clamp-1">{col.description}</p>
-                    )}
-                    <p className="text-[10px] text-[#8b8278]/60 mt-1">{perfCount}개의 향수</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 로딩 */}
-      {loading && (
-        <div className="flex items-center justify-center py-32">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#c9a961] mx-auto mb-4"/>
-            <p className="text-[#8b8278] italic text-sm">컬렉션을 불러오는 중...</p>
-          </div>
-        </div>
-      )}
-
-      {/* 에디터 */}
-      {editorOpen && (
-        <CollectionEditor
-          collectionId={editingId}
-          onClose={() => setEditorOpen(false)}
-          onSaved={fetchCollections}
+      {/* 레이아웃 에디터 */}
+      {showLayoutEditor && (
+        <LayoutEditor
+          layout={layout}
+          bgUrl={bgUrl}
+          bgRatio={bgRatio}
+          onSave={handleSaveLayout}
+          onClose={() => setShowLayoutEditor(false)}
         />
       )}
     </div>
