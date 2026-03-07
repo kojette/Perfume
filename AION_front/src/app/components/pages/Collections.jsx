@@ -59,22 +59,20 @@ const SPINE_HEIGHTS = [108, 124, 96, 132, 112, 104, 128, 90, 118, 108, 134, 98, 
 // ─────────────────────────────────────
 const DEFAULT_LAYOUT = {
   // ── 향수 이미지 위치/크기
-  // 좌측 글쓰기영역(x 14%~50%) 중심 = 약 32%
-  // 세로 중앙 = 50%이지만 이미지가 크면 이름과 겹치므로 43% 정도
-  imgLeft: '31',
-  imgTop:  '44',
-  imgMaxHeight: '58%',
-  imgMaxWidth:  '19%',
+  imgLeft:          '31',
+  imgTop:           '46',
+  imgMaxHeight:     '58%',
+  imgMaxWidth:      '20%',
+  imgBlendStrength: '18',  // 세로 타원 블렌딩 강도 (0=없음 ~ 50=강하게)
 
   // ── 향수 이름 위치
-  // 이미지 아래, 글쓰기 영역 하단 안쪽 (y 70~76%)
-  nameLeft:  '31',
-  nameTop:   '72',
+  nameLeft:  '32',
+  nameTop:   '65',
   nameWidth: '28%',
   nameAlign: 'center',
 
   // ── 향수 이름 스타일
-  nameFontSize:      '1.1rem',
+  nameFontSize:      '1.6rem',
   nameFontWeight:    '600',
   nameColor:         '#3d1f08',
   nameLetterSpacing: '0.06em',
@@ -85,16 +83,14 @@ const DEFAULT_LAYOUT = {
   brandLetterSpacing: '0.35em',
 
   // ── 가운데 구분선
-  // 글쓰기 영역 정중앙 x=50%, 글쓰기 영역 y 범위(18%~82%)
-  dividerLeft:       '50',
-  dividerTopPct:     '20',
-  dividerBottomPct:  '80',
-  dividerColor:      'rgba(100,60,20,0.4)',
+  dividerLeft:      '50',
+  dividerTopPct:    '25',
+  dividerBottomPct: '75',
+  dividerColor:     'rgba(100,60,20,0.4)',
 
   // ── 노트 영역 위치
-  // 구분선 오른쪽 시작, 글쓰기 영역 상단
-  noteLeft:  '53',
-  noteTop:   '22',
+  noteLeft:  '55',
+  noteTop:   '30',
   noteWidth: '29%',
 
   // ── 노트 라벨
@@ -217,10 +213,11 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
     {
       title: '향수 이미지 — 위치 (컨테이너 기준 %)',
       fields: [
-        ['imgLeft',      '중심 X (0~100)'],
-        ['imgTop',       '중심 Y (0~100)'],
-        ['imgMaxHeight', '최대 높이 (예: 55%)'],
-        ['imgMaxWidth',  '최대 너비 (예: 20%)'],
+        ['imgLeft',          '중심 X (0~100)'],
+        ['imgTop',           '중심 Y (0~100)'],
+        ['imgMaxHeight',     '박스 높이 (예: 58%)'],
+        ['imgMaxWidth',      '박스 너비 (예: 20%)'],
+        ['imgBlendStrength', '타원 블렌딩 강도 (0~50)'],
       ],
     },
     {
@@ -350,21 +347,27 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
 
         {/* 미리보기 컨테이너 — 실제 이미지 비율과 동일하게 */}
         <div style={{ position: 'relative', width: '100%', maxWidth: '860px', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
-          {/* 배경 */}
-          {bgUrl
-            ? <img src={bgUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-            : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1a0c04, #3d2010)' }} />
-          }
+          {/* 배경 — CSS background-image로 PNG 투명 영역에 배경색 비침 */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: l.bgContainerColor ?? '#2a1508',
+            ...(bgUrl ? {
+              backgroundImage: `url(${bgUrl})`,
+              backgroundSize: '100% 100%',
+              backgroundRepeat: 'no-repeat',
+            } : {}),
+          }} />
 
           {/* 미리보기 오버레이 */}
           <div style={{ position: 'absolute', inset: 0 }}>
-            {/* 이미지 자리 (썸네일 없으므로 사각형으로 대체) */}
+            {/* 이미지 자리 — 실제와 동일한 고정 박스 */}
             <div style={{
               position: 'absolute',
               left: `${l.imgLeft}%`, top: `${l.imgTop}%`,
               transform: 'translate(-50%, -50%)',
-              width: l.imgMaxWidth, height: l.imgMaxHeight,
-              background: 'rgba(100,60,20,0.25)',
+              width: l.imgMaxWidth,
+              height: l.imgMaxHeight,
+              background: 'rgba(100,60,20,0.12)',
               border: '2px dashed rgba(201,169,97,0.5)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
@@ -446,6 +449,54 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
 }
 
 // ─────────────────────────────────────
+// 향수 이미지 컴포넌트 — 세로 타원형 마스크 블렌딩
+// ─────────────────────────────────────
+function PerfumeImage({ perfume, layout: l }) {
+  const strength = parseFloat(l.imgBlendStrength || 0);
+  // strength 0~50 → 타원 크기 100%~60% (클수록 더 많이 잘림)
+  const ellipseX = Math.max(40, 100 - strength * 0.8);
+  const ellipseY = Math.max(35, 100 - strength * 0.6);
+
+  const maskStyle = strength > 0 ? {
+    WebkitMaskImage: `radial-gradient(ellipse ${ellipseX}% ${ellipseY}% at 50% 50%, black 45%, transparent 100%)`,
+    maskImage:       `radial-gradient(ellipse ${ellipseX}% ${ellipseY}% at 50% 50%, black 45%, transparent 100%)`,
+  } : {};
+
+  return (
+    <div style={{
+      position: 'absolute',
+      left: `${l.imgLeft}%`, top: `${l.imgTop}%`,
+      transform: 'translate(-50%, -50%)',
+      pointerEvents: 'auto',
+      width: l.imgMaxWidth,
+      height: l.imgMaxHeight,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...maskStyle,
+    }}>
+      {perfume.thumbnail ? (
+        <img
+          src={perfume.thumbnail}
+          alt={perfume.name}
+          style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'contain',
+            display: 'block',
+            transition: 'opacity 0.3s',
+          }}
+        />
+      ) : (
+        <span style={{ color: 'rgba(100,60,20,0.3)', fontSize: '1.5rem' }}>✦</span>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────
 // 책등 컴포넌트
 // ─────────────────────────────────────
 function SpineBook({ perfume, isSelected, onClick, globalIdx }) {
@@ -516,13 +567,22 @@ export default function Collections() {
   const [bgUrl, setBgUrl] = useState(null);
   const [bgRatio, setBgRatio] = useState(2.65); // 이미지 실제 가로/세로 비율 (동적으로 업데이트됨)
   const [showBgPanel, setShowBgPanel] = useState(false);
-  const [layout, setLayout] = useState(() => {
-    try {
-      const s = localStorage.getItem('collections_layout_v3');
-      return s ? { ...DEFAULT_LAYOUT, ...JSON.parse(s) } : { ...DEFAULT_LAYOUT };
-    } catch { return { ...DEFAULT_LAYOUT }; }
-  });
+  const [layout, setLayout] = useState({ ...DEFAULT_LAYOUT });
   const [showLayoutEditor, setShowLayoutEditor] = useState(false);
+
+  // Supabase에서 레이아웃 로드 — localStorage 완전 제거
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('Signature_config').select('value').eq('key', 'collections_layout_v6').maybeSingle();
+        if (data?.value) {
+          const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+          setLayout({ ...DEFAULT_LAYOUT, ...parsed });
+        }
+      } catch (e) { console.error('레이아웃 로드 실패:', e); }
+    })();
+  }, []);
 
   // 배경 이미지 로드
   useEffect(() => {
@@ -544,9 +604,13 @@ export default function Collections() {
     } catch (e) { console.error('배경 저장 실패:', e); }
   };
 
-  const handleSaveLayout = (l) => {
+  const handleSaveLayout = async (l) => {
     setLayout(l);
-    localStorage.setItem('collections_layout_v3', JSON.stringify(l));
+    try {
+      const { data: ex } = await supabase.from('Signature_config').select('id').eq('key', 'collections_layout_v6').maybeSingle();
+      if (ex) await supabase.from('Signature_config').update({ value: JSON.stringify(l) }).eq('key', 'collections_layout_v6');
+      else     await supabase.from('Signature_config').insert({ key: 'collections_layout_v6', value: JSON.stringify(l) });
+    } catch (e) { console.error('레이아웃 저장 실패:', e); }
     setShowLayoutEditor(false);
   };
 
@@ -645,25 +709,25 @@ export default function Collections() {
       */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
 
-        {/* 배경 이미지 — 컨테이너와 동일 비율이므로 fill로 완벽히 채워짐 */}
+        {/* 배경색 + 배경이미지 — 반드시 같은 div에 있어야 PNG 투명에 배경색이 비침 */}
         {bgUrl ? (
-          <img
-            src={bgUrl}
-            alt=""
-            onLoad={e => {
-              const { naturalWidth, naturalHeight } = e.currentTarget;
-              if (naturalWidth && naturalHeight) {
-                setBgRatio(naturalWidth / naturalHeight);
-              }
-            }}
+          <div
             style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%',
-              objectFit: 'fill',
+              position: 'absolute', inset: 0, zIndex: 1,
+              backgroundColor: l.bgContainerColor ?? '#2a1508',
+              backgroundImage: `url(${bgUrl})`,
+              backgroundSize: '100% 100%',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center',
             }}
-          />
+          >
+            <img src={bgUrl} alt="" onLoad={e => {
+              const { naturalWidth, naturalHeight } = e.currentTarget;
+              if (naturalWidth && naturalHeight) setBgRatio(naturalWidth / naturalHeight);
+            }} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: '1px', height: '1px' }} />
+          </div>
         ) : (
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1a0c04 0%, #3d2010 25%, #2a1508 55%, #4a2e14 80%, #1a0c04 100%)' }}>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'linear-gradient(135deg, #1a0c04 0%, #3d2010 25%, #2a1508 55%, #4a2e14 80%, #1a0c04 100%)' }}>
             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.07 }}>
               <defs><pattern id="wp" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
                 <path d="M0,40 Q20,35 40,40 Q60,45 80,40" stroke="#c9a961" strokeWidth="0.8" fill="none" />
@@ -677,7 +741,7 @@ export default function Collections() {
 
         {/* 미선택 안내 */}
         {!selectedPerfume && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
               <div style={{ height: '1px', width: '44px', background: 'rgba(100,60,20,0.3)' }} />
               <span style={{ color: 'rgba(100,60,20,0.45)', fontSize: '11px' }}>✦</span>
@@ -691,35 +755,10 @@ export default function Collections() {
 
         {/* ── 향수 선택 오버레이 ── */}
         {selectedPerfume && (
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
 
-            {/* 향수 이미지 */}
-            <div style={{
-              position: 'absolute',
-              left: `${l.imgLeft}%`, top: `${l.imgTop}%`,
-              transform: 'translate(-50%, -50%)',
-              pointerEvents: 'auto',
-            }}>
-              {selectedPerfume.thumbnail ? (
-                <img
-                  src={selectedPerfume.thumbnail}
-                  alt={selectedPerfume.name}
-                  style={{
-                    maxHeight: l.imgMaxHeight,
-                    maxWidth: l.imgMaxWidth,
-                    width: 'auto', height: 'auto',
-                    objectFit: 'contain',
-                    display: 'block',
-                    filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.3))',
-                    transition: 'opacity 0.3s',
-                  }}
-                />
-              ) : (
-                <div style={{ width: '80px', height: '110px', background: 'rgba(100,60,20,0.1)', border: '1px dashed rgba(100,60,20,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: 'rgba(100,60,20,0.3)', fontSize: '1.5rem' }}>✦</span>
-                </div>
-              )}
-            </div>
+            {/* 향수 이미지 — 고정 박스 / 모서리 블렌딩 / 상하 크롭 */}
+            <PerfumeImage perfume={selectedPerfume} layout={l} />
 
             {/* 향수 이름 + 브랜드 */}
             <div style={{
