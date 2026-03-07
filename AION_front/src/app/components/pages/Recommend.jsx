@@ -118,11 +118,6 @@ function PerfumeCard({ perfume, onClick }) {
           </div>
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <div className="flex gap-0.5">
-            {[...Array(5)].map((_, i) => (
-              <span key={i} className={`text-[10px] ${i < (perfume.rating || 0) ? 'text-[#c9a961]' : 'text-[#e8e2d6]'}`}>★</span>
-            ))}
-          </div>
           <div className="flex flex-wrap gap-1">
             {(perfume.tags || []).slice(0, 2).map((tag, i) => (
               <span key={i} className="text-[9px] px-2 py-0.5 bg-[#faf8f3] border border-[#e8e2d6] text-[#8b8278]">#{tag}</span>
@@ -504,7 +499,6 @@ export default function Recommend() {
                 <option value="latest">최신순</option>
                 <option value="price-low">가격 낮은순</option>
                 <option value="price-high">가격 높은순</option>
-                <option value="rating">평점순</option>
                 <option value="popular">인기순</option>
               </select>
             </div>

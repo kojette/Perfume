@@ -74,11 +74,13 @@ const CustomerSupport = () => {
         const mappedData = json.data.map(item => ({
           ...item,
           id : item.inquiryId,
+          customerId : item.customerId || item.userId || item.memberId || null,
           customer : {
+            id : item.customerId || item.userId || item.memberId || null,
             name : item.customerName || '알 수 없음',
             email : item.customerEmail || 'no-email',
-            warningLevel : 'normal',
-            warnings : 0
+            warningLevel : item.warningLevel || 'normal',
+            warnings : item.warningCount || 0
           },
           hasNotification: false
         }));
@@ -150,10 +152,124 @@ const CustomerSupport = () => {
     ));
   };
 
-  // 기타 미구현 버튼 핸들러 (UI 유지용)
-  const handleAddWarning = () => alert("경고 추가 기능 준비 중입니다.");
-  const handleReduceWarning = () => alert("경고 감소 기능 준비 중입니다.");
-  const handleRemoveBlacklist = () => alert("블랙리스트 해제 기능 준비 중입니다.");
+  // 경고 레벨 계산
+  const getWarningLevel = (count) => {
+    if (count <= 0) return 'normal';
+    if (count === 1) return 'warning';
+    if (count === 2) return 'danger';
+    return 'blacklist';
+  };
+
+  // 경고 추가
+  const handleAddWarning = async () => {
+    if (!selectedInquiry) return;
+    const customerId = selectedInquiry.customerId || selectedInquiry.customer?.id;
+    if (!customerId) {
+      alert('고객 ID를 찾을 수 없습니다.\n백엔드 응답에 customerId(또는 userId/memberId) 필드가 필요합니다.');
+      return;
+    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`http://localhost:8080/api/inquiries/admin/users/${customerId}/warning/add`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const newWarnings = (selectedInquiry.customer.warnings || 0) + 1;
+        const newLevel = getWarningLevel(newWarnings);
+        const updatedCustomer = { ...selectedInquiry.customer, warnings: newWarnings, warningLevel: newLevel };
+        setSelectedInquiry(prev => ({ ...prev, customer: updatedCustomer }));
+        setInquiries(prev => prev.map(inq =>
+          inq.id === selectedInquiry.id ? { ...inq, customer: updatedCustomer } : inq
+        ));
+        alert(`경고가 추가되었습니다. (현재 ${newWarnings}회 / ${WARNING_LEVELS[newLevel].label})`);
+      } else {
+        const err = await response.json().catch(() => ({}));
+        alert(err.message || '경고 추가에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('경고 추가 에러:', error);
+      alert('서버 통신 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 경고 감소
+  const handleReduceWarning = async () => {
+    if (!selectedInquiry) return;
+    const customerId = selectedInquiry.customerId || selectedInquiry.customer?.id;
+    if (!customerId) {
+      alert('고객 ID를 찾을 수 없습니다.\n백엔드 응답에 customerId(또는 userId/memberId) 필드가 필요합니다.');
+      return;
+    }
+    if ((selectedInquiry.customer.warnings || 0) <= 0) {
+      alert('이미 경고가 없는 정상 고객입니다.');
+      return;
+    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`http://localhost:8080/api/inquiries/admin/users/${customerId}/warning/reduce`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const newWarnings = Math.max(0, (selectedInquiry.customer.warnings || 0) - 1);
+        const newLevel = getWarningLevel(newWarnings);
+        const updatedCustomer = { ...selectedInquiry.customer, warnings: newWarnings, warningLevel: newLevel };
+        setSelectedInquiry(prev => ({ ...prev, customer: updatedCustomer }));
+        setInquiries(prev => prev.map(inq =>
+          inq.id === selectedInquiry.id ? { ...inq, customer: updatedCustomer } : inq
+        ));
+        alert(`경고가 감소되었습니다. (현재 ${newWarnings}회 / ${WARNING_LEVELS[newLevel].label})`);
+      } else {
+        const err = await response.json().catch(() => ({}));
+        alert(err.message || '경고 감소에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('경고 감소 에러:', error);
+      alert('서버 통신 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 블랙리스트 해제
+  const handleRemoveBlacklist = async () => {
+    if (!selectedInquiry) return;
+    const customerId = selectedInquiry.customerId || selectedInquiry.customer?.id;
+    if (!customerId) {
+      alert('고객 ID를 찾을 수 없습니다.\n백엔드 응답에 customerId(또는 userId/memberId) 필드가 필요합니다.');
+      return;
+    }
+    if (!window.confirm('블랙리스트를 해제하시겠습니까?')) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`http://localhost:8080/api/inquiries/admin/users/${customerId}/blacklist/remove`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const updatedCustomer = { ...selectedInquiry.customer, warnings: 0, warningLevel: 'normal' };
+        setSelectedInquiry(prev => ({ ...prev, customer: updatedCustomer }));
+        setInquiries(prev => prev.map(inq =>
+          inq.id === selectedInquiry.id ? { ...inq, customer: updatedCustomer } : inq
+        ));
+        alert('블랙리스트가 해제되었습니다.');
+      } else {
+        const err = await response.json().catch(() => ({}));
+        alert(err.message || '블랙리스트 해제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('블랙리스트 해제 에러:', error);
+      alert('서버 통신 중 오류가 발생했습니다.');
+    }
+  };
 
   // 필터링 로직
   const filteredInquiries = useMemo(() => {

@@ -6,6 +6,7 @@ import com.aion.back.inquiry.entity.Inquiry;
 import com.aion.back.inquiry.repository.InquiryRepository;
 import com.aion.back.inquiry.dto.InquiryResponseDto;
 import com.aion.back.member.entity.Member;
+import com.aion.back.member.repository.MemberRepository;
 import com.aion.back.member.service.MemberService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class InquiryController {
     private final MemberService memberService;
     private final InquiryRepository inquiryRepository;
+    private final MemberRepository memberRepository;
 
     // 내 문의 내역 조회
     @GetMapping("/my")
@@ -148,5 +150,72 @@ public class InquiryController {
         inquiry.setRead(false);
 
         return ApiResponse.success("답변이 등록되었습니다.");
+    }
+
+    // [관리자] 경고 추가
+    @PatchMapping("/admin/users/{userId}/warning/add")
+    @Transactional
+    public ApiResponse<String> addWarning(@RequestHeader("Authorization") String token,
+                                          @PathVariable Long userId) {
+        Member admin = memberService.getMemberEntityByToken(token);
+        if (!"ADMIN".equals(admin.getRole())) {
+            throw new RuntimeException("관리자 권한이 없습니다.");
+        }
+
+        Member target = memberRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("고객을 찾을 수 없습니다."));
+
+        int newCount = (target.getWarningCount() != null ? target.getWarningCount() : 0) + 1;
+        target.setWarningCount(newCount);
+        target.setWarningLevel(calcWarningLevel(newCount));
+
+        return ApiResponse.success("경고가 추가되었습니다.");
+    }
+
+    // [관리자] 경고 감소
+    @PatchMapping("/admin/users/{userId}/warning/reduce")
+    @Transactional
+    public ApiResponse<String> reduceWarning(@RequestHeader("Authorization") String token,
+                                             @PathVariable Long userId) {
+        Member admin = memberService.getMemberEntityByToken(token);
+        if (!"ADMIN".equals(admin.getRole())) {
+            throw new RuntimeException("관리자 권한이 없습니다.");
+        }
+
+        Member target = memberRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("고객을 찾을 수 없습니다."));
+
+        int newCount = Math.max(0, (target.getWarningCount() != null ? target.getWarningCount() : 0) - 1);
+        target.setWarningCount(newCount);
+        target.setWarningLevel(calcWarningLevel(newCount));
+
+        return ApiResponse.success("경고가 감소되었습니다.");
+    }
+
+    // [관리자] 블랙리스트 해제
+    @PatchMapping("/admin/users/{userId}/blacklist/remove")
+    @Transactional
+    public ApiResponse<String> removeBlacklist(@RequestHeader("Authorization") String token,
+                                               @PathVariable Long userId) {
+        Member admin = memberService.getMemberEntityByToken(token);
+        if (!"ADMIN".equals(admin.getRole())) {
+            throw new RuntimeException("관리자 권한이 없습니다.");
+        }
+
+        Member target = memberRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("고객을 찾을 수 없습니다."));
+
+        target.setWarningCount(0);
+        target.setWarningLevel("normal");
+
+        return ApiResponse.success("블랙리스트가 해제되었습니다.");
+    }
+
+    // 경고 횟수 → 레벨 변환
+    private String calcWarningLevel(int count) {
+        if (count <= 0) return "normal";
+        if (count == 1) return "warning";
+        if (count == 2) return "danger";
+        return "blacklist";
     }
 }

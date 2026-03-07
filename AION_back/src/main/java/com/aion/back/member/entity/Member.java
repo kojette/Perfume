@@ -62,6 +62,12 @@ public class Member {
     @Column(name = "total_points", columnDefinition = "integer default 0")
     private Integer totalPoints = 0;
 
+    @Column(name = "warning_count", columnDefinition = "integer default 0")
+    private Integer warningCount = 0;
+
+    @Column(name = "warning_level", columnDefinition = "VARCHAR(20) DEFAULT 'normal'")
+    private String warningLevel = "normal";
+
     public LocalDateTime getWithdrawDate() {
         return null;
     }

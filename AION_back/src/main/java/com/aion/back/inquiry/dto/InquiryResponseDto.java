@@ -14,11 +14,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class InquiryResponseDto {
     private Long inquiryId;
+    private Long customerId;       // 추가: 고객 ID (경고 기능에 필요)
     private String type;
     private String title;
     private String content;
     private String customerName;
     private String customerEmail;
+    private Integer warningCount;  // 추가: 경고 횟수
+    private String warningLevel;   // 추가: 경고 레벨 (normal/warning/danger/blacklist)
     private String status;
     private boolean read;
     private String answer;
@@ -28,11 +31,14 @@ public class InquiryResponseDto {
     public static InquiryResponseDto from(Inquiry inquiry) {
         return InquiryResponseDto.builder()
                 .inquiryId(inquiry.getInquiryId())
+                .customerId(inquiry.getMember().getUserId())
                 .type(inquiry.getType())
                 .title(inquiry.getTitle())
                 .content(inquiry.getContent())
                 .customerName(inquiry.getCustomerName())
                 .customerEmail(inquiry.getCustomerEmail())
+                .warningCount(inquiry.getMember().getWarningCount() != null ? inquiry.getMember().getWarningCount() : 0)
+                .warningLevel(inquiry.getMember().getWarningLevel() != null ? inquiry.getMember().getWarningLevel() : "normal")
                 .status(inquiry.getStatus())
                 .read(inquiry.isRead())
                 .answer(inquiry.getAnswer())
