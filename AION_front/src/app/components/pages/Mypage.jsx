@@ -4,6 +4,48 @@ import { Ornament } from '../Ornament';
 import { Gift, Coins, Calendar, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
+const CouponCard = ({ coupon }) => {
+  const isPercentage = coupon.discountType === 'PERCENTAGE';
+  const discountValue = coupon.discountValue || 0;
+
+  return (
+    <div className={`bg-white border ${coupon.isUsed ? 'border-gray-200' : 'border-[#c9a961]/20'} rounded-lg p-6 hover:shadow-md transition-all`}>
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-3">
+            <Gift className={`w-6 h-6 ${coupon.isUsed ? 'text-gray-400' : 'text-[#c9a961]'}`} />
+            <div>
+              <p className="text-xs text-[#8b8278]">쿠폰 코드</p>
+              <p className={`font-mono font-bold text-lg ${coupon.isUsed ? 'text-gray-400' : 'text-[#2a2620]'}`}>
+                {coupon.couponCode}
+              </p>
+            </div>
+          </div>
+          <div className="text-xs text-[#555] space-y-1">
+            {/* 'PERCENTAGE' 조건 체크 */}
+            <p className="font-medium">
+              혜택: <span className="text-[#c9a961] font-bold">
+                {isPercentage 
+                  ? `${discountValue}% 할인` 
+                  : `${discountValue.toLocaleString()}원 할인`}
+              </span>
+            </p>
+            
+            {coupon.expiryDate && (
+              <p className="flex items-center gap-2 text-[11px] text-[#8b8278]">
+                <Calendar size={12} /> 만료일: {new Date(coupon.expiryDate).toLocaleDateString('ko-KR')}
+              </p>
+            )}
+          </div>
+        </div>
+        <span className={`px-3 py-1 text-[10px] rounded font-bold ${coupon.isUsed ? 'bg-gray-100 text-gray-500' : 'bg-[#c9a961] text-white'}`}>
+          {coupon.isUsed ? '사용완료' : '사용가능'}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const Mypage = () => {
   const navigate = useNavigate();
 
@@ -22,8 +64,13 @@ const Mypage = () => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
+  const initMypage = async () => {
+    await fetchUserProfile(); 
+    await fetchCoupons();     
+    await fetchOrders();      
+  };
+  initMypage();
+}, []);
 
   useEffect(() => {
     if (!userInfo) return;
@@ -82,6 +129,46 @@ const Mypage = () => {
       }
     } catch (error) {
       console.error('쿠폰 조회 중 에러 발생:', error);
+    }
+  };
+
+  const [couponInput, setCouponInput] = useState('');
+  const [registerLoading, setRegisterLoading] = useState(false);
+
+  // 쿠폰 등록 함수
+  const handleRegisterCoupon = async () => {
+    if (!couponInput.trim()) {
+      alert('쿠폰 코드를 입력해주세요.');
+      return;
+    }
+
+    try {
+      setRegisterLoading(true);
+      const token = sessionStorage.getItem('accessToken');
+      
+      const response = await fetch(`${API_BASE_URL}/api/coupons/register`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ couponCode: couponInput })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert('쿠폰이 성공적으로 등록되었습니다!');
+        setCouponInput(''); // 입력창 초기화
+        fetchCoupons();     // 목록 새로고침
+      } else {
+        alert(result.message || '유효하지 않은 쿠폰 코드입니다.');
+      }
+    } catch (error) {
+      console.error('쿠폰 등록 에러:', error);
+      alert('서버 통신 중 오류가 발생했습니다.');
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
@@ -285,13 +372,30 @@ const Mypage = () => {
                     <p className="text-[11px] text-[#8b8278] tracking-[0.1em] italic">Welcome back to your curated space.</p>
                   </div>
                   <div className="flex gap-12 border-l border-[#c9a961]/10 pl-12">
-                    <div className="text-center">
-                      <p className="text-[9px] text-[#8b8278] tracking-widest mb-1">POINTS</p>
-                      <p className="text-lg font-bold text-[#2a2620]">{totalPoints.toLocaleString()}P</p>
+                    {/* 포인트 섹션 */}
+                    <div 
+                      onClick={() => setActiveTab('points')}
+                      className="text-center cursor-pointer transition-transform hover:-translate-y-1"
+                    >
+                      <p className="text-[9px] text-[#8b8278] tracking-widest mb-1 hover:text-[#c9a961] transition-colors">
+                        POINTS
+                      </p>
+                      <p className="text-lg font-bold text-[#2a2620] hover:text-[#c9a961] transition-colors">
+                        {totalPoints.toLocaleString()}P
+                      </p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-[9px] text-[#8b8278] tracking-widest mb-1">COUPONS</p>
-                      <p className="text-lg font-bold text-[#2a2620]">{coupons.length}</p>
+
+                    {/* 쿠폰 섹션 */}
+                    <div 
+                      onClick={() => setActiveTab('coupons')}
+                      className="text-center cursor-pointer transition-transform hover:-translate-y-1"
+                    >
+                      <p className="text-[9px] text-[#8b8278] tracking-widest mb-1 hover:text-[#c9a961] transition-colors">
+                        COUPONS
+                      </p>
+                      <p className="text-lg font-bold text-[#2a2620] hover:text-[#c9a961] transition-colors">
+                        {coupons.filter(c => !c.isUsed).length}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -365,41 +469,86 @@ const Mypage = () => {
 
           {/* 쿠폰함 */}
           {activeTab === 'coupons' && (
-            <div className="space-y-4">
-              {coupons.length === 0 ? (
-                <div className="text-center py-20 bg-white border border-[#c9a961]/10 rounded-lg">
-                  <Gift size={48} className="mx-auto mb-4 text-[#c9a961]/30" />
-                  <p className="text-sm text-[#8b8278] italic">보유 중인 쿠폰이 없습니다</p>
-                  <button onClick={() => navigate('/')} className="mt-6 px-6 py-2 border border-[#c9a961] text-[#c9a961] text-xs tracking-wider hover:bg-[#c9a961] hover:text-white transition-all">이벤트 참여하러 가기</button>
+            <div className="space-y-10 animate-in fade-in duration-700">
+              
+              {/* 1. 쿠폰 등록 섹션 (목록 유무와 상관없이 항상 노출) */}
+              <div className="bg-white border border-[#c9a961]/20 p-8 shadow-sm">
+                <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#2a2620] mb-6 flex items-center gap-2 uppercase">
+                  <div className="w-1 h-3 bg-[#c9a961]"></div>
+                  Register New Coupon
+                </h3>
+                <div className="flex gap-4">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRegisterCoupon()}
+                    placeholder="쿠폰 코드를 입력하세요 (예: WELCOME2026)"
+                    className="flex-1 bg-[#faf8f3] border border-[#c9a961]/10 px-4 py-3 text-xs tracking-widest focus:outline-none focus:border-[#c9a961] transition-colors"
+                  />
+                  <button
+                    onClick={handleRegisterCoupon}
+                    disabled={registerLoading}
+                    className="px-8 py-3 bg-[#2a2620] text-white text-[10px] tracking-[0.2em] font-bold hover:bg-[#c9a961] transition-all duration-300 disabled:opacity-50 cursor-pointer"
+                  >
+                    {registerLoading ? 'REGISTERING...' : 'REGISTER'}
+                  </button>
                 </div>
-              ) : (
-                coupons.map((userCoupon) => (
-                  <div key={userCoupon.userCouponId} className="bg-white border border-[#c9a961]/20 rounded-lg p-6 hover:shadow-md transition-all">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <Gift className="w-6 h-6 text-[#c9a961]" />
-                          <div>
-                            <p className="text-xs text-[#8b8278]">쿠폰 코드</p>
-                            <p className="font-mono font-bold text-lg text-[#2a2620]">{userCoupon.couponCode}</p>
-                          </div>
-                        </div>
-                        <div className="text-xs text-[#555] space-y-1">
-                          <p>혜택: {userCoupon.discountType === 'PERCENT' ? `${userCoupon.discountValue}% 할인` : `${userCoupon.discountValue?.toLocaleString()}원 할인`}</p>
-                          {userCoupon.expiryDate && (
-                            <p className="flex items-center gap-2">
-                              <Calendar size={12} /> 만료일: {new Date(userCoupon.expiryDate).toLocaleDateString('ko-KR')}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <span className={`px-3 py-1 text-xs rounded ${userCoupon.isUsed ? 'bg-gray-200 text-gray-600' : 'bg-[#c9a961] text-white'}`}>
-                        {userCoupon.isUsed ? '사용완료' : '사용가능'}
-                      </span>
-                    </div>
+                <p className="mt-3 text-[10px] text-[#8b8278] italic font-light">
+                  * 대소문자를 구분하여 정확히 입력해 주세요.
+                </p>
+              </div>
+
+              {/* 2. 쿠폰 목록 섹션 */}
+              <div className="space-y-12">
+                {coupons.length === 0 ? (
+                  /* 쿠폰이 아예 없을 때 */
+                  <div className="text-center py-20 bg-white border border-[#c9a961]/10 rounded-lg">
+                    <Gift size={48} className="mx-auto mb-4 text-[#c9a961]/30" />
+                    <p className="text-sm text-[#8b8278] italic">보유 중인 쿠폰이 없습니다</p>
+                    <button onClick={() => navigate('/')} className="mt-6 px-6 py-2 border border-[#c9a961] text-[#c9a961] text-xs tracking-wider hover:bg-[#c9a961] hover:text-white transition-all cursor-pointer">
+                      이벤트 참여하러 가기
+                    </button>
                   </div>
-                ))
-              )}
+                ) : (
+                  /* 쿠폰이 하나라도 있을 때 */
+                  <>
+                    {/* 사용 가능한 쿠폰 */}
+                    <section>
+                      <div className="flex items-center gap-3 mb-6">
+                        <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#c9a961] uppercase">Available Coupons</h3>
+                        <div className="flex-1 h-[1px] bg-[#c9a961]/10"></div>
+                      </div>
+                      <div className="space-y-4">
+                        {coupons.filter(c => !c.isUsed).length > 0 ? (
+                          coupons.filter(c => !c.isUsed).map((userCoupon) => (
+                            <CouponCard key={userCoupon.userCouponId} coupon={userCoupon} />
+                          ))
+                        ) : (
+                          <p className="text-[11px] text-[#8b8278] italic py-4 text-center">사용 가능한 쿠폰이 없습니다.</p>
+                        )}
+                      </div>
+                    </section>
+
+                    {/* 사용 완료 쿠폰 */}
+                    <section>
+                      <div className="flex items-center gap-3 mb-6">
+                        <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#8b8278] uppercase">Used / Expired</h3>
+                        <div className="flex-1 h-[1px] bg-[#c9a961]/10"></div>
+                      </div>
+                      <div className="space-y-4 opacity-60">
+                        {coupons.filter(c => c.isUsed).length > 0 ? (
+                          coupons.filter(c => c.isUsed).map((userCoupon) => (
+                            <CouponCard key={userCoupon.userCouponId} coupon={userCoupon} />
+                          ))
+                        ) : (
+                          <p className="text-[11px] text-[#8b8278] italic py-4 text-center">사용 완료된 내역이 없습니다.</p>
+                        )}
+                      </div>
+                    </section>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
