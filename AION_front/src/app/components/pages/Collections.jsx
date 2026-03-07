@@ -1,22 +1,17 @@
 /**
- * Collections.jsx — 리뉴얼 v2 (레이아웃 좌표 완전 수정)
+ * Collections.jsx — 리뉴얼 v2
  *
- * 핵심 수정사항:
- * 1. 배경 이미지를 contain → cover로 변경 (또는 양피지 비율에 맞게 aspect-ratio 2.8:1 고정)
- *    - 양피지 이미지 비율: 약 2.8:1 (가로 1310 × 세로 460 픽셀 기준)
- *    - aspect-ratio를 이미지 실제 비율에 맞추면 % 좌표가 정확히 대응됨
- *
- * 2. DEFAULT_LAYOUT 수치 완전 재계산
- *    - 양피지 글쓰기 영역: x 14%~86%, y 20%~80%
- *    - 좌측(이미지+이름): x 중심 약 30%, 우측(노트): x 시작 약 55%
- *    - 구분선: x 50%
- *
- * 3. 레이아웃 에디터에 실시간 미리보기 추가
+ * [적용된 패치 전체]
+ * 1. API 최적화: notesCache(노트 중복호출 방지), isHandling(중복클릭 방지), scheduleGeminiRef(타이머 중복 방지)
+ * 2. Gemini 모델: gemini-2.5-flash-lite (안정적 무료 tier)
+ * 3. 한줄평 레이아웃 분리: DEFAULT_LAYOUT에 review* 필드 추가, 레이아웃 에디터 섹션 추가, 독립 position:absolute 블록으로 렌더링
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Upload, Settings, X, Save, Check } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 // ─────────────────────────────────────
 // 상수
@@ -45,65 +40,57 @@ const SPINE_PALETTE = [
 const SPINE_HEIGHTS = [108, 124, 96, 132, 112, 104, 128, 90, 118, 108, 134, 98, 120, 110, 100, 130];
 
 // ─────────────────────────────────────
-// DEFAULT_LAYOUT — 양피지 기준 완전 재계산
-//
-// 양피지 이미지 분석 (ChatGPT_Image 기준):
-//   전체 비율: ~2.8:1 (가로:세로)
-//   롤(두루마리 봉) 좌우 각 약 9% 차지
-//   글쓰기 가능 영역: x 13%~87%, y 18%~82%
-//
-// 레이아웃:
-//   좌측 절반(글쓰기 영역): x 13%~50% → 중심 약 31%
-//   우측 절반(글쓰기 영역): x 50%~87% → 시작 약 53%
-//   수직 중앙선: y 50%
+// DEFAULT_LAYOUT
 // ─────────────────────────────────────
 const DEFAULT_LAYOUT = {
-  // ── 향수 이미지 위치/크기
-  imgLeft:          '31',
-  imgTop:           '46',
-  imgMaxHeight:     '58%',
+  imgLeft:          '30',
+  imgTop:           '44',
+  imgMaxHeight:     '40%',
   imgMaxWidth:      '20%',
-  imgBlendStrength: '18',  // 세로 타원 블렌딩 강도 (0=없음 ~ 50=강하게)
+  imgBlendStrength: '18',
 
-  // ── 향수 이름 위치
-  nameLeft:  '32',
-  nameTop:   '65',
+  nameLeft:  '30',
+  nameTop:   '75',
   nameWidth: '28%',
   nameAlign: 'center',
 
-  // ── 향수 이름 스타일
   nameFontSize:      '1.6rem',
   nameFontWeight:    '600',
   nameColor:         '#3d1f08',
   nameLetterSpacing: '0.06em',
 
-  // ── 브랜드명
   brandFontSize:      '0.62rem',
   brandColor:         '#7a4a1e',
   brandLetterSpacing: '0.35em',
 
-  // ── 가운데 구분선
   dividerLeft:      '50',
   dividerTopPct:    '25',
   dividerBottomPct: '75',
   dividerColor:     'rgba(100,60,20,0.4)',
 
-  // ── 노트 영역 위치
-  noteLeft:  '55',
-  noteTop:   '30',
+  noteLeft:  '58',
+  noteTop:   '20',
   noteWidth: '29%',
 
-  // ── 노트 라벨
   noteLabelFontSize:      '0.7rem',
   noteLabelColor:         '#7a4a1e',
   noteLabelLetterSpacing: '0.28em',
 
-  // ── 노트 값
   noteValueFontSize:   '0.84rem',
   noteValueColor:      '#3d1f08',
   noteValueLineHeight: '1.65',
   noteGap:             '0.9rem',
   noteDividerColor:    'rgba(100,60,20,0.2)',
+
+  // ── 한줄평 (Gemini) ★ 신규
+  reviewLeft:       '58',
+  reviewTop:        '72',
+  reviewWidth:      '29%',
+  reviewFontSize:   '1.2rem',
+  reviewColor:      '#3d1f08',
+  reviewLineHeight: '1.6',
+  reviewOpacity:    '0.85',
+  reviewFontStyle:  'italic',
 };
 
 const uploadToSupabase = async (file) => {
@@ -197,7 +184,6 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
   const [local, setLocal] = useState({ ...layout });
   const set = (k, v) => setLocal(p => ({ ...p, [k]: v }));
 
-  // 미리보기용 더미 데이터
   const PREVIEW = {
     name: '향수 이름 예시',
     brand_name: 'BRAND NAME',
@@ -276,6 +262,25 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
         ['noteDividerColor',    '구분선 색', 'color'],
       ],
     },
+    // ★ 한줄평 섹션 신규
+    {
+      title: '한줄평 (Gemini) — 위치',
+      fields: [
+        ['reviewLeft',  '시작 X (0~100)'],
+        ['reviewTop',   '시작 Y (0~100)'],
+        ['reviewWidth', '박스 너비 (예: 29%)'],
+      ],
+    },
+    {
+      title: '한줄평 (Gemini) — 스타일',
+      fields: [
+        ['reviewFontSize',   '글씨 크기'],
+        ['reviewColor',      '글씨 색',   'color'],
+        ['reviewLineHeight', '줄 높이'],
+        ['reviewOpacity',    '투명도 (0~1)'],
+        ['reviewFontStyle',  '스타일 (italic/normal)'],
+      ],
+    },
   ];
 
   const inputStyle = {
@@ -290,7 +295,6 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
 
       {/* 좌측: 컨트롤 패널 */}
       <div style={{ width: '420px', flexShrink: 0, background: '#0e0802', borderRight: '1px solid rgba(201,169,97,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* 헤더 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid rgba(201,169,97,0.2)', flexShrink: 0 }}>
           <div>
             <p style={{ fontSize: '0.52rem', letterSpacing: '0.5em', color: '#c9a961', marginBottom: '3px', margin: '0 0 3px' }}>ADMIN · LAYOUT EDITOR</p>
@@ -309,7 +313,6 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
           </div>
         </div>
 
-        {/* 필드 스크롤 */}
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {SECTIONS.map(sec => (
             <div key={sec.title}>
@@ -323,7 +326,6 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
                     {type === 'color' ? (
                       <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
                         <input type="color" value={(() => {
-                          // rgba/gradient 값은 color picker에 안 맞으니 hex만 표시
                           const v = local[k];
                           return v?.startsWith('#') ? v : '#c9a961';
                         })()} onChange={e => set(k, e.target.value)}
@@ -345,9 +347,7 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', overflow: 'hidden' }}>
         <p style={{ fontSize: '0.52rem', letterSpacing: '0.45em', color: 'rgba(201,169,97,0.5)', marginBottom: '12px' }}>LIVE PREVIEW</p>
 
-        {/* 미리보기 컨테이너 — 실제 이미지 비율과 동일하게 */}
         <div style={{ position: 'relative', width: '100%', maxWidth: '860px', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
-          {/* 배경 — CSS background-image로 PNG 투명 영역에 배경색 비침 */}
           <div style={{
             position: 'absolute', inset: 0,
             background: l.bgContainerColor ?? '#2a1508',
@@ -358,15 +358,13 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
             } : {}),
           }} />
 
-          {/* 미리보기 오버레이 */}
           <div style={{ position: 'absolute', inset: 0 }}>
-            {/* 이미지 자리 — 실제와 동일한 고정 박스 */}
+            {/* 이미지 자리 */}
             <div style={{
               position: 'absolute',
               left: `${l.imgLeft}%`, top: `${l.imgTop}%`,
               transform: 'translate(-50%, -50%)',
-              width: l.imgMaxWidth,
-              height: l.imgMaxHeight,
+              width: l.imgMaxWidth, height: l.imgMaxHeight,
               background: 'rgba(100,60,20,0.12)',
               border: '2px dashed rgba(201,169,97,0.5)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -379,8 +377,7 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
               position: 'absolute',
               left: `${l.nameLeft}%`, top: `${l.nameTop}%`,
               transform: 'translate(-50%, -50%)',
-              width: l.nameWidth,
-              textAlign: l.nameAlign,
+              width: l.nameWidth, textAlign: l.nameAlign,
             }}>
               <h2 style={{ fontSize: l.nameFontSize, fontWeight: l.nameFontWeight, color: l.nameColor, letterSpacing: l.nameLetterSpacing, margin: '0 0 3px', lineHeight: 1.2 }}>
                 {PREVIEW.name}
@@ -401,11 +398,7 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
             }} />
 
             {/* 노트 */}
-            <div style={{
-              position: 'absolute',
-              left: `${l.noteLeft}%`, top: `${l.noteTop}%`,
-              width: l.noteWidth,
-            }}>
+            <div style={{ position: 'absolute', left: `${l.noteLeft}%`, top: `${l.noteTop}%`, width: l.noteWidth }}>
               {[
                 { key: 'top',    label: 'Top',    items: PREVIEW.notes.top },
                 { key: 'middle', label: 'Middle', items: PREVIEW.notes.middle },
@@ -413,27 +406,29 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
               ].map(({ key, label, items }, idx) => (
                 <div key={key} style={{ marginBottom: idx < 2 ? l.noteGap : 0 }}>
                   {idx > 0 && <div style={{ height: '0.5px', background: l.noteDividerColor, marginBottom: l.noteGap }} />}
-                  <p style={{ fontSize: l.noteLabelFontSize, fontWeight: '600', fontStyle: 'italic', color: l.noteLabelColor, letterSpacing: l.noteLabelLetterSpacing, margin: '0 0 3px' }}>
-                    {label}
-                  </p>
-                  <p style={{ fontSize: l.noteValueFontSize, color: l.noteValueColor, lineHeight: l.noteValueLineHeight, margin: 0 }}>
-                    {items.join('  ·  ')}
-                  </p>
+                  <p style={{ fontSize: l.noteLabelFontSize, fontWeight: '600', fontStyle: 'italic', color: l.noteLabelColor, letterSpacing: l.noteLabelLetterSpacing, margin: '0 0 3px' }}>{label}</p>
+                  <p style={{ fontSize: l.noteValueFontSize, color: l.noteValueColor, lineHeight: l.noteValueLineHeight, margin: 0 }}>{items.join('  ·  ')}</p>
                 </div>
               ))}
             </div>
 
-            {/* 좌표 가이드 오버레이 */}
+            {/* ★ 한줄평 미리보기 */}
+            <div style={{ position: 'absolute', left: `${l.reviewLeft}%`, top: `${l.reviewTop}%`, width: l.reviewWidth }}>
+              <div style={{ paddingTop: '10px', borderTop: `0.5px solid ${l.noteDividerColor}` }}>
+                <p style={{ fontSize: l.reviewFontSize, color: l.reviewColor, fontStyle: l.reviewFontStyle, lineHeight: l.reviewLineHeight, margin: 0, opacity: parseFloat(l.reviewOpacity) }}>
+                  "빛과 어둠 사이 피어난 향기"
+                </p>
+              </div>
+            </div>
+
+            {/* 가이드 오버레이 */}
             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.25 }}>
-              {/* 양피지 글쓰기 영역 표시 */}
               <rect x="13%" y="20%" width="74%" height="60%" fill="none" stroke="#c9a961" strokeWidth="0.8" strokeDasharray="4,4" />
-              {/* 중앙 가이드선 */}
               <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#c9a961" strokeWidth="0.5" strokeDasharray="2,6" />
               <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#c9a961" strokeWidth="0.5" strokeDasharray="2,6" />
             </svg>
           </div>
 
-          {/* 가이드 레전드 */}
           <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '16px', height: '1px', background: '#c9a961', opacity: 0.4, borderTop: '1px dashed #c9a961' }} />
             <span style={{ fontSize: '0.48rem', color: 'rgba(201,169,97,0.4)', letterSpacing: '0.2em' }}>양피지 글쓰기 영역 가이드</span>
@@ -449,11 +444,10 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
 }
 
 // ─────────────────────────────────────
-// 향수 이미지 컴포넌트 — 세로 타원형 마스크 블렌딩
+// 향수 이미지 컴포넌트
 // ─────────────────────────────────────
 function PerfumeImage({ perfume, layout: l }) {
   const strength = parseFloat(l.imgBlendStrength || 0);
-  // strength 0~50 → 타원 크기 100%~60% (클수록 더 많이 잘림)
   const ellipseX = Math.max(40, 100 - strength * 0.8);
   const ellipseY = Math.max(35, 100 - strength * 0.6);
 
@@ -468,27 +462,13 @@ function PerfumeImage({ perfume, layout: l }) {
       left: `${l.imgLeft}%`, top: `${l.imgTop}%`,
       transform: 'translate(-50%, -50%)',
       pointerEvents: 'auto',
-      width: l.imgMaxWidth,
-      height: l.imgMaxHeight,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      width: l.imgMaxWidth, height: l.imgMaxHeight,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
       ...maskStyle,
     }}>
       {perfume.thumbnail ? (
-        <img
-          src={perfume.thumbnail}
-          alt={perfume.name}
-          style={{
-            maxWidth: '100%',
-            maxHeight: '100%',
-            width: 'auto',
-            height: 'auto',
-            objectFit: 'contain',
-            display: 'block',
-            transition: 'opacity 0.3s',
-          }}
-        />
+        <img src={perfume.thumbnail} alt={perfume.name}
+          style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block', transition: 'opacity 0.3s' }} />
       ) : (
         <span style={{ color: 'rgba(100,60,20,0.3)', fontSize: '1.5rem' }}>✦</span>
       )}
@@ -525,9 +505,7 @@ function SpineBook({ perfume, isSelected, onClick, globalIdx }) {
         borderRight: `1px solid rgba(0,0,0,0.6)`,
         borderTop: `1px solid ${pal.accent}33`,
         borderRadius: '1px 1px 0 0',
-        boxShadow: isSelected
-          ? `0 -10px 28px rgba(201,169,97,0.35), 3px 3px 10px rgba(0,0,0,0.7)`
-          : `2px 3px 8px rgba(0,0,0,0.55)`,
+        boxShadow: isSelected ? `0 -10px 28px rgba(201,169,97,0.35), 3px 3px 10px rgba(0,0,0,0.7)` : `2px 3px 8px rgba(0,0,0,0.55)`,
         position: 'relative', overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', inset: 0, opacity: 0.15, backgroundImage: `repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4px, transparent 4px, transparent 9px, rgba(0,0,0,0.18) 9px, rgba(0,0,0,0.18) 10px)` }} />
@@ -564,13 +542,15 @@ export default function Collections() {
   const [selectedPerfume, setSelectedPerfume] = useState(null);
   const [notes, setNotes] = useState({ top: [], middle: [], base: [] });
   const [loadingNotes, setLoadingNotes] = useState(false);
+  const [geminiReview, setGeminiReview] = useState('');
+  const [loadingReview, setLoadingReview] = useState(false);
   const [bgUrl, setBgUrl] = useState(null);
-  const [bgRatio, setBgRatio] = useState(2.65); // 이미지 실제 가로/세로 비율 (동적으로 업데이트됨)
+  const [bgRatio, setBgRatio] = useState(2.65);
   const [showBgPanel, setShowBgPanel] = useState(false);
   const [layout, setLayout] = useState({ ...DEFAULT_LAYOUT });
   const [showLayoutEditor, setShowLayoutEditor] = useState(false);
 
-  // Supabase에서 레이아웃 로드 — localStorage 완전 제거
+  // 레이아웃 로드 — DEFAULT_LAYOUT 먼저 깔고 Supabase 값 덮어씌움 → 신규 필드 자동 적용
   useEffect(() => {
     (async () => {
       try {
@@ -639,38 +619,130 @@ export default function Collections() {
     })();
   }, []);
 
-  // 향수 노트 로드
+  // ─────────────────────────────────────
+  // API 최적화 — 캐시 & 중복 방지
+  // ─────────────────────────────────────
+  const geminiCache  = useRef({});
+  const notesCache   = useRef({});     // ★ 노트 캐시 (향수당 1회만 API 호출)
+  const geminiTimer  = useRef(null);
+  const isRequesting = useRef(false);
+  const isHandling   = useRef(false);  // ★ handleSelect 중복 클릭 방지 (300ms)
+
+  const fetchGeminiReview = useCallback(async (perfume, notesData) => {
+    const cacheKey = perfume.perfume_id;
+
+    if (geminiCache.current[cacheKey]) {
+      setGeminiReview(geminiCache.current[cacheKey]);
+      return;
+    }
+    if (isRequesting.current) {
+      setTimeout(() => fetchGeminiReview(perfume, notesData), 500);
+      return;
+    }
+
+    setLoadingReview(true);
+    setGeminiReview('');
+    isRequesting.current = true;
+
+    try {
+      const noteText = [
+        notesData.top?.length    ? `Top: ${notesData.top.join(', ')}`       : '',
+        notesData.middle?.length ? `Middle: ${notesData.middle.join(', ')}` : '',
+        notesData.base?.length   ? `Base: ${notesData.base.join(', ')}`     : '',
+      ].filter(Boolean).join(' / ');
+
+      const prompt = `향수 전문가로서 다음 향수에 대해 감성적이고 시적인 한줄평을 한국어로 작성해주세요. 40자 이내로, 마침표 없이.
+향수명: ${perfume.name}${perfume.name_en ? ` (${perfume.name_en})` : ''}
+브랜드: ${perfume.brand_name || ''}
+${noteText ? `노트: ${noteText}` : ''}`;
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+
+      if (res.status === 429) {
+        setGeminiReview('제미나이가 바쁩니다. 잠시 후 다시 클릭해주세요.');
+        setTimeout(() => { isRequesting.current = false; }, 2000);
+        setLoadingReview(false);
+        return;
+      }
+      if (!res.ok) throw new Error(`Gemini ${res.status}`);
+
+      const json = await res.json();
+      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (text) {
+        geminiCache.current[cacheKey] = text;
+        setGeminiReview(text);
+      }
+    } catch (e) {
+      console.error('Gemini 실패:', e);
+      setGeminiReview('평론을 불러오지 못했습니다');
+    } finally {
+      setLoadingReview(false);
+      setTimeout(() => { isRequesting.current = false; }, 500);
+    }
+  }, []);
+
+  // ★ scheduleGemini — useRef stable reference → 타이머 중복 방지
+  const scheduleGeminiRef = useRef(null);
+  scheduleGeminiRef.current = (perfume, grouped) => {
+    if (geminiTimer.current) clearTimeout(geminiTimer.current);
+    geminiTimer.current = setTimeout(() => fetchGeminiReview(perfume, grouped), 3000);
+  };
+  const scheduleGemini = useCallback((perfume, grouped) => {
+    scheduleGeminiRef.current(perfume, grouped);
+  }, []);
+
+  // ★ loadNotes — notesCache로 중복 API 호출 차단
   const loadNotes = useCallback(async (perfumeId) => {
+    if (notesCache.current[perfumeId]) {
+      setNotes(notesCache.current[perfumeId]);
+      return notesCache.current[perfumeId];
+    }
     setLoadingNotes(true);
     setNotes({ top: [], middle: [], base: [] });
     try {
-      const { data: noteRows } = await supabase.from('Perfume_Notes').select('note_type, scent_id').eq('perfume_id', perfumeId);
-      if (!noteRows?.length) return;
-      const scentIds = [...new Set(noteRows.map(n => n.scent_id))];
-      const { data: scents } = await supabase.from('Scents').select('scent_id, scent_name').in('scent_id', scentIds);
-      const scentMap = Object.fromEntries((scents || []).map(s => [s.scent_id, s.scent_name]));
-      const grouped = { top: [], middle: [], base: [] };
-      noteRows.forEach(n => {
-        const name = scentMap[n.scent_id];
-        if (!name) return;
-        if (n.note_type === 'TOP') grouped.top.push(name);
-        else if (n.note_type === 'MIDDLE') grouped.middle.push(name);
-        else if (n.note_type === 'BASE') grouped.base.push(name);
-      });
+      const res = await fetch(`${API_BASE_URL}/api/collections/perfumes/${perfumeId}/notes`);
+      if (!res.ok) throw new Error(`노트 API ${res.status}`);
+      const json = await res.json();
+      const grouped = {
+        top:    json.data?.top    || [],
+        middle: json.data?.middle || [],
+        base:   json.data?.base   || [],
+      };
+      notesCache.current[perfumeId] = grouped;
       setNotes(grouped);
+      return grouped;
     } catch (e) { console.error('노트 로드 실패:', e); }
     finally { setLoadingNotes(false); }
+    return null;
   }, []);
 
-  const handleSelect = (p) => {
+  // ★ handleSelect — 300ms 중복 클릭 잠금
+  const handleSelect = useCallback((p) => {
+    if (isHandling.current) return;
+    isHandling.current = true;
+    setTimeout(() => { isHandling.current = false; }, 300);
+
     if (selectedPerfume?.perfume_id === p.perfume_id) {
       setSelectedPerfume(null);
       setNotes({ top: [], middle: [], base: [] });
+      setGeminiReview('');
+      if (geminiTimer.current) clearTimeout(geminiTimer.current);
     } else {
       setSelectedPerfume(p);
-      loadNotes(p.perfume_id);
+      setGeminiReview('');
+      if (geminiTimer.current) clearTimeout(geminiTimer.current);
+      loadNotes(p.perfume_id).then(grouped => {
+        if (grouped) scheduleGemini(p, grouped);
+      });
     }
-  };
+  }, [selectedPerfume, loadNotes, scheduleGemini]);
 
   const selectedIdx = selectedPerfume
     ? allPerfumes.findIndex(p => p.perfume_id === selectedPerfume.perfume_id)
@@ -682,7 +754,11 @@ export default function Collections() {
     const p = allPerfumes[idx];
     if (!p) return;
     setSelectedPerfume(p);
-    loadNotes(p.perfume_id);
+    setGeminiReview('');
+    if (geminiTimer.current) clearTimeout(geminiTimer.current);
+    loadNotes(p.perfume_id).then(grouped => {
+      if (grouped) scheduleGemini(p, grouped);
+    });
   };
 
   const shelves = [];
@@ -694,33 +770,17 @@ export default function Collections() {
     <div style={{ minHeight: '100vh', background: '#f5ede0', fontFamily: "'Georgia', 'Times New Roman', serif" }}>
 
       {/* ─────── 상단: 배경 + 오버레이 ─────── */}
-      {/*
-        핵심 수정: aspect-ratio를 2.8/1로 고정
-        objectFit: 'fill' 사용 → 이미지가 컨테이너를 꽉 채워
-        % 좌표가 실제 이미지 픽셀 위치와 1:1 대응됨
-        (contain은 letterbox 생겨서 좌표 불일치 발생)
-      */}
-      {/*
-        ★ 핵심 원리:
-        - 컨테이너 aspect-ratio를 이미지 실제 비율(bgRatio)로 동적 설정
-        - 이미지는 width/height 100% + objectFit:'fill' → 컨테이너를 픽셀 단위로 꽉 채움
-        - 결과: 오버레이 % 좌표 = 이미지 픽셀 위치와 완벽히 1:1 대응
-        - bgUrl 없을 때는 fallback 비율 2.65 사용
-      */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
 
-        {/* 배경색 + 배경이미지 — 반드시 같은 div에 있어야 PNG 투명에 배경색이 비침 */}
         {bgUrl ? (
-          <div
-            style={{
-              position: 'absolute', inset: 0, zIndex: 1,
-              backgroundColor: l.bgContainerColor ?? '#2a1508',
-              backgroundImage: `url(${bgUrl})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'center',
-            }}
-          >
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 1,
+            backgroundColor: l.bgContainerColor ?? '#2a1508',
+            backgroundImage: `url(${bgUrl})`,
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+          }}>
             <img src={bgUrl} alt="" onLoad={e => {
               const { naturalWidth, naturalHeight } = e.currentTarget;
               if (naturalWidth && naturalHeight) setBgRatio(naturalWidth / naturalHeight);
@@ -753,11 +813,11 @@ export default function Collections() {
           </div>
         )}
 
-        {/* ── 향수 선택 오버레이 ── */}
+        {/* 향수 선택 오버레이 */}
         {selectedPerfume && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
 
-            {/* 향수 이미지 — 고정 박스 / 모서리 블렌딩 / 상하 크롭 */}
+            {/* 향수 이미지 */}
             <PerfumeImage perfume={selectedPerfume} layout={l} />
 
             {/* 향수 이름 + 브랜드 */}
@@ -765,8 +825,7 @@ export default function Collections() {
               position: 'absolute',
               left: `${l.nameLeft}%`, top: `${l.nameTop}%`,
               transform: 'translate(-50%, -50%)',
-              width: l.nameWidth,
-              textAlign: l.nameAlign,
+              width: l.nameWidth, textAlign: l.nameAlign,
               pointerEvents: 'auto',
             }}>
               <h2 style={{ fontSize: l.nameFontSize, fontWeight: l.nameFontWeight, color: l.nameColor, letterSpacing: l.nameLetterSpacing, margin: '0 0 4px', lineHeight: 1.2 }}>
@@ -779,7 +838,7 @@ export default function Collections() {
               )}
             </div>
 
-            {/* 가운데 세로 구분선 */}
+            {/* 가운데 구분선 */}
             <div style={{
               position: 'absolute',
               left: `${l.dividerLeft}%`,
@@ -821,6 +880,31 @@ export default function Collections() {
                 </div>
               )}
             </div>
+
+            {/* ★ 한줄평 — 노트와 완전 분리된 독립 블록 */}
+            {(loadingReview || geminiReview) && (
+              <div style={{
+                position: 'absolute',
+                left: `${l.reviewLeft}%`, top: `${l.reviewTop}%`,
+                width: l.reviewWidth,
+                pointerEvents: 'auto',
+                zIndex: 3,
+              }}>
+                <div style={{ paddingTop: '10px', borderTop: `0.5px solid ${l.noteDividerColor}` }}>
+                  {loadingReview ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid rgba(100,60,20,0.3)', borderTopColor: '#7a4a1e', animation: 'spin 0.8s linear infinite' }} />
+                      <span style={{ fontSize: '0.6rem', color: 'rgba(100,60,20,0.4)', fontStyle: 'italic' }}>향수 감상 중…</span>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: l.reviewFontSize, color: l.reviewColor, fontStyle: l.reviewFontStyle, lineHeight: l.reviewLineHeight, margin: 0, opacity: parseFloat(l.reviewOpacity) }}>
+                      "{geminiReview}"
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 
@@ -856,8 +940,7 @@ export default function Collections() {
         {selectedPerfume && (
           <>
             <button
-              onClick={() => moveTo(selectedIdx - 1)}
-              disabled={!canPrev}
+              onClick={() => moveTo(selectedIdx - 1)} disabled={!canPrev}
               style={{
                 position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 20,
                 width: '40px', height: '40px',
@@ -873,8 +956,7 @@ export default function Collections() {
             >‹</button>
 
             <button
-              onClick={() => moveTo(selectedIdx + 1)}
-              disabled={!canNext}
+              onClick={() => moveTo(selectedIdx + 1)} disabled={!canNext}
               style={{
                 position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 20,
                 width: '40px', height: '40px',
@@ -964,7 +1046,6 @@ export default function Collections() {
         )}
       </div>
 
-      {/* 레이아웃 에디터 */}
       {showLayoutEditor && (
         <LayoutEditor
           layout={layout}

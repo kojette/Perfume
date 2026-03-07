@@ -1,18 +1,21 @@
 package com.aion.back.collection.controller;
 
-import com.aion.back.collection.dto.CollectionDetailResponse;
-import com.aion.back.collection.dto.CollectionSaveRequest;
-import com.aion.back.collection.dto.CollectionSummaryResponse;
+import com.aion.back.collection.dto.response.PerfumeNotesResponse;
 import com.aion.back.collection.service.CollectionService;
 import com.aion.back.common.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.UUID;
-
+/**
+ * 컬렉션(향수 라이브러리) API
+ *
+ * [노트 조회] — 인증 불필요, 공개 API
+ *   GET /api/collections/perfumes/{perfumeId}/notes
+ *     → 해당 향수의 Top / Middle / Base 노트 이름 목록 반환
+ *
+ * 인증 방식: CustomizationController / CartController 와 동일 패턴
+ *   (본 엔드포인트는 공개이므로 토큰 불필요)
+ */
 @RestController
 @RequestMapping("/api/collections")
 @RequiredArgsConstructor
@@ -21,67 +24,28 @@ public class CollectionController {
 
     private final CollectionService collectionService;
 
+    /**
+     * 향수 노트 조회 (Top / Middle / Base)
+     * GET /api/collections/perfumes/{perfumeId}/notes
+     *
+     * @param perfumeId 향수 ID
+     * @return top, middle, base 노트 이름 목록
+     */
+    @GetMapping("/perfumes/{perfumeId}/notes")
+    public ApiResponse<PerfumeNotesResponse> getPerfumeNotes(
+            @PathVariable Long perfumeId) {
+        return ApiResponse.success(
+                "노트 조회 성공",
+                collectionService.getPerfumeNotes(perfumeId)
+        );
+    }
     @GetMapping("/active")
-    public ResponseEntity<?> getActive(@RequestParam String type) {
-        try {
-            CollectionDetailResponse data = collectionService.getActiveCollection(type);
-            return ResponseEntity.ok(ApiResponse.success("컬렉션 조회 성공", data));
-        } catch (RuntimeException e) {
-            String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
-            // 실제 에러 메시지를 포함해서 반환 (디버깅용)
-            if (msg.contains("활성화된 컬렉션이 없습니다")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.success(msg, null));
-            }
-            // 그 외 오류는 400으로 반환해서 프론트에서 에러 내용 확인 가능
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.success("오류: " + msg, null));
-        }
-    }
-
-    @GetMapping
-    public ApiResponse<List<CollectionSummaryResponse>> getList(
-            @RequestHeader("Authorization") String token,
+    public ApiResponse<?> getActiveCollections(
             @RequestParam String type) {
-        return ApiResponse.success("목록 조회 성공", collectionService.getList(type));
-    }
 
-    @GetMapping("/{collectionId}")
-    public ApiResponse<CollectionDetailResponse> getDetail(
-            @RequestHeader("Authorization") String token,
-            @PathVariable UUID collectionId) {
-        return ApiResponse.success("조회 성공", collectionService.getDetail(token, collectionId));
-    }
-
-    @PostMapping
-    public ApiResponse<CollectionDetailResponse> create(
-            @RequestHeader("Authorization") String token,
-            @RequestBody CollectionSaveRequest request) {
-        return ApiResponse.success("생성되었습니다.", collectionService.create(token, request));
-    }
-
-    @PutMapping("/{collectionId}")
-    public ApiResponse<CollectionDetailResponse> update(
-            @RequestHeader("Authorization") String token,
-            @PathVariable UUID collectionId,
-            @RequestBody CollectionSaveRequest request) {
-        return ApiResponse.success("저장되었습니다.", collectionService.update(token, collectionId, request));
-    }
-
-    @PatchMapping("/{collectionId}/active")
-    public ApiResponse<Void> toggleActive(
-            @RequestHeader("Authorization") String token,
-            @PathVariable UUID collectionId,
-            @RequestParam boolean activate) {
-        collectionService.toggleActive(token, collectionId, activate);
-        return ApiResponse.success(activate ? "활성화되었습니다." : "비활성화되었습니다.");
-    }
-
-    @DeleteMapping("/{collectionId}")
-    public ApiResponse<Void> delete(
-            @RequestHeader("Authorization") String token,
-            @PathVariable UUID collectionId) {
-        collectionService.delete(token, collectionId);
-        return ApiResponse.success("삭제되었습니다.");
+        return ApiResponse.success(
+                "컬렉션 조회 성공",
+                collectionService.getActiveCollection(type)
+        );
     }
 }
