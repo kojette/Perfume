@@ -161,9 +161,32 @@ public class CollectionService {
             throw new RuntimeException("컬렉션 수정 오류: " + e.getMessage(), e);
         }
 
-        mediaRepository.deleteByCollectionId(collectionId);
-        textBlockRepository.deleteByCollectionId(collectionId);
-        perfumeRepository.deleteByCollectionId(collectionId);
+        // isActive=true로 저장 시 같은 type의 다른 컬렉션은 비활성화
+        if (Boolean.TRUE.equals(req.getIsActive())) {
+            String currentType = req.getType() != null ? req.getType() : findCollectionById(collectionId).getType();
+            String deactivateOthersSql = "UPDATE \"Collections\" SET is_active = false WHERE type = ? AND collection_id != ?::uuid";
+            try (Connection deactConn = dataSource.getConnection();
+                 PreparedStatement deactPs = deactConn.prepareStatement(deactivateOthersSql)) {
+                deactPs.setString(1, currentType);
+                deactPs.setString(2, collectionId.toString());
+                deactPs.executeUpdate();
+            } catch (Exception e) {
+                throw new RuntimeException("다른 컬렉션 비활성화 오류: " + e.getMessage(), e);
+            }
+        }
+
+        // DataSource 직접 사용
+        try (Connection delConn = dataSource.getConnection()) {
+            for (String tbl : new String[]{"Collection_Media", "Collection_Text_Blocks", "Collection_Perfumes"}) {
+                try (PreparedStatement ps = delConn.prepareStatement(
+                        "DELETE FROM \"" + tbl + "\" WHERE collection_id = ?::uuid")) {
+                    ps.setString(1, collectionId.toString());
+                    ps.executeUpdate();
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("하위 데이터 삭제 오류: " + e.getMessage(), e);
+        }
         saveSubData(collectionId, req);
         return buildDetail(collectionId);
     }
@@ -200,9 +223,18 @@ public class CollectionService {
         validateAdmin(token);
         if (!collectionExists(collectionId)) throw new RuntimeException("컬렉션을 찾을 수 없습니다.");
 
-        mediaRepository.deleteByCollectionId(collectionId);
-        textBlockRepository.deleteByCollectionId(collectionId);
-        perfumeRepository.deleteByCollectionId(collectionId);
+        // DataSource 직접 사용 (Repository 네이티브 쿼리 ::uuid 파싱 오류 방지)
+        try (Connection delConn = dataSource.getConnection()) {
+            for (String tbl : new String[]{"Collection_Media", "Collection_Text_Blocks", "Collection_Perfumes"}) {
+                try (PreparedStatement ps = delConn.prepareStatement(
+                        "DELETE FROM \"" + tbl + "\" WHERE collection_id = ?::uuid")) {
+                    ps.setString(1, collectionId.toString());
+                    ps.executeUpdate();
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("하위 데이터 삭제 오류: " + e.getMessage(), e);
+        }
 
         String sql = "DELETE FROM \"Collections\" WHERE collection_id = ?::uuid";
         try (Connection conn = dataSource.getConnection();
@@ -235,25 +267,52 @@ public class CollectionService {
     // ========== 내부 헬퍼 ==========
 
     private void saveSubData(UUID collectionId, CollectionSaveRequest req) {
-        if (req.getMediaList() != null) {
-            for (CollectionSaveRequest.MediaItem m : req.getMediaList()) {
-                mediaRepository.insertMedia(collectionId, m.getMediaUrl(),
-                        m.getMediaType() != null ? m.getMediaType() : "IMAGE", m.getDisplayOrder());
+        try (Connection conn = dataSource.getConnection()) {
+            if (req.getMediaList() != null && !req.getMediaList().isEmpty()) {
+                String sql = "INSERT INTO \"Collection_Media\" (collection_id, media_url, media_type, display_order) VALUES (?::uuid, ?, ?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    for (CollectionSaveRequest.MediaItem m : req.getMediaList()) {
+                        ps.setString(1, collectionId.toString());
+                        ps.setString(2, m.getMediaUrl());
+                        ps.setString(3, m.getMediaType() != null ? m.getMediaType() : "IMAGE");
+                        ps.setObject(4, m.getDisplayOrder());
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
             }
-        }
-        if (req.getTextBlocks() != null) {
-            for (CollectionSaveRequest.TextBlockItem t : req.getTextBlocks()) {
-                textBlockRepository.insertTextBlock(collectionId, t.getContent(),
-                        t.getFontSize(), t.getFontWeight(),
-                        t.getIsItalic() != null ? t.getIsItalic() : false,
-                        t.getPositionX(), t.getPositionY(), t.getDisplayOrder());
+            if (req.getTextBlocks() != null && !req.getTextBlocks().isEmpty()) {
+                String sql = "INSERT INTO \"Collection_Text_Blocks\" (collection_id, content, font_size, font_weight, is_italic, position_x, position_y, display_order) VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    for (CollectionSaveRequest.TextBlockItem t : req.getTextBlocks()) {
+                        ps.setString(1, collectionId.toString());
+                        ps.setString(2, t.getContent());
+                        ps.setString(3, t.getFontSize());
+                        ps.setString(4, t.getFontWeight());
+                        ps.setBoolean(5, t.getIsItalic() != null ? t.getIsItalic() : false);
+                        ps.setString(6, t.getPositionX());
+                        ps.setString(7, t.getPositionY());
+                        ps.setObject(8, t.getDisplayOrder());
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
             }
-        }
-        if (req.getPerfumes() != null) {
-            for (CollectionSaveRequest.PerfumeItem p : req.getPerfumes()) {
-                perfumeRepository.insertPerfume(collectionId, p.getPerfumeId(),
-                        p.getDisplayOrder(), p.getIsFeatured() != null ? p.getIsFeatured() : false);
+            if (req.getPerfumes() != null && !req.getPerfumes().isEmpty()) {
+                String sql = "INSERT INTO \"Collection_Perfumes\" (collection_id, perfume_id, display_order, is_featured) VALUES (?::uuid, ?, ?, ?) ON CONFLICT (collection_id, perfume_id) DO UPDATE SET display_order = EXCLUDED.display_order, is_featured = EXCLUDED.is_featured";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    for (CollectionSaveRequest.PerfumeItem p : req.getPerfumes()) {
+                        ps.setString(1, collectionId.toString());
+                        ps.setLong(2, p.getPerfumeId());
+                        ps.setObject(3, p.getDisplayOrder());
+                        ps.setBoolean(4, p.getIsFeatured() != null ? p.getIsFeatured() : false);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
             }
+        } catch (Exception e) {
+            throw new RuntimeException("서브 데이터 저장 오류: " + e.getMessage(), e);
         }
     }
 
@@ -272,7 +331,7 @@ public class CollectionService {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         mediaList.add(CollectionDetailResponse.MediaDto.builder()
-                                .mediaId(UUID.fromString(rs.getString("media_id")))
+                                .mediaId(rs.getString("media_id"))
                                 .mediaUrl(rs.getString("media_url"))
                                 .mediaType(rs.getString("media_type"))
                                 .displayOrder(rs.getObject("display_order") != null ? rs.getInt("display_order") : null)
@@ -287,7 +346,7 @@ public class CollectionService {
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         textBlocks.add(CollectionDetailResponse.TextBlockDto.builder()
-                                .textBlockId(UUID.fromString(rs.getString("text_block_id")))
+                                .textBlockId(rs.getString("text_block_id"))
                                 .content(rs.getString("content"))
                                 .fontSize(rs.getString("font_size"))
                                 .fontWeight(rs.getString("font_weight"))

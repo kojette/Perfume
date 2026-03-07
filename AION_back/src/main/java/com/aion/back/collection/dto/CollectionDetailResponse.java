@@ -29,7 +29,7 @@ public class CollectionDetailResponse {
 
     @Getter @Builder
     public static class MediaDto {
-        private UUID mediaId;       // uuid
+        private String mediaId;
         private String mediaUrl;
         private String mediaType;
         private Integer displayOrder;
@@ -37,7 +37,7 @@ public class CollectionDetailResponse {
 
     @Getter @Builder
     public static class TextBlockDto {
-        private UUID textBlockId;   // uuid
+        private String textBlockId;
         private String content;
         private String fontSize;
         private String fontWeight;

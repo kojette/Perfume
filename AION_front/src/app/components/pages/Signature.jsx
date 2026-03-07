@@ -189,7 +189,7 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
                     : <span className="text-[9px] text-[#e8dcc8]/30 border border-[#e8dcc8]/15 px-1.5 py-0.5">비공개</span>}
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
-                  <button onClick={() => onEdit(col.collectionId)}
+                  <button onClick={() => { onEdit(col.collectionId); onClose(); }}
                     className="flex items-center gap-1 px-2 py-1 text-[9px] border border-[#c9a961]/40 text-[#c9a961] hover:bg-[#c9a961]/20 transition-all">
                     <Edit2 size={9}/> 편집
                   </button>
@@ -708,8 +708,27 @@ export default function Signature() {
             const jsonList = await resList.json();
             const summaries = jsonList.success ? (jsonList.data || []) : [];
             if (summaries.length > 0) {
-              const r = await fetch(`${API_BASE}/api/collections/${summaries[0].collectionId}`, { headers: authHeader });
-              if (r.ok) { const j = await r.json(); if (j.success) data = j.data; }
+              // 활성화된 것 우선, 없으면 첫 번째
+              const target = summaries.find(s => s.isActive) || summaries[0];
+              try {
+                const r = await fetch(`${API_BASE}/api/collections/${target.collectionId}`, { headers: authHeader });
+                if (r.ok) { const j = await r.json(); if (j.success) data = j.data; }
+              } catch (_) {}
+              // getDetail도 실패하면 summary 데이터라도 사용 (배경 없이라도 편집 버튼은 보임)
+              if (!data) {
+                data = {
+                  collectionId: target.collectionId,
+                  title: target.title,
+                  description: target.description,
+                  type: target.type,
+                  textColor: '#c9a961',
+                  isPublished: target.isPublished,
+                  isActive: target.isActive,
+                  mediaList: [],
+                  textBlocks: [],
+                  perfumes: [],
+                };
+              }
             }
           }
         }
