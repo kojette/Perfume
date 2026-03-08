@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Star } from 'lucide-react';
 import { Ornament } from './Ornament';
-import { supabase } from "../supabaseClient";//
+import { supabase } from "../supabaseClient";
+import { useNavigate } from 'react-router-dom';
 
 export function FeaturedProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPerfumes = async () => {
@@ -92,7 +94,12 @@ export function FeaturedProducts() {
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#2a2620]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-center pb-6">
-                <button className="border border-[#c9a961] text-[#c9a961] px-6 py-2 text-sm tracking-[0.2em] hover:bg-[#c9a961] hover:text-[#2a2620] transition-all">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/collections', {state: {targetPerfumeId: product.id}});
+                  }}
+                  className="border border-[#c9a961] text-[#c9a961] px-6 py-2 text-sm tracking-[0.2em] hover:bg-[#c9a961] hover:text-[#2a2620] transition-all">
                   자세히 보기
                 </button>
               </div>

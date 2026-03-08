@@ -105,4 +105,21 @@ public class CartController {
 
         return ApiResponse.success("수량이 변경되었습니다.");
     }
+
+    @DeleteMapping("/{cartId}")
+    public ApiResponse<String> removeCartItem(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long cartId
+    ) {
+        Member member = memberService.getMemberEntityByToken(token);
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new RuntimeException("장바구니 상품을 찾을 수 없습니다."));
+
+        if (!cart.getMember().getEmail().equals(member.getEmail())){
+            throw new RuntimeException("권한이 없습니다.");
+        }
+
+        cartRepository.delete(cart);
+        return ApiResponse.success("장바구니에서 성공적으로 삭제되었습니다.");
+    }
 }

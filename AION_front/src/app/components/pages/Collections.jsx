@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Upload, Settings, X, Save, Check } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -536,6 +537,12 @@ function SpineBook({ perfume, isSelected, onClick, globalIdx }) {
 // ─────────────────────────────────────
 export default function Collections() {
   const isAdmin = checkIsAdmin();
+  const location = useLocation();
+  const autoSelectDone = useRef(false);
+  const navigate = useNavigate();
+
+  const [showWishPopup, setShowWishPopup] = useState(false);
+  const [isAddingToWish, setIsAddingToWish] = useState(false);
 
   const [allPerfumes, setAllPerfumes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -549,6 +556,70 @@ export default function Collections() {
   const [showBgPanel, setShowBgPanel] = useState(false);
   const [layout, setLayout] = useState({ ...DEFAULT_LAYOUT });
   const [showLayoutEditor, setShowLayoutEditor] = useState(false);
+
+  const handleAddToWishlist = async (perfume) => {
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
+      return;
+    }
+
+    setIsAddingToWish(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/wishlist/toggle`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          perfumeId: perfume.perfume_id 
+        })
+      });
+
+      if (response.ok) {
+        setShowWishPopup(true);
+      } else {
+        const errData = await response.json();
+        alert(errData.message || '위시리스트 담기에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('위시리스트 에러:', error);
+      alert('서버와 통신 중 오류가 발생했습니다.');
+    } finally {
+      setIsAddingToWish(false);
+    }
+  };
+
+  // 바로 구매하기 함수
+  const handleBuyNow = async (perfume) => {
+    const token = sessionStorage.getItem('accessToken');
+    if (!token) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/cart/add`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ perfumeId: perfume.perfume_id, quantity: 1 })
+      });
+      
+      if (response.ok) {
+        navigate('/cart');
+      } else {
+        alert('구매 처리 중 문제가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('구매 에러:', error);
+    }
+  };
 
   // 레이아웃 로드 — DEFAULT_LAYOUT 먼저 깔고 Supabase 값 덮어씌움 → 신규 필드 자동 적용
   useEffect(() => {
@@ -744,6 +815,20 @@ ${noteText ? `노트: ${noteText}` : ''}`;
     }
   }, [selectedPerfume, loadNotes, scheduleGemini]);
 
+  useEffect(() => {
+    const targetId = location.state?.targetPerfumeId;
+    if (targetId && allPerfumes.length > 0 && !autoSelectDone.current) {
+      const targetPerfume = allPerfumes.find(p => p.perfume_id === targetId);
+
+      if (targetPerfume) {
+        handleSelect(targetPerfume);
+        autoSelectDone.current = true;
+
+        window.history.replaceState({}, document.title)
+      }
+    }
+  }, [location.state, allPerfumes, handleSelect]);
+
   const selectedIdx = selectedPerfume
     ? allPerfumes.findIndex(p => p.perfume_id === selectedPerfume.perfume_id)
     : -1;
@@ -905,6 +990,61 @@ ${noteText ? `노트: ${noteText}` : ''}`;
               </div>
             )}
 
+            {/* 장바구니 / 구매하기 버튼 영역 */}
+            <div style={{
+              position: 'absolute',
+              right: '12%',
+              bottom: '15%',
+              display: 'flex',
+              gap: '10px',
+              flexWrap: 'wrap',
+              justifyContent: 'flex-end',
+              pointerEvents: 'auto',
+              zIndex: 5,
+              maxWidth: '240px',
+            }}>
+              <button 
+                onClick={() => handleAddToWishlist(selectedPerfume)}
+                disabled={isAddingToWish}
+                style={{ 
+                  padding: '8px 18px', 
+                  background: 'rgba(255, 255, 255, 0.1)', 
+                  border: '1px solid rgba(201,169,97,0.6)', 
+                  backdropFilter: 'blur(4px)',
+                  color: '#c9a961', 
+                  fontSize: '0.68rem', 
+                  letterSpacing: '0.15em', 
+                  whiteSpace: 'nowrap',
+                  cursor: isAddingToWish ? 'wait' : 'pointer', 
+                  transition: 'all 0.3s' 
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = 'rgba(201,169,97,0.2)'; e.currentTarget.style.color = '#fff'; }}
+                onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.color = '#c9a961'; }}
+              >
+                {isAddingToWish ? '담는 중...' : 'WISH'}
+              </button>
+              
+              <button 
+                onClick={() => handleBuyNow(selectedPerfume)}
+                style={{ 
+                  padding: '8px 18px', 
+                  background: '#c9a961', 
+                  border: '1px solid #c9a961', 
+                  color: '#1a0c04', 
+                  fontSize: '0.68rem', 
+                  letterSpacing: '0.15em', 
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer', 
+                  transition: 'all 0.3s' 
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = '#e0c070'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#c9a961'; }}
+              >
+                BUY NOW
+              </button>
+            </div>
+
           </div>
         )}
 
@@ -1054,6 +1194,39 @@ ${noteText ? `노트: ${noteText}` : ''}`;
           onSave={handleSaveLayout}
           onClose={() => setShowLayoutEditor(false)}
         />
+      )}
+
+      {/* 위시리스트 성공 팝업 */}
+      {showWishPopup && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>
+          <div style={{ background: '#1a0c04', padding: '40px', border: '1px solid rgba(201,169,97,0.4)', textAlign: 'center', maxWidth: '400px', width: '90%', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+            <div style={{ color: '#c9a961', fontSize: '2.5rem', marginBottom: '16px', fontWeight: '300' }}>✧</div>
+            <h3 style={{ fontSize: '1.2rem', color: '#faf6ef', marginBottom: '12px', letterSpacing: '0.15em', fontWeight: '400' }}>
+              위시리스트에 담겼습니다.
+            </h3>
+            <p style={{ fontSize: '0.75rem', color: 'rgba(250,246,239,0.5)', marginBottom: '36px', letterSpacing: '0.05em' }}>
+              선택하신 신성한 향기가 위시리스트에 추가되었습니다.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                onClick={() => setShowWishPopup(false)}
+                style={{ flex: 1, padding: '12px 0', background: 'transparent', border: '1px solid rgba(201,169,97,0.4)', color: 'rgba(201,169,97,0.8)', fontSize: '0.7rem', letterSpacing: '0.15em', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseOver={e => { e.currentTarget.style.color = '#c9a961'; e.currentTarget.style.borderColor = '#c9a961'; }}
+                onMouseOut={e => { e.currentTarget.style.color = 'rgba(201,169,97,0.8)'; e.currentTarget.style.borderColor = 'rgba(201,169,97,0.4)'; }}
+              >
+                CONTINUE
+              </button>
+              <button 
+                onClick={() => navigate('/wishlist')}
+                style={{ flex: 1, padding: '12px 0', background: '#c9a961', border: '1px solid #c9a961', color: '#1a0c04', fontSize: '0.7rem', letterSpacing: '0.15em', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.background = '#e0c070'}
+                onMouseOut={e => e.currentTarget.style.background = '#c9a961'}
+              >
+                VIEW WISH
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

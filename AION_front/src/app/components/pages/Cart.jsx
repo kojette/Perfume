@@ -194,6 +194,41 @@ const Cart = () => {
         }
     };
 
+    // 장바구니 상품 삭제
+    const handleRemoveItem = async (cartId) => {
+        if (!window.confirm('장바구니에서 이 상품을 삭제하시겠습니까?')) return;
+
+        try {
+            const token = sessionStorage.getItem('accessToken');
+            const response = await fetch(`${API_BASE_URL}/api/cart/${cartId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const updatedItems = cartItems.filter(item => item.cartId !== cartId);
+                setCartItems(updatedItems);
+                
+                const newTotal = updatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+                setTotalPrice(newTotal);
+
+                if (pointsToUse > 0) {
+                    const maxUsable = Math.min(myTotalPoints, Math.max(0, newTotal - couponDiscount));
+                    if (pointsToUse > maxUsable) {
+                        setPointsInput(String(maxUsable));
+                        setPointsToUse(maxUsable);
+                    }
+                }
+            } else {
+                alert('삭제에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('삭제 에러:', error);
+        }
+    };
+
     // 결제
     const handleCheckout = async () => {
         const finalAmount = Math.max(0, totalPrice - couponDiscount - pointsToUse);
@@ -273,6 +308,12 @@ const Cart = () => {
                                                     <div>
                                                         <p className="text-[#1a1a1a] font-serif text-lg">{item.name}</p>
                                                         <p className="text-[9px] text-[#c9a961] tracking-widest mt-1 uppercase">Eau De Parfum</p>
+                                                        <button 
+                                                            onClick={() => handleRemoveItem(item.cartId)}
+                                                            className="text-[9px] text-gray-400 hover:text-red-400 mt-3 tracking-[0.2em] uppercase transition-colors cursor-pointer"
+                                                        >
+                                                            Remove
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </td>
