@@ -84,7 +84,9 @@ public class OrderController {
                 .map(item -> {
                     Map<String, Object> itemMap = new HashMap<>();
                     itemMap.put("orderItemId", item.getOrderItemId());
-                    itemMap.put("perfumeId", item.getPerfume().getPerfumeId());
+                    itemMap.put("perfumeId", item.getPerfume() != null ? item.getPerfume().getPerfumeId() : null);
+                    itemMap.put("isCustom", item.getIsCustom() != null && item.getIsCustom());
+                    itemMap.put("imageUrl", item.getImageUrl());
                     itemMap.put("perfumeNameSnapshot", item.getPerfumeNameSnapshot());
                     itemMap.put("volumeMl", item.getVolumeMl());
                     itemMap.put("quantity", item.getQuantity());

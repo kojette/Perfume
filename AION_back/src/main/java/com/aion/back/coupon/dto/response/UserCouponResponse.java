@@ -16,9 +16,10 @@ public class UserCouponResponse {
     private LocalDateTime expiryDate;
 
     public static UserCouponResponse from(UserCoupon userCoupon) {
+        if (userCoupon.getCoupon() == null) return null;
         return UserCouponResponse.builder()
                 .userCouponId(userCoupon.getId())
-                .couponCode(userCoupon.getCoupon().getCode()) // name -> code
+                .couponCode(userCoupon.getCoupon().getCode())
                 .discountType(userCoupon.getCoupon().getDiscountType())
                 .discountValue(userCoupon.getCoupon().getDiscountValue())
                 .isUsed(userCoupon.getIsUsed())

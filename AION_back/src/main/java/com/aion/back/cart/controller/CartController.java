@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -33,8 +34,6 @@ public class CartController {
             @RequestBody Map<String, Object> request
     ){
         Member member = memberService.getMemberEntityByToken(token);
-
-        //request에서 데이터 꺼내기
         Long perfumeId = ((Number) request.get("perfumeId")).longValue();
         int quantity = ((Number) request.get("quantity")).intValue();
 
@@ -48,15 +47,51 @@ public class CartController {
             cart.setQuantity(cart.getQuantity() + quantity);
             cartRepository.save(cart);
         } else {
-            Cart newCart = Cart.builder()
-                    .member(member)
-                    .perfume(perfume)
-                    .quantity(quantity)
-                    .build();
+            Cart newCart = new Cart();
+            newCart.setMember(member);
+            newCart.setPerfume(perfume);
+            newCart.setQuantity(quantity);
+            newCart.setItemType("PERFUME");
+            newCart.setIsCustom(false);
             cartRepository.save(newCart);
         }
 
         return ApiResponse.success("장바구니에 담았습니다.");
+    }
+
+    @PostMapping("/custom")
+    public ApiResponse<String> addCustomToCart(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, Object> request
+    ) {
+        Member member = memberService.getMemberEntityByToken(token);
+
+        Long customDesignId = ((Number) request.get("customDesignId")).longValue();
+        String name = (String) request.get("name");
+        Integer price = ((Number) request.get("price")).intValue();
+        int quantity = request.get("quantity") != null ? ((Number) request.get("quantity")).intValue() : 1;
+        String imageUrl = (String) request.get("imageUrl");
+
+        Optional<Cart> existing = cartRepository.findByMemberAndCustomDesignId(member, customDesignId);
+
+        if (existing.isPresent()) {
+            Cart cart = existing.get();
+            cart.setQuantity(cart.getQuantity() + quantity);
+            cartRepository.save(cart);
+        } else {
+            Cart newCart = new Cart();
+            newCart.setMember(member);
+            newCart.setQuantity(quantity);
+            newCart.setItemType("CUSTOM");
+            newCart.setIsCustom(true);
+            newCart.setCustomDesignId(customDesignId);
+            newCart.setCustomName(name);
+            newCart.setCustomPrice(price);
+            newCart.setCustomImageUrl(imageUrl);
+            cartRepository.save(newCart);
+        }
+
+        return ApiResponse.success("커스텀 디자인이 장바구니에 담겼습니다.");
     }
 
     @GetMapping
@@ -67,15 +102,28 @@ public class CartController {
         List<Map<String, Object>> result = carts.stream().map(cart -> {
             Map<String, Object> map = new java.util.HashMap<>();
             map.put("cartId", cart.getCartId());
-            map.put("perfumeId", cart.getPerfume().getPerfumeId());
-            map.put("name", cart.getPerfume().getName());
-            map.put("brand", cart.getPerfume().getBrand() != null ? cart.getPerfume().getBrand().getBrandId() : null);
-            map.put("price", cart.getPerfume().getSalePrice() != null ? cart.getPerfume().getSalePrice() : cart.getPerfume().getPrice());
             map.put("quantity", cart.getQuantity());
-            map.put("imageUrl", "https://via.placeholder.com/150");
+            map.put("isCustom", cart.getIsCustom());
+
+            if (Boolean.TRUE.equals(cart.getIsCustom())) {
+                map.put("perfumeId", null);
+                map.put("customDesignId", cart.getCustomDesignId());
+                map.put("name", cart.getCustomName());
+                map.put("price", cart.getCustomPrice());
+                map.put("imageUrl", cart.getCustomImageUrl());
+                map.put("brand", null);
+            } else {
+                if (cart.getPerfume() == null) return null;
+                map.put("perfumeId", cart.getPerfume().getPerfumeId());
+                map.put("customDesignId", null);
+                map.put("name", cart.getPerfume().getName());
+                map.put("brand", cart.getPerfume().getBrand() != null ? cart.getPerfume().getBrand().getBrandId() : null);
+                map.put("price", cart.getPerfume().getSalePrice() != null ? cart.getPerfume().getSalePrice() : cart.getPerfume().getPrice());
+                map.put("imageUrl", "https://via.placeholder.com/150");
+            }
 
             return map;
-        }).collect(Collectors.toList());
+        }).filter(Objects::nonNull).collect(Collectors.toList());
 
         return ApiResponse.success("장바구니 조회 성공", result);
     }

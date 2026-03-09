@@ -34,7 +34,7 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final UserCouponRepository userCouponRepository;
     private final MemberRepository memberRepository;
-    private final PointHistoryRepository pointHistoryRepository; // 포인트 내역 기록용
+    private final PointHistoryRepository pointHistoryRepository;
 
     @Transactional
     public OrderResponseDto checkout(String token, OrderCheckoutRequestDto requestDto) {
@@ -48,9 +48,19 @@ public class OrderService {
             throw new RuntimeException("장바구니가 비어있어 주문을 진행할 수 없습니다.");
         }
 
-        // 3. 상품 금액 합산
+        // 3. 상품 금액 합산 (일반 + 커스텀 통합)
         int totalAmount = cartItems.stream()
-                .mapToInt(item -> item.getPerfume().getPrice() * item.getQuantity())
+                .mapToInt(item -> {
+                    if (Boolean.TRUE.equals(item.getIsCustom())) {
+                        return (item.getCustomPrice() != null ? item.getCustomPrice() : 0) * item.getQuantity();
+                    } else {
+                        if (item.getPerfume() == null) return 0;
+                        int price = item.getPerfume().getSalePrice() != null
+                                ? item.getPerfume().getSalePrice()
+                                : item.getPerfume().getPrice();
+                        return price * item.getQuantity();
+                    }
+                })
                 .sum();
 
         // 4. 쿠폰 할인 계산
@@ -84,7 +94,6 @@ public class OrderService {
             if (currentPoints < pointsToUse) {
                 throw new RuntimeException("보유 포인트가 부족합니다. (보유: " + currentPoints + "P, 요청: " + pointsToUse + "P)");
             }
-            // 포인트 사용액이 결제 금액을 초과하지 않도록 방어
             int maxUsable = Math.max(0, totalAmount - discountAmount);
             if (pointsToUse > maxUsable) {
                 throw new RuntimeException("포인트 사용액이 결제 금액을 초과할 수 없습니다.");
@@ -116,7 +125,6 @@ public class OrderService {
         if (pointsToUse > 0) {
             int balanceAfterUse = (member.getTotalPoints() == null ? 0 : member.getTotalPoints()) - pointsToUse;
 
-            // Points_History 차감 기록 (amount: 음수)
             Point useRecord = Point.builder()
                     .member(member)
                     .amount(-pointsToUse)
@@ -129,36 +137,56 @@ public class OrderService {
                     .build();
             pointHistoryRepository.save(useRecord);
 
-            // Users.total_points 차감
             member.setTotalPoints(balanceAfterUse);
             memberRepository.save(member);
         }
 
-        // 9. 주문 아이템 저장
-        List<OrderItem> orderItems = cartItems.stream().map(cart ->
-                OrderItem.builder()
-                        .order(savedOrder)
-                        .perfume(cart.getPerfume())
-                        .perfumeNameSnapshot(cart.getPerfume().getName())
-                        .volumeMl(cart.getPerfume().getVolumeMl() != null ? cart.getPerfume().getVolumeMl() : 50)
-                        .quantity(cart.getQuantity())
-                        .unitPrice(cart.getPerfume().getPrice())
-                        .finalPrice(cart.getPerfume().getPrice() * cart.getQuantity())
-                        .build()
-        ).collect(Collectors.toList());
+        // 9. 주문 아이템 저장 (일반 + 커스텀 통합)
+        List<OrderItem> orderItems = cartItems.stream()
+                .filter(cart -> Boolean.TRUE.equals(cart.getIsCustom()) || cart.getPerfume() != null)
+                .map(cart -> {
+                    if (Boolean.TRUE.equals(cart.getIsCustom())) {
+                        int price = cart.getCustomPrice() != null ? cart.getCustomPrice() : 0;
+                        return OrderItem.builder()
+                                .order(savedOrder)
+                                .isCustom(true)
+                                .perfume(null)
+                                .perfumeNameSnapshot(cart.getCustomName())
+                                .imageUrl(cart.getCustomImageUrl())
+                                .volumeMl(0)
+                                .quantity(cart.getQuantity())
+                                .unitPrice(price)
+                                .finalPrice(price * cart.getQuantity())
+                                .build();
+                    } else {
+                        int price = cart.getPerfume().getSalePrice() != null
+                                ? cart.getPerfume().getSalePrice()
+                                : cart.getPerfume().getPrice();
+                        return OrderItem.builder()
+                                .order(savedOrder)
+                                .isCustom(false)
+                                .perfume(cart.getPerfume())
+                                .perfumeNameSnapshot(cart.getPerfume().getName())
+                                .volumeMl(cart.getPerfume().getVolumeMl() != null ? cart.getPerfume().getVolumeMl() : 50)
+                                .quantity(cart.getQuantity())
+                                .unitPrice(price)
+                                .finalPrice(price * cart.getQuantity())
+                                .build();
+                    }
+                })
+                .collect(Collectors.toList());
 
         orderItemRepository.saveAll(orderItems);
 
         // 10. 장바구니 비우기
         cartRepository.deleteAll(cartItems);
 
-        // 11. 포인트 적립 처리 (최종 결제 금액의 0.1%)
+        // 11. 포인트 적립 처리
         int earnedPoints = (int) Math.floor(finalAmount * 0.001);
         if (earnedPoints > 0) {
             int currentBalance = member.getTotalPoints() == null ? 0 : member.getTotalPoints();
             int balanceAfterEarn = currentBalance + earnedPoints;
 
-            // Points_History 적립 기록 (amount: 양수)
             Point earnRecord = Point.builder()
                     .member(member)
                     .amount(earnedPoints)
@@ -172,7 +200,6 @@ public class OrderService {
                     .build();
             pointHistoryRepository.save(earnRecord);
 
-            // Users.total_points 적립
             member.setTotalPoints(balanceAfterEarn);
             memberRepository.save(member);
         }

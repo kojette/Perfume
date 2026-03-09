@@ -35,8 +35,8 @@ const OrderReceipt = () => {
                 const json = await response.json();
                 const orderData = json.data;
 
-                // Supabase에서 상품 이미지 조회
-                const perfumeIds = orderData.orderItems?.map(item => item.perfumeId) || [];
+                // Supabase에서 상품 이미지 조회 (커스텀 상품은 perfumeId가 null이므로 제외)
+                const perfumeIds = (orderData.orderItems?.map(item => item.perfumeId) || []).filter(id => id != null);
                 if (perfumeIds.length > 0) {
                     const { data: images } = await supabase
                         .from('Perfume_Images')
@@ -113,12 +113,16 @@ const OrderReceipt = () => {
                         <div key={idx} className="flex items-center gap-6 pb-6 border-b border-[#eee] last:border-0">
                             <div
                                 className="w-20 h-24 bg-gray-50 bg-cover bg-center border border-[#eee]"
-                                style={{ backgroundImage: `url(${item.imageUrl || 'https://via.placeholder.com/100'})` }}
-                            ></div>
+                                style={{ backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : 'none', backgroundColor: item.perfumeId == null ? '#f5f0e8' : undefined }}
+                            >
+                                {!item.imageUrl && (
+                                    <div className="w-full h-full flex items-center justify-center text-[#c9a961] text-2xl">✦</div>
+                                )}
+                            </div>
                             <div className="flex-1">
                                 <p className="font-serif text-lg text-[#1a1a1a] mb-1">{item.perfumeNameSnapshot || item.name}</p>
                                 <p className="text-[10px] text-[#8b8278] tracking-widest uppercase italic">
-                                    50ML / {item.quantity} Unit(s)
+                                    {item.perfumeId == null ? 'CUSTOM' : `${item.volumeMl || 50}ML`} / {item.quantity} Unit(s)
                                 </p>
                             </div>
                             <div className="text-right">

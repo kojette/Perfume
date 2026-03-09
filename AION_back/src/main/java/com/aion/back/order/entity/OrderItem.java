@@ -23,8 +23,12 @@ public class OrderItem {
     @JsonBackReference
     private Order order;
 
+    @Column(name = "is_custom", columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean isCustom = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "perfume_id")
+    @JoinColumn(name = "perfume_id", nullable = true)
     private Perfume perfume;
 
     @Column(name = "perfume_name_snapshot")
@@ -41,5 +45,8 @@ public class OrderItem {
 
     @Column(name = "final_price")
     private Integer finalPrice;
+
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
 
 }

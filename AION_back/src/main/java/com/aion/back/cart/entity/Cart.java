@@ -25,10 +25,28 @@ public class Cart {
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "perfume_id")
+    @JoinColumn(name = "perfume_id", nullable = true)
     private Perfume perfume;
 
     private int quantity;
+
+    @Column(name = "item_type")
+    private String itemType;
+
+    @Column(name = "is_custom")
+    private Boolean isCustom = false;
+
+    @Column(name = "custom_design_id")
+    private Long customDesignId;
+
+    @Column(name = "custom_name")
+    private String customName;
+
+    @Column(name = "custom_price")
+    private Integer customPrice;
+
+    @Column(name = "custom_image_url", columnDefinition = "TEXT")
+    private String customImageUrl;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -43,5 +61,20 @@ public class Cart {
         this.member = member;
         this.perfume = perfume;
         this.quantity = quantity;
+        this.itemType = "PERFUME";
+        this.isCustom = false;
+    }
+
+    @Builder(builderMethodName = "customBuilder")
+    public Cart(Member member, int quantity, Long customDesignId,
+                String customName, Integer customPrice, String customImageUrl) {
+        this.member = member;
+        this.quantity = quantity;
+        this.itemType = "CUSTOM";
+        this.isCustom = true;
+        this.customDesignId = customDesignId;
+        this.customName = customName;
+        this.customPrice = customPrice;
+        this.customImageUrl = customImageUrl;
     }
 }

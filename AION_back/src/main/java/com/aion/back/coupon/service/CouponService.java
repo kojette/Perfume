@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,19 +26,17 @@ public class CouponService {
     private final CouponRepository couponRepository;
 
     public List<UserCouponResponse> getMyCoupons(String token) {
-
         Member member = memberService.getMemberEntityByToken(token);
-
         List<UserCoupon> userCoupons = userCouponRepository.findByMember(member);
 
         return userCoupons.stream()
                 .map(UserCouponResponse::from)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
     @Transactional
     public Coupon createCoupon(CouponCreateRequest dto) {
-
         if (couponRepository.findByCode(dto.getCode()).isPresent()) {
             throw new RuntimeException("이미 존재하는 쿠폰 코드입니다.");
         }
@@ -59,28 +58,24 @@ public class CouponService {
 
     @Transactional
     public void registerCoupon(String token, String couponCode) {
-        // 1. 토큰으로 멤버 조회
         Member member = memberService.getMemberEntityByToken(token);
 
-        // 2. 마스터 쿠폰 테이블에서 코드로 쿠폰 조회 (CouponRepository의 findByCode 활용)
         Coupon coupon = couponRepository.findByCode(couponCode)
                 .orElseThrow(() -> new RuntimeException("유효하지 않은 쿠폰 코드입니다."));
 
-        // 3. (선택사항) 만료일 체크 로직 추가 가능
         if (coupon.getExpiryDate() != null && coupon.getExpiryDate().isBefore(LocalDateTime.now())) {
             throw new RuntimeException("만료된 쿠폰입니다.");
         }
 
-        // 4. 이미 등록했는지 중복 체크 (UserCouponRepository에 existsByMemberAndCoupon 추가 권장)
         List<UserCoupon> existingCoupons = userCouponRepository.findByMember(member);
         boolean alreadyRegistered = existingCoupons.stream()
+                .filter(uc -> uc.getCoupon() != null)
                 .anyMatch(uc -> uc.getCoupon().getId().equals(coupon.getId()));
 
         if (alreadyRegistered) {
             throw new RuntimeException("이미 등록된 쿠폰입니다.");
         }
 
-        // 5. UserCoupon 생성 및 저장
         UserCoupon userCoupon = UserCoupon.builder()
                 .member(member)
                 .coupon(coupon)

@@ -84,19 +84,27 @@ const Cart = () => {
                 let items = json.data;
 
                 if (items && items.length > 0) {
-                    const perfumeIds = items.map(item => item.perfumeId);
-                    const { data: images } = await supabase
-                        .from('Perfume_Images')
-                        .select('perfume_id, image_url')
-                        .in('perfume_id', perfumeIds)
-                        .eq('is_thumbnail', true);
+                    // 일반 향수 아이템만 Supabase 이미지 조회
+                    const normalItems = items.filter(item => !item.isCustom && item.perfumeId);
+                    let imageMap = {};
 
-                    const imageMap = {};
-                    images?.forEach(img => { imageMap[img.perfume_id] = img.image_url; });
+                    if (normalItems.length > 0) {
+                        const perfumeIds = normalItems.map(item => item.perfumeId);
+                        const { data: images } = await supabase
+                            .from('Perfume_Images')
+                            .select('perfume_id, image_url')
+                            .in('perfume_id', perfumeIds)
+                            .eq('is_thumbnail', true);
 
+                        images?.forEach(img => { imageMap[img.perfume_id] = img.image_url; });
+                    }
+
+                    // 커스텀/일반 모두 항상 imageUrl 세팅
                     items = items.map(item => ({
                         ...item,
-                        imageUrl: imageMap[item.perfumeId] || item.imageUrl || 'https://via.placeholder.com/100?text=No+Image'
+                        imageUrl: item.isCustom
+                            ? (item.imageUrl || null)
+                            : (imageMap[item.perfumeId] || null)
                     }));
                 }
 
@@ -304,10 +312,18 @@ const Cart = () => {
                                         <tr key={item.cartId} className="border-b border-[#eee] last:border-0">
                                             <td className="py-6 pl-2">
                                                 <div className="flex items-center gap-6">
-                                                    <div className="w-16 h-20 bg-gray-100 bg-cover bg-center" style={{ backgroundImage: `url(${item.imageUrl})` }}></div>
+                                                    <div
+                                        className="w-16 h-20 bg-cover bg-center flex items-center justify-center"
+                                        style={{
+                                            backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : 'none',
+                                            backgroundColor: item.imageUrl ? 'transparent' : '#f5f0e8'
+                                        }}
+                                    >
+                                        {!item.imageUrl && <span className="text-[#c9a961] text-xl">✦</span>}
+                                    </div>
                                                     <div>
                                                         <p className="text-[#1a1a1a] font-serif text-lg">{item.name}</p>
-                                                        <p className="text-[9px] text-[#c9a961] tracking-widest mt-1 uppercase">Eau De Parfum</p>
+                                                        <p className="text-[9px] text-[#c9a961] tracking-widest mt-1 uppercase">{item.isCustom ? 'Custom Design' : 'Eau De Parfum'}</p>
                                                         <button 
                                                             onClick={() => handleRemoveItem(item.cartId)}
                                                             className="text-[9px] text-gray-400 hover:text-red-400 mt-3 tracking-[0.2em] uppercase transition-colors cursor-pointer"
