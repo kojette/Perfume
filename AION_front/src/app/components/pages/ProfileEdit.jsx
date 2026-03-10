@@ -8,15 +8,17 @@ const ProfileEdit = () => {
   const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    email: '', // 이메일 필드 추가
+    email: '',
     name: '',
     nickname: '',
     phone: '',
     gender: '',
-    profileImage: ''
+    profileImage: '',
+    zipcode: '',       // 우편번호
+    address: '',       // 기본주소
+    addressDetail: '', // 상세주소
   });
 
-  // 컴포넌트 마운트 시 현재 정보 불러오기
   useEffect(() => {
     fetchCurrentProfile();
   }, []);
@@ -25,14 +27,14 @@ const ProfileEdit = () => {
     try {
       setLoading(true);
       const token = sessionStorage.getItem('accessToken');
-      
+
       if (!token) {
         alert('로그인이 필요합니다.');
         navigate('/login');
         return;
       }
 
-      const response = await fetch('http://localhost:8080/api/members/profile', {
+      const response = await fetch(`${API_BASE_URL}/api/members/profile`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -40,23 +42,23 @@ const ProfileEdit = () => {
         }
       });
 
-      if (!response.ok) {
-        throw new Error('프로필 조회 실패');
-      }
+      if (!response.ok) throw new Error('프로필 조회 실패');
 
       const result = await response.json();
-      
+
       if (result.success && result.data) {
         setFormData({
-          email: result.data.email || '', // 데이터 바인딩
+          email: result.data.email || '',
           name: result.data.name || '',
           nickname: result.data.nickname || '',
           phone: result.data.phone || '',
           gender: result.data.gender || '',
-          profileImage: result.data.profileImage || ''
+          profileImage: result.data.profileImage || '',
+          zipcode: result.data.zipcode || '',
+          address: result.data.address || '',
+          addressDetail: result.data.addressDetail || '',
         });
       }
-
     } catch (err) {
       console.error('프로필 조회 에러:', err);
       alert('프로필 정보를 불러오는데 실패했습니다.');
@@ -70,7 +72,7 @@ const ProfileEdit = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData({ ...formData, profileImage: reader.result });
+        setFormData(prev => ({ ...prev, profileImage: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -78,8 +80,17 @@ const ProfileEdit = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  // 우편번호만 숫자 허용 (5자리)
+  const handleZipcodeChange = (e) => {
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
+    setFormData(prev => ({ ...prev, zipcode: value }));
+  };
+
+  // API_BASE_URL 설정
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
   const handleSave = async () => {
     try {
@@ -96,7 +107,7 @@ const ProfileEdit = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8080/api/members/profile', {
+      const response = await fetch(`${API_BASE_URL}/api/members/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -107,8 +118,11 @@ const ProfileEdit = () => {
           nickname: formData.nickname || null,
           phone: formData.phone,
           gender: formData.gender,
-          profileImage: formData.profileImage || null
-        }) // PUT 요청 시 이메일은 제외하고 전송 (수정 불가 항목이므로)
+          profileImage: formData.profileImage || null,
+          zipcode: formData.zipcode || null,
+          address: formData.address || null,
+          addressDetail: formData.addressDetail || null,
+        })
       });
 
       if (!response.ok) throw new Error('프로필 수정 실패');
@@ -122,7 +136,6 @@ const ProfileEdit = () => {
       } else {
         throw new Error(result.message || '수정 실패');
       }
-
     } catch (err) {
       alert(`회원 정보 수정에 실패했습니다.\n에러: ${err.message}`);
     } finally {
@@ -131,31 +144,27 @@ const ProfileEdit = () => {
   };
 
   const handleDeleteAccount = async () => {
-    // 1. 먼저 탈퇴 사유를 묻습니다.
     const reason = window.prompt(
       "탈퇴 사유를 입력해 주세요.\n(예: 서비스 불만족, 개인정보 보호, 장기간 미사용 등)"
     );
 
-    // 취소를 눌렀거나 사유가 너무 짧으면 중단
-    if (reason === null) return; 
+    if (reason === null) return;
     if (reason.trim().length < 2) {
       alert("탈퇴 사유를 최소 2자 이상 입력해 주세요.");
       return;
     }
 
-    // 2. 최종 확인
     if (!window.confirm("정말 계정을 삭제하시겠습니까?\n삭제 후에는 30일 내 동일 이메일로 재가입이 제한될 수 있습니다.")) return;
 
     try {
       const token = sessionStorage.getItem('accessToken');
-      const response = await fetch('http://localhost:8080/api/members/account', {
+      const response = await fetch(`${API_BASE_URL}/api/members/account`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        // ★ 백엔드 softDeleteMember 쿼리에 전달할 사유(reason)를 Body에 담아 보냅니다.
-        body: JSON.stringify({ reason: reason }) 
+        body: JSON.stringify({ reason })
       });
 
       if (!response.ok) {
@@ -197,7 +206,8 @@ const ProfileEdit = () => {
         </div>
 
         <div className="space-y-6">
-          
+
+          {/* 프로필 이미지 */}
           <div className="flex flex-col items-center mb-10">
             <div className="relative">
               <div className="w-24 h-24 rounded-full border border-[#c9a961]/30 overflow-hidden bg-[#faf8f3] flex items-center justify-center">
@@ -233,9 +243,7 @@ const ProfileEdit = () => {
 
           {/* 이름 */}
           <div className="space-y-2">
-            <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">
-              NAME
-            </label>
+            <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">NAME</label>
             <input
               name="name"
               value={formData.name}
@@ -247,9 +255,7 @@ const ProfileEdit = () => {
 
           {/* 닉네임 */}
           <div className="space-y-2">
-            <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">
-              NICKNAME
-            </label>
+            <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">NICKNAME</label>
             <input
               name="nickname"
               value={formData.nickname}
@@ -261,9 +267,7 @@ const ProfileEdit = () => {
 
           {/* 전화번호 */}
           <div className="space-y-2">
-            <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">
-              PHONE NUMBER
-            </label>
+            <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">PHONE NUMBER</label>
             <input
               name="phone"
               value={formData.phone}
@@ -275,9 +279,7 @@ const ProfileEdit = () => {
 
           {/* 성별 */}
           <div className="space-y-2">
-            <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">
-              GENDER
-            </label>
+            <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">GENDER</label>
             <div className="relative">
               <select
                 name="gender"
@@ -289,12 +291,62 @@ const ProfileEdit = () => {
                 <option value="MALE">남성</option>
                 <option value="FEMALE">여성</option>
               </select>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-[#c9a961] text-[8px]">
-                ▼
-              </div>
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-[#c9a961] text-[8px]">▼</div>
             </div>
           </div>
 
+          {/* ── 배송지 섹션 ── */}
+          <div className="pt-4">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-px flex-1 bg-[#c9a961]/20"></div>
+              <span className="text-[10px] tracking-[0.3em] text-[#c9a961] uppercase font-bold">Shipping Address</span>
+              <div className="h-px flex-1 bg-[#c9a961]/20"></div>
+            </div>
+
+            {/* 우편번호 */}
+            <div className="space-y-2 mb-4">
+              <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">POSTAL CODE</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formData.zipcode}
+                onChange={handleZipcodeChange}
+                placeholder="우편번호 (5자리)"
+                maxLength={5}
+                className="w-full border-b border-[#c9a961]/30 py-2 outline-none text-sm focus:border-[#c9a961] transition-colors"
+              />
+            </div>
+
+            {/* 기본주소 */}
+            <div className="space-y-2 mb-4">
+              <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">ADDRESS</label>
+              <input
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="기본주소 (시/도, 시/군/구, 도로명)"
+                className="w-full border-b border-[#c9a961]/30 py-2 outline-none text-sm focus:border-[#c9a961] transition-colors"
+              />
+            </div>
+
+            {/* 상세주소 */}
+            <div className="space-y-2">
+              <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">ADDRESS DETAIL</label>
+              <input
+                name="addressDetail"
+                value={formData.addressDetail}
+                onChange={handleChange}
+                placeholder="상세주소 (동/호수 등)"
+                className="w-full border-b border-[#c9a961]/30 py-2 outline-none text-sm focus:border-[#c9a961] transition-colors"
+              />
+            </div>
+
+            <p className="text-[9px] text-[#8b8278]/60 italic mt-3">
+              * 저장된 주소는 주문 시 배송지로 자동 사용됩니다.
+            </p>
+          </div>
+
+          {/* 버튼 */}
           <div className="pt-6 space-y-3">
             <button
               onClick={handleSave}
@@ -318,7 +370,7 @@ const ProfileEdit = () => {
           >
             DELETE ACCOUNT
           </button>
-        
+
         </div>
       </div>
     </div>

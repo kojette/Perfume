@@ -13,4 +13,7 @@ public class ProfileUpdateRequest {
     private String phone;
     private String gender;
     private String profileImage;
+    private String zipcode;
+    private String address;
+    private String addressDetail;
 }

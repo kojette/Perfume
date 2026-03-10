@@ -104,6 +104,16 @@ public class OrderService {
         int finalAmount = Math.max(0, totalAmount - discountAmount - pointsToUse);
 
         // 7. 주문 저장
+        // 배송지: 요청에 포함된 값 우선, 없으면 프로필 저장 주소 사용
+        String receiverName = (requestDto.getReceiverName() != null && !requestDto.getReceiverName().isBlank())
+                ? requestDto.getReceiverName() : member.getName();
+        String receiverPhone = (requestDto.getReceiverPhone() != null && !requestDto.getReceiverPhone().isBlank())
+                ? requestDto.getReceiverPhone() : member.getPhone();
+        String shippingZipcode = (requestDto.getShippingZipcode() != null && !requestDto.getShippingZipcode().isBlank())
+                ? requestDto.getShippingZipcode() : (member.getZipcode() != null ? member.getZipcode() : "");
+        String shippingAddress = (requestDto.getShippingAddress() != null && !requestDto.getShippingAddress().isBlank())
+                ? requestDto.getShippingAddress() : (member.getAddress() != null ? member.getAddress() : "");
+
         Order order = Order.builder()
                 .member(member)
                 .orderNumber("ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
@@ -113,10 +123,10 @@ public class OrderService {
                 .finalAmount(finalAmount)
                 .orderStatus("PAID")
                 .paymentMethod("CARD")
-                .receiverName(member.getName())
-                .receiverPhone(member.getPhone())
-                .shippingAddress("")
-                .shippingZipcode("")
+                .receiverName(receiverName)
+                .receiverPhone(receiverPhone)
+                .shippingZipcode(shippingZipcode)
+                .shippingAddress(shippingAddress)
                 .build();
 
         Order savedOrder = orderRepository.save(order);

@@ -45,6 +45,15 @@ public class Member {
     @Column(name = "profile_image", columnDefinition = "TEXT")
     private String profileImage;
 
+    @Column(name = "zipcode", length = 10)
+    private String zipcode;
+
+    @Column(name = "address", columnDefinition = "TEXT")
+    private String address;
+
+    @Column(name = "address_detail", columnDefinition = "TEXT")
+    private String addressDetail;
+
     @org.hibernate.annotations.ColumnTransformer(write = "?::user_account_status")
     @Enumerated(EnumType.STRING)
     @Column(name = "account_status")

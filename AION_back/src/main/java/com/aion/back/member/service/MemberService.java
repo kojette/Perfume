@@ -133,6 +133,9 @@ public class MemberService {
                     .accountStatus(member.getAccountStatus())
                     .role(member.getRole())
                     .totalPoints(member.getTotalPoints())
+                    .zipcode(member.getZipcode())
+                    .address(member.getAddress())
+                    .addressDetail(member.getAddressDetail())
                     .build();
         } catch (Exception e) {
             log.error("프로필 조회 실패", e);
@@ -167,6 +170,9 @@ public class MemberService {
                     request.getPhone() != null ? request.getPhone() : member.getPhone(),
                     request.getGender() != null ? request.getGender() : member.getGender(),
                     request.getProfileImage(),
+                    request.getZipcode(),
+                    request.getAddress(),
+                    request.getAddressDetail(),
                     email
             );
 
@@ -185,6 +191,9 @@ public class MemberService {
                     .profileImage(updated.getProfileImage())
                     .accountStatus(updated.getAccountStatus())
                     .totalPoints(updated.getTotalPoints())
+                    .zipcode(updated.getZipcode())
+                    .address(updated.getAddress())
+                    .addressDetail(updated.getAddressDetail())
                     .build();
         } catch (Exception e) {
             log.error("회원 정보 수정 실패", e);

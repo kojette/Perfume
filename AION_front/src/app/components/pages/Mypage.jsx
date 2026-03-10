@@ -402,6 +402,7 @@ const Mypage = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-8">
+                {/* CONTACT DETAILS */}
                 <div className="bg-white p-8 border border-[#c9a961]/10 shadow-sm hover:shadow-md transition-shadow">
                   <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#c9a961] mb-6 flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#c9a961]"></div>
@@ -422,7 +423,51 @@ const Mypage = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-8 border border-[#c9a961]/10 shadow-sm flex flex-col justify-between">
+                {/* SHIPPING ADDRESS */}
+                <div className="bg-white p-8 border border-[#c9a961]/10 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#c9a961] mb-6 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#c9a961]"></div>
+                      SHIPPING ADDRESS
+                    </h3>
+                    {userInfo?.address ? (
+                      <div className="space-y-3">
+                        <div className="bg-[#fcfbf9] border-l-2 border-[#c9a961] p-4 space-y-1.5">
+                          <p className="text-[11px] text-[#8b8278] uppercase tracking-widest">수령인</p>
+                          <p className="text-[13px] text-[#2a2620] font-medium">{userInfo?.name}</p>
+                          {userInfo?.phone && (
+                            <p className="text-[12px] text-[#555]">{userInfo.phone}</p>
+                          )}
+                        </div>
+                        <div className="bg-[#fcfbf9] border-l-2 border-[#c9a961]/40 p-4 space-y-1">
+                          {userInfo?.zipcode && (
+                            <p className="text-[11px] text-[#8b8278]">({userInfo.zipcode})</p>
+                          )}
+                          <p className="text-[12px] text-[#2a2620] font-medium leading-relaxed">{userInfo.address}</p>
+                          {userInfo?.addressDetail && (
+                            <p className="text-[12px] text-[#555]">{userInfo.addressDetail}</p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border border-dashed border-[#c9a961]/30 bg-[#faf8f3]/50 p-6 text-center rounded-sm">
+                        <p className="text-[12px] text-[#8b8278] italic leading-relaxed mb-3">
+                          등록된 배송지가 없습니다.<br />
+                          배송지를 등록하면 주문 시 자동으로 사용됩니다.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => navigate('/profile/edit')}
+                    className="mt-6 text-[10px] text-[#2a2620] tracking-[0.4em] uppercase border-b border-[#c9a961]/30 pb-1 w-fit hover:text-[#c9a961] hover:border-[#c9a961] transition-all cursor-pointer font-bold"
+                  >
+                    {userInfo?.address ? 'Edit Address →' : '+ Register Address →'}
+                  </button>
+                </div>
+
+                {/* ORDER HISTORY 카드 - 전체 너비 */}
+                <div className="col-span-2 bg-white p-8 border border-[#c9a961]/10 shadow-sm flex flex-col justify-between">
                   <div>
                     <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#2a2620] mb-8 flex items-center gap-2 uppercase">
                       <div className="w-1 h-3 bg-[#c9a961]"></div>

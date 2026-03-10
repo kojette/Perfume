@@ -25,7 +25,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             "nickname = :nickname, " +
             "phone = :phone, " +
             "gender = CAST(:gender AS user_gender), " +
-            "profile_image = :profileImage " +
+            "profile_image = :profileImage, " +
+            "zipcode = :zipcode, " +
+            "address = :address, " +
+            "address_detail = :addressDetail " +
             "WHERE email = :email",
             nativeQuery = true)
     void updateMemberProfile(
@@ -34,6 +37,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("phone") String phone,
             @Param("gender") String gender,
             @Param("profileImage") String profileImage,
+            @Param("zipcode") String zipcode,
+            @Param("address") String address,
+            @Param("addressDetail") String addressDetail,
             @Param("email") String email
     );
 

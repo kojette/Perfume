@@ -18,4 +18,7 @@ public class MemberProfileResponse {
     private AccountStatus accountStatus;
     private String role;
     private Integer totalPoints;
+    private String zipcode;
+    private String address;
+    private String addressDetail;
 }
