@@ -24,6 +24,7 @@ export function FeaturedProducts() {
           sale_price,
           concentration,
           brand_id,
+          avg_rating,
           Brands (
             brand_name
           ),
@@ -33,14 +34,31 @@ export function FeaturedProducts() {
           )
         `)
         .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(4);
+        //.order("created_at", { ascending: false })
+        .in("perfume_id", [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]);
+        //.limit(4);
 
       if (error) {
         console.error("Perfume fetch error:", error);
         setLoading(false);
         return;
       }
+
+      const shuffled = [...data].sort(() => 0.5 - Math.random()).slice(0, 4);
+
+      const mappedData = shuffled.map(p => ({
+        id: p.perfume_id,
+        name: p.name,
+        nameEn: p.name_en,
+        greekName: p.Brands?.brand_name || "OLYMPUS", // 브랜드명(7번이 AION이면 AION으로 뜸)
+        category: p.concentration || "EDP",
+        price: `₩${(p.sale_price || p.price)?.toLocaleString()}`,
+        description: p.description || "신성한 신들의 향기", // 수식어 자리
+        image: p.Perfume_Images?.find(i => i.is_thumbnail)?.image_url || p.Perfume_Images?.[0]?.image_url,
+        rating: Math.floor(p.avg_rating) || 5 // 평점 없으면 기본 5점
+      }));
+      
+      /*
       console.log("FETCH RESULT:", data);///////
       // 2. 가공 로직: DB 구조와 프론트 UI 구조를 연결
       const mappedData = data.map(p => ({
@@ -58,6 +76,7 @@ export function FeaturedProducts() {
         rating: 5, // 현재 DB에 평점 컬럼이 없으므로 임시로 5점 처리
         description: p.description ?? ""
       }));
+      */
 
       setProducts(mappedData);
       setLoading(false);
