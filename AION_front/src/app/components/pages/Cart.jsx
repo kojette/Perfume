@@ -349,7 +349,7 @@ const Cart = () => {
                 {cartItems.length === 0 ? (
                     <div className="text-center py-20 text-[#8b8278] border-t border-b border-[#c9a961]/20">
                         <p className="italic">장바구니가 비어있습니다.</p>
-                        <button onClick={() => navigate('/perfumes')} className="mt-8 px-8 py-3 bg-[#1a1a1a] text-white text-xs tracking-widest hover:bg-[#c9a961] transition-colors">SHOP NOW</button>
+                        <button onClick={() => navigate('/collections')} className="mt-8 px-8 py-3 bg-[#1a1a1a] text-white text-xs tracking-widest hover:bg-[#c9a961] transition-colors">SHOP NOW</button>
                     </div>
                 ) : (
                     <div className="space-y-8">

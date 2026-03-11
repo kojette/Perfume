@@ -380,7 +380,7 @@ const Mypage = () => {
                       <p className="text-[9px] text-[#8b8278] tracking-widest mb-1 hover:text-[#c9a961] transition-colors">
                         POINTS
                       </p>
-                      <p className="text-lg font-bold text-[#2a2620] hover:text-[#c9a961] transition-colors">
+                      <p className="text-lg font-bold text-[#2a2620] hover:text-[#c9a961] transition-colors font-pretendard">
                         {totalPoints.toLocaleString()}P
                       </p>
                     </div>
@@ -393,7 +393,7 @@ const Mypage = () => {
                       <p className="text-[9px] text-[#8b8278] tracking-widest mb-1 hover:text-[#c9a961] transition-colors">
                         COUPONS
                       </p>
-                      <p className="text-lg font-bold text-[#2a2620] hover:text-[#c9a961] transition-colors">
+                      <p className="text-lg font-bold text-[#2a2620] hover:text-[#c9a961] transition-colors font-pretendard">
                         {coupons.filter(c => !c.isUsed).length}
                       </p>
                     </div>
@@ -417,7 +417,7 @@ const Mypage = () => {
                     ].map(({ label, value }) => (
                       <div key={label} className="flex justify-between items-center border-b border-[#faf8f3] pb-3">
                         <span className="text-[11px] text-[#8b8278] uppercase">{label}</span>
-                        <span className="text-[12px] text-[#2a2620] font-medium">{value}</span>
+                        <span className="text-[12px] text-[#2a2620] font-medium  font-pretendard">{value}</span>
                       </div>
                     ))}
                   </div>
@@ -489,7 +489,7 @@ const Mypage = () => {
                         ].map(({ label, value, mono }) => (
                           <div key={label} className="flex justify-between items-center border-b border-[#faf8f3] pb-3">
                             <span className="text-[11px] text-[#8b8278] uppercase">{label}</span>
-                            <span className={`text-[12px] text-[#2a2620] font-medium ${mono ? 'font-mono' : ''}`}>{value}</span>
+                            <span className={`text-[12px] text-[#2a2620] font-pretendard font-medium ${mono ? 'font-mono' : ''}`}>{value}</span>
                           </div>
                         ))}
                         <div className="flex justify-between items-center border-b border-[#faf8f3] pb-3">
