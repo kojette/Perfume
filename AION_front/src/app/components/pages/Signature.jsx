@@ -124,7 +124,7 @@ function MediaUploader({ onAdd }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 시그니처 목록 패널 (관리자용 — 히어로 위 우측 드롭다운)
+// 시그니처 목록 패널 (관리자용)
 // ─────────────────────────────────────────────────────────────
 function SignatureListPanel({ onClose, onEdit, onRefresh }) {
   const [list, setList] = useState([]);
@@ -135,7 +135,8 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
     try {
       const authHeader = await getAuthHeader();
       if (!authHeader) return;
-      const res = await fetch(`${API_BASE}/api/collections?type=SIGNATURE`, { headers: authHeader });
+      // ✅ /api/signature 로 변경
+      const res = await fetch(`${API_BASE}/api/signature`, { headers: authHeader });
       const json = await res.json();
       setList(json.success ? (json.data || []) : []);
     } catch (err) { console.error('목록 로드 실패:', err); }
@@ -148,7 +149,8 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
     const authHeader = await getAuthHeader();
     if (!authHeader) return;
     try {
-      await fetch(`${API_BASE}/api/collections/${id}/active?activate=${!current}`, {
+      // ✅ /api/signature/{id}/active 로 변경
+      await fetch(`${API_BASE}/api/signature/${id}/active?activate=${!current}`, {
         method: 'PATCH', headers: authHeader,
       });
       fetchList();
@@ -161,7 +163,8 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
     const authHeader = await getAuthHeader();
     if (!authHeader) return;
     try {
-      const res = await fetch(`${API_BASE}/api/collections/${id}`, { method: 'DELETE', headers: authHeader });
+      // ✅ /api/signature/{id} 로 변경
+      const res = await fetch(`${API_BASE}/api/signature/${id}`, { method: 'DELETE', headers: authHeader });
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
       fetchList();
@@ -214,7 +217,7 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 시그니처 에디터 (새 생성 / 기존 수정)
+// 시그니처 에디터
 // ─────────────────────────────────────────────────────────────
 function SignatureEditor({ collectionId, onClose, onSaved }) {
   const isNew = !collectionId;
@@ -246,11 +249,10 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
 
   useEffect(() => {
     loadMasterData();
-    if (!isNew) loadCollection();
+    if (!isNew) loadSignature();
     else setLoadingData(false);
   }, []);
 
-  // Supabase에서 향수 마스터 데이터 로드
   const loadMasterData = async () => {
     try {
       const { data: perfumes } = await supabase.from('Perfumes')
@@ -281,13 +283,13 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
     } catch (err) { console.error('마스터 데이터 로드 실패:', err); }
   };
 
-  // 기존 시그니처 로드 (수정 시)
-  const loadCollection = async () => {
+  // ✅ /api/signature/{id} 로 변경
+  const loadSignature = async () => {
     setLoadingData(true);
     try {
       const authHeader = await getAuthHeader();
       if (!authHeader) throw new Error('로그인이 필요합니다');
-      const res = await fetch(`${API_BASE}/api/collections/${collectionId}`, { headers: authHeader });
+      const res = await fetch(`${API_BASE}/api/signature/${collectionId}`, { headers: authHeader });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
@@ -348,6 +350,7 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
     return list.map((p, i) => ({ ...p, display_order: i }));
   });
 
+  // ✅ /api/signature 및 /api/signature/{id} 로 변경
   const handleSave = async () => {
     if (!form.title.trim()) { alert('제목을 입력하세요'); return; }
     if (mediaList.length === 0) { alert('배경 이미지를 최소 1개 추가하세요'); return; }
@@ -374,8 +377,8 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
     };
     try {
       const url = isNew
-        ? `${API_BASE}/api/collections`
-        : `${API_BASE}/api/collections/${collectionId}`;
+        ? `${API_BASE}/api/signature`
+        : `${API_BASE}/api/signature/${collectionId}`;
       const res = await fetch(url, {
         method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeader },
@@ -415,7 +418,6 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center overflow-y-auto py-6 px-4">
       <div className="w-full max-w-3xl bg-[#1a1714] text-[#e8dcc8] border border-[#c9a961]/30 shadow-2xl my-auto">
 
-        {/* 헤더 */}
         <div className="flex justify-between items-center px-8 py-5 border-b border-[#c9a961]/20">
           <div>
             <p className="text-[#c9a961] text-[9px] tracking-[0.6em] mb-1">ADMIN · SIGNATURE EDITOR</p>
@@ -434,7 +436,6 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
           </div>
         </div>
 
-        {/* 탭 */}
         <div className="flex border-b border-[#c9a961]/15 overflow-x-auto">
           {tabs.map(({ id, label }) => (
             <button key={id} onClick={() => setActiveTab(id)}
@@ -450,7 +451,6 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
 
         <div className="p-8 space-y-6">
 
-          {/* ── 기본 정보 탭 ── */}
           {activeTab === 'basic' && (
             <div className="space-y-5">
               <div>
@@ -487,7 +487,6 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
             </div>
           )}
 
-          {/* ── 이미지 탭 ── */}
           {activeTab === 'media' && (
             <div className="space-y-5">
               <div className="bg-[#c9a961]/5 border border-[#c9a961]/20 px-4 py-3 text-[10px] text-[#c9a961]/70 tracking-wider">
@@ -513,7 +512,6 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
             </div>
           )}
 
-          {/* ── 문구 탭 ── */}
           {activeTab === 'text' && (
             <div className="space-y-5">
               <div className="bg-[#c9a961]/5 border border-[#c9a961]/20 px-4 py-3 text-[10px] text-[#c9a961]/70 tracking-wider">
@@ -581,7 +579,6 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
             </div>
           )}
 
-          {/* ── 향수 탭 ── */}
           {activeTab === 'perfumes' && (
             <div className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -603,7 +600,6 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
                 </select>
               </div>
 
-              {/* 향수 선택 목록 */}
               <div className="border border-[#c9a961]/15 bg-black/20 max-h-72 overflow-y-auto">
                 <div className="grid grid-cols-1 md:grid-cols-2">
                   {filteredPerfumes.map(p => {
@@ -631,7 +627,6 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
                 </div>
               </div>
 
-              {/* 선택된 향수 순서 정리 */}
               {selectedPerfumes.length > 0 && (
                 <div>
                   <p className="text-[10px] tracking-[0.4em] text-[#c9a961] mb-3">선택된 향수 ({selectedPerfumes.length}개)</p>
@@ -678,7 +673,7 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
 export default function Signature() {
   const isAdmin = checkIsAdmin();
 
-  const [signature, setSignature] = useState(null); // 현재 활성 시그니처
+  const [signature, setSignature] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mediaIdx, setMediaIdx] = useState(0);
 
@@ -686,35 +681,35 @@ export default function Signature() {
   const [editingId, setEditingId] = useState(null);
   const [listPanelOpen, setListPanelOpen] = useState(false);
 
-  // ── 데이터 로드 ──
+  // ✅ /api/signature/active 로 변경 (관리자도 동일 엔드포인트 사용)
   const fetchSignature = useCallback(async () => {
     setLoading(true);
     try {
       let data = null;
 
       if (isAdmin) {
-        // 관리자: active 먼저, 없으면 목록 첫 번째
         const authHeader = await getAuthHeader();
         if (!authHeader) { setSignature(null); return; }
 
-        const resActive = await fetch(`${API_BASE}/api/collections/active?type=SIGNATURE`, { headers: authHeader });
+        // 활성 시그니처 먼저 시도
+        const resActive = await fetch(`${API_BASE}/api/signature/active`, { headers: authHeader });
         if (resActive.ok) {
           const jsonActive = await resActive.json();
           if (jsonActive.success && jsonActive.data) data = jsonActive.data;
         }
+
+        // 없으면 목록 첫 번째 로드
         if (!data) {
-          const resList = await fetch(`${API_BASE}/api/collections?type=SIGNATURE`, { headers: authHeader });
+          const resList = await fetch(`${API_BASE}/api/signature`, { headers: authHeader });
           if (resList.ok) {
             const jsonList = await resList.json();
             const summaries = jsonList.success ? (jsonList.data || []) : [];
             if (summaries.length > 0) {
-              // 활성화된 것 우선, 없으면 첫 번째
               const target = summaries.find(s => s.isActive) || summaries[0];
               try {
-                const r = await fetch(`${API_BASE}/api/collections/${target.collectionId}`, { headers: authHeader });
+                const r = await fetch(`${API_BASE}/api/signature/${target.collectionId}`, { headers: authHeader });
                 if (r.ok) { const j = await r.json(); if (j.success) data = j.data; }
               } catch (_) {}
-              // getDetail도 실패하면 summary 데이터라도 사용 (배경 없이라도 편집 버튼은 보임)
               if (!data) {
                 data = {
                   collectionId: target.collectionId,
@@ -733,8 +728,8 @@ export default function Signature() {
           }
         }
       } else {
-        // 유저: 활성화된 시그니처만
-        const res = await fetch(`${API_BASE}/api/collections/active?type=SIGNATURE`);
+        // 유저: 활성 시그니처만
+        const res = await fetch(`${API_BASE}/api/signature/active`);
         if (res.ok) {
           const json = await res.json();
           if (json.success) data = json.data;
@@ -753,7 +748,6 @@ export default function Signature() {
 
   useEffect(() => { fetchSignature(); }, [fetchSignature]);
 
-  // ── 미디어 자동 슬라이드 ──
   const mediaList = signature?.mediaList || [];
   useEffect(() => {
     if (mediaList.length <= 1) return;
@@ -784,12 +778,8 @@ export default function Signature() {
   return (
     <div className="min-h-screen bg-[#faf8f3]">
 
-      {/* ══════════════════════════════════════════════════
-          히어로 섹션
-      ══════════════════════════════════════════════════ */}
       <div className="relative h-[72vh] overflow-hidden">
 
-        {/* 빈 상태 */}
         {!signature && (
           <div className="absolute inset-0 bg-gradient-to-br from-[#2a2620] via-[#3d3228] to-[#2a2620] flex items-center justify-center">
             <div className="text-center">
@@ -806,7 +796,6 @@ export default function Signature() {
           </div>
         )}
 
-        {/* 배경 이미지 슬라이드 */}
         {mediaList.map((m, i) => (
           <div key={m.mediaId || i}
             className={`absolute inset-0 transition-opacity duration-[2000ms] ${i === mediaIdx ? 'opacity-100' : 'opacity-0'}`}>
@@ -817,7 +806,6 @@ export default function Signature() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60"/>
         )}
 
-        {/* 히어로 텍스트 */}
         {signature && (
           <div className="relative h-full pointer-events-none">
             {textBlocks.length > 0 ? (
@@ -853,7 +841,6 @@ export default function Signature() {
           </div>
         )}
 
-        {/* 미디어 도트 인디케이터 */}
         {mediaList.length > 1 && (
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
             {mediaList.map((_, i) => (
@@ -863,7 +850,6 @@ export default function Signature() {
           </div>
         )}
 
-        {/* 관리자 버튼 (Collections.jsx와 동일 패턴) */}
         {isAdmin && (
           <div className="absolute top-5 right-5 z-30 flex flex-col gap-2 items-end">
             <button onClick={() => handleOpenEditor(null)}
@@ -897,12 +883,7 @@ export default function Signature() {
         )}
       </div>
 
-      {/* ══════════════════════════════════════════════════
-          향수 목록 섹션
-      ══════════════════════════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-6 py-20">
-
-        {/* 섹션 헤더 */}
         <div className="text-center mb-16">
           <div className="flex items-center justify-center mb-4">
             <div className="h-[1px] w-16 bg-gradient-to-r from-transparent via-[#c9a961] to-transparent"/>
@@ -917,7 +898,6 @@ export default function Signature() {
           )}
         </div>
 
-        {/* 향수 그리드 */}
         {perfumes.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-lg text-[#8b8278] italic">
@@ -928,7 +908,6 @@ export default function Signature() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {perfumes.map((p) => (
               <div key={p.perfumeId} className="group cursor-pointer">
-                {/* 향수 이미지 */}
                 <div className="relative overflow-hidden mb-4 bg-white shadow-sm border border-[#c9a961]/10">
                   <div className="aspect-square">
                     {p.thumbnail ? (
@@ -952,8 +931,6 @@ export default function Signature() {
                   )}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"/>
                 </div>
-
-                {/* 향수 정보 */}
                 <div className="text-center">
                   <p className="text-xs text-[#8b8278] mb-1 tracking-wider">{p.brandName}</p>
                   <h3 className="text-base font-medium text-[#2a2620] mb-1 tracking-wide">{p.name}</h3>
@@ -975,14 +952,12 @@ export default function Signature() {
         )}
       </div>
 
-      {/* 하단 장식 */}
       <div className="flex items-center justify-center pb-16">
         <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-[#c9a961]/40 to-transparent"/>
         <div className="mx-4 text-[#c9a961]/30 text-xs">✦</div>
         <div className="h-[1px] w-24 bg-gradient-to-l from-transparent via-[#c9a961]/40 to-transparent"/>
       </div>
 
-      {/* 에디터 모달 */}
       {editorOpen && (
         <SignatureEditor
           collectionId={editingId}
