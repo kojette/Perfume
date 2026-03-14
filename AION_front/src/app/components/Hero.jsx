@@ -166,7 +166,7 @@ export function Hero({ navHeight = 0 }) {
           <div className="h-[1px] w-16 bg-gradient-to-l from-transparent to-[#c9a961]" />
         </div>
 
-        <button onClick={() => navigate('/collections')} className="px-10 py-4 border-2 border-[#c9a961] text-[#c9a961] hover:bg-[#c9a961] hover:text-[#2a2620] transition-all duration-500 tracking-[0.3em] text-sm relative overflow-hidden group">
+        <button onClick={() => navigate('/collections')} className="px-10 py-4 border-2 border-[#c9a961] text-[#c9a961] hover:bg-[#c9a961] hover:text-[#2a2620] transition-all duration-500 tracking-[0.3em] text-sm relative overflow-hidden group cursor-pointer">
           <span className="relative z-10">신성한 컬렉션 둘러보기</span>
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
         </button>

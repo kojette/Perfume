@@ -36,10 +36,12 @@ export function Footer() {
               신성한 쇼핑
             </h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><Link to="/products" className="hover:text-[#c9a961] italic">전체 컬렉션</Link></li>
+              <li><Link to="/collections" className="hover:text-[#c9a961] italic">전체 컬렉션</Link></li>
               <li><Link to="/signature" className="hover:text-[#c9a961] italic">신들의 시그니처</Link></li>
+              {/*
               <li><Link to="/limited" className="hover:text-[#c9a961] italic">한정판 에디션</Link></li>
               <li><Link to="/gift" className="hover:text-[#c9a961] italic">신성한 선물 세트</Link></li>
+                */}
             </ul>
           </div>
 

@@ -35,7 +35,7 @@ export function FeaturedProducts() {
         `)
         .eq("is_active", true)
         //.order("created_at", { ascending: false })
-        .in("perfume_id", [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]);
+        //.in("perfume_id", [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]);
         //.limit(4);
 
       if (error) {
@@ -45,6 +45,7 @@ export function FeaturedProducts() {
       }
 
       const shuffled = [...data].sort(() => 0.5 - Math.random()).slice(0, 4);
+
 
       const mappedData = shuffled.map(p => ({
         id: p.perfume_id,
@@ -57,26 +58,6 @@ export function FeaturedProducts() {
         image: p.Perfume_Images?.find(i => i.is_thumbnail)?.image_url || p.Perfume_Images?.[0]?.image_url,
         rating: Math.floor(p.avg_rating) || 5 // 평점 없으면 기본 5점
       }));
-      
-      /*
-      console.log("FETCH RESULT:", data);///////
-      // 2. 가공 로직: DB 구조와 프론트 UI 구조를 연결
-      const mappedData = data.map(p => ({
-        id: p.perfume_id,
-        name: p.name,
-        nameEn: p.name_en,
-        greekName: p.Brands?.brand_name ?? "OLYMPUS", // 브랜드명 매핑
-        category: p.concentration ?? "EDP", // DB의 부향률을 카테고리 자리에 표시
-        price: `₩${(p.sale_price ?? p.price)?.toLocaleString()}`,
-        // 썸네일 우선 선택 로직
-        image: 
-          p.Perfume_Images?.find(i => i.is_thumbnail)?.image_url ?? 
-          p.Perfume_Images?.[0]?.image_url ?? 
-          "/fallback-perfume.jpg", 
-        rating: 5, // 현재 DB에 평점 컬럼이 없으므로 임시로 5점 처리
-        description: p.description ?? ""
-      }));
-      */
 
       setProducts(mappedData);
       setLoading(false);
@@ -118,11 +99,12 @@ export function FeaturedProducts() {
                     e.stopPropagation();
                     navigate('/collections', {state: {targetPerfumeId: product.id}});
                   }}
-                  className="border border-[#c9a961] text-[#c9a961] px-6 py-2 text-sm tracking-[0.2em] hover:bg-[#c9a961] hover:text-[#2a2620] transition-all">
+                  className="border border-[#c9a961] text-[#c9a961] px-6 py-2 text-sm tracking-[0.2em] hover:bg-[#c9a961] hover:text-[#2a2620] transition-all cursor-pointer">
                   자세히 보기
                 </button>
               </div>
             </div>
+
 
             <div className="text-center space-y-3">
               <div className="text-[#c9a961] text-xs tracking-[0.3em] italic">
@@ -134,29 +116,16 @@ export function FeaturedProducts() {
               <p className="font-display text-xs tracking-[0.3em] text-[#c9a961]">
                 {product.nameEn}
               </p>
-              <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-                {product.category}
-              </p>
-
-              <div className="flex justify-center gap-1 py-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    size={10}
-                    className={i < product.rating ? "fill-[#c9a961] text-[#c9a961]" : "text-[#c9a961]/30"}
-                  />
-                ))}
-              </div>
-
-              <p className="text-xs italic text-muted-foreground leading-relaxed line-clamp-2 px-4">
-                {product.description}
-              </p>
 
               <div className="flex items-center justify-center py-1">
                 <div className="h-[px] w-4 bg-[#c9a961]/30"></div>
                 <div className="mx-2 text-[#c9a961] text-[10px]">✦</div>
                 <div className="h-[px] w-4 bg-[#c9a961]/30"></div>
               </div>
+
+              <p className="text-xs italic text-muted-foreground leading-relaxed line-clamp-2 px-4">
+                {product.description}
+              </p>
 
               <p className="tracking-[0.15em] text-[#2a2620] font-semibold">
                 {product.price}

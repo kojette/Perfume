@@ -1,7 +1,10 @@
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Ornament } from './Ornament';
+import { useNavigate } from 'react-router-dom';
 
 export function About() {
+  const navigate = useNavigate();
+
   return (
     <section className="py-24 px-6 bg-white">
       <div className="max-w-7xl mx-auto">
@@ -41,7 +44,9 @@ export function About() {
               <div className="h-[1px] flex-1 bg-gradient-to-r from-[#c9a961] to-transparent"></div>
             </div>
 
-            <button className="px-8 py-4 border-2 border-[#c9a961] text-[#c9a961] hover:bg-[#c9a961] hover:text-[#2a2620] transition-all duration-500 tracking-[0.3em] text-sm">
+            <button 
+              onClick={(e) => {navigate('/story')}}
+              className="px-8 py-4 border-2 border-[#c9a961] text-[#c9a961] hover:bg-[#c9a961] hover:text-[#2a2620] transition-all duration-500 tracking-[0.3em] text-sm cursor-pointer">
               브랜드 여정 탐험하기
             </button>
           </div>
