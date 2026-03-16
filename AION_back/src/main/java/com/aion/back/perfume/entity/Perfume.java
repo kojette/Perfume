@@ -72,6 +72,10 @@ public class Perfume {
     @Column(name = "is_active")
     private Boolean isActive;
 
+    // DB의 image_url 컬럼과 매핑
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -82,12 +86,10 @@ public class Perfume {
 
     // 비즈니스 메서드
     public void incrementViewCount() {
-
         this.viewCount = (this.viewCount == null ? 0 : this.viewCount) + 1;
     }
 
     public void incrementSalesCount() {
-
         this.salesCount = (this.salesCount == null ? 0 : this.salesCount) + 1;
     }
 
