@@ -540,6 +540,7 @@ export default function Collections() {
   const location = useLocation();
   const autoSelectDone = useRef(false);
   const navigate = useNavigate();
+  const shelfRef = useRef(null);
 
   const [showWishPopup, setShowWishPopup] = useState(false);
   const [isAddingToWish, setIsAddingToWish] = useState(false);
@@ -823,8 +824,12 @@ ${noteText ? `노트: ${noteText}` : ''}`;
       if (targetPerfume) {
         handleSelect(targetPerfume);
         autoSelectDone.current = true;
+        window.history.replaceState({}, document.title);
 
-        window.history.replaceState({}, document.title)
+        // 책장 영역으로 스크롤
+        setTimeout(() => {
+          shelfRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
       }
     }
   }, [location.state, allPerfumes, handleSelect]);
@@ -1121,7 +1126,7 @@ ${noteText ? `노트: ${noteText}` : ''}`;
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* ─────── 하단: 책장 ─────── */}
-      <div style={{ background: 'linear-gradient(to bottom, #1a0c04 0%, #f5ede0 7%)', paddingBottom: '80px' }}>
+      <div ref={shelfRef} style={{ background: 'linear-gradient(to bottom, #1a0c04 0%, #f5ede0 7%)', paddingBottom: '80px' }}>
         <div style={{ textAlign: 'center', padding: '50px 24px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', marginBottom: '14px' }}>
             <div style={{ height: '1px', width: '54px', background: 'linear-gradient(to right, transparent, #8b6030)' }} />

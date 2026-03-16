@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import {
   Edit2, X, Save, Plus, Trash2,
@@ -672,6 +673,7 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
 // ─────────────────────────────────────────────────────────────
 export default function Signature() {
   const isAdmin = checkIsAdmin();
+  const navigate = useNavigate();
 
   const [signature, setSignature] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -907,7 +909,8 @@ export default function Signature() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {perfumes.map((p) => (
-              <div key={p.perfumeId} className="group cursor-pointer">
+              <div key={p.perfumeId} className="group cursor-pointer"
+                onClick={() => navigate('/collections', { state: { targetPerfumeId: p.perfumeId } })}>
                 <div className="relative overflow-hidden mb-4 bg-white shadow-sm border border-[#c9a961]/10">
                   <div className="aspect-square">
                     {p.thumbnail ? (
