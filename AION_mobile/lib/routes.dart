@@ -18,6 +18,9 @@ import 'screens/reset_password_screen.dart';
 import 'screens/profile_edit_screen.dart';
 import 'screens/wishlist_screen.dart';
 
+import 'screens/signature_screen.dart';
+import 'screens/collections_screen.dart';
+
 final Map<String, WidgetBuilder> routes = {
   '/cart':               (context) => const CartScreen(),
   '/faq':                (context) => const FAQScreen(),
@@ -35,6 +38,9 @@ final Map<String, WidgetBuilder> routes = {
   '/reset-password':     (context) => const ResetPasswordScreen(),
   '/profile/edit':       (context) => const ProfileEditScreen(),
   '/wishlist':           (context) => const WishlistScreen(),
+
+  '/signature': (context) => const SignatureScreen(),
+  '/collections': (context) => const CollectionsScreen(),
 };
 
 /// 동적 파라미터가 필요한 라우트는 여기서 처리

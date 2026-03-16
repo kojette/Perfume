@@ -340,9 +340,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─── 퀵 메뉴 ────────────────────────────────────────────────
   Widget _buildQuickMenu() {
     final items = [
-      {'icon': Icons.menu_book_outlined, 'label': 'LIBRARY', 'route': null, 'tabIndex': 1},
-      {'icon': Icons.auto_fix_high_outlined, 'label': 'SIGNATURE', 'route': null, 'tabIndex': 2},
-      {'icon': Icons.history_edu_outlined, 'label': 'STORY', 'route': null, 'tabIndex': 3},
+      {'icon': Icons.menu_book_outlined, 'label': 'LIBRARY', 'route': '/collections', 'tabIndex': 1},
+      {'icon': Icons.auto_fix_high_outlined, 'label': 'SIGNATURE', 'route': '/signature', 'tabIndex': 2},
+      {'icon': Icons.history_edu_outlined, 'label': 'STORY', 'route': '/story', 'tabIndex': 3},
       {'icon': Icons.water_drop_outlined, 'label': 'CUSTOM', 'route': '/custom', 'tabIndex': null},
       {'icon': Icons.store_outlined, 'label': 'STORE', 'route': '/store', 'tabIndex': null},
     ];

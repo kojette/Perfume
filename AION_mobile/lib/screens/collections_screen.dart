@@ -28,33 +28,94 @@ class CollectionsScreen extends StatefulWidget {
 class _CollectionsScreenState extends State<CollectionsScreen> {
   List<Map<String, dynamic>> _perfumes = [];
   bool _loading = true;
+  bool _isFetchingMore = false;
+  bool _hasMore = true;
+  int _page = 0;
+  static const int _pageSize = 20;
+
   Map<String, dynamic>? _selected;
   Map<String, List<String>> _notes = {'top': [], 'middle': [], 'base': []};
   bool _loadingNotes = false;
   final Map<int, Map<String, List<String>>> _notesCache = {};
 
+  late final ScrollController _scrollController;
+
   @override
   void initState() {
     super.initState();
-    _fetchPerfumes();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+    _fetchPerfumes(reset: true);
   }
 
-  Future<void> _fetchPerfumes() async {
-    setState(() => _loading = true);
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_isFetchingMore && _hasMore) {
+        _fetchPerfumes();
+      }
+    }
+  }
+
+  Future<void> _fetchPerfumes({bool reset = false}) async {
+    if (reset) {
+      setState(() {
+        _loading = true;
+        _page = 0;
+        _hasMore = true;
+        _perfumes = [];
+      });
+    } else {
+      if (_isFetchingMore || !_hasMore) return;
+      setState(() => _isFetchingMore = true);
+    }
+
     try {
-      final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/perfumes'));
+      final res = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/perfumes?page=$_page&size=$_pageSize'),
+      );
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
+
         List items = [];
-        if (data is List) items = data;
-        else if (data is Map) {
-          if (data['content'] is List) items = data['content'];
-          else if (data['data'] is List) items = data['data'];
+        bool isLast = true;
+
+        if (data is List) {
+          items = data;
+          isLast = items.length < _pageSize;
+        } else if (data is Map) {
+          // Spring Page 응답 구조
+          if (data['content'] is List) {
+            items = data['content'];
+            isLast = data['last'] == true || items.length < _pageSize;
+          } else if (data['data'] is Map && data['data']['content'] is List) {
+            items = data['data']['content'];
+            isLast = data['data']['last'] == true || items.length < _pageSize;
+          } else if (data['data'] is List) {
+            items = data['data'];
+            isLast = items.length < _pageSize;
+          }
         }
-        if (mounted) setState(() => _perfumes = items.cast<Map<String, dynamic>>());
+
+        if (mounted) {
+          setState(() {
+            _perfumes.addAll(items.cast<Map<String, dynamic>>());
+            _hasMore = !isLast;
+            if (_hasMore) _page++;
+          });
+        }
       }
-    } catch (e) { debugPrint('향수 로드 오류: $e'); }
-    finally { if (mounted) setState(() => _loading = false); }
+    } catch (e) {
+      debugPrint('향수 로드 오류: $e');
+    } finally {
+      if (mounted) setState(() { _loading = false; _isFetchingMore = false; });
+    }
   }
 
   Future<void> _fetchNotes(int perfumeId) async {
@@ -147,24 +208,43 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(backgroundColor: _bg, body: Center(child: CircularProgressIndicator(color: _gold)));
+    if (_loading) return const Scaffold(
+      backgroundColor: _bg,
+      body: Center(child: CircularProgressIndicator(color: _gold)),
+    );
+
     return Scaffold(
       backgroundColor: _bg,
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverAppBar(
             backgroundColor: _darkDeep,
             pinned: true,
-            expandedHeight: _selected != null ? 240 : 90,
+            expandedHeight: 240,
             flexibleSpace: FlexibleSpaceBar(
-              background: _selected != null ? _buildOverlay() : _buildEmptyOverlay(),
-              title: const Text('FRAGRANCE LIBRARY', style: TextStyle(color: _gold, fontSize: 9, letterSpacing: 3)),
+              background: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _selected != null
+                    ? _buildOverlay()
+                    : _buildEmptyOverlay(),
+              ),
+              title: _selected == null
+                  ? const Text(
+                      'FRAGRANCE LIBRARY',
+                      style: TextStyle(
+                        color: _gold,
+                        fontSize: 9,
+                        letterSpacing: 3,
+                      ),
+                    )
+                  : null,
               centerTitle: true,
             ),
           ),
           SliverToBoxAdapter(child: _buildShelfHeader()),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate(
                 (ctx, i) => _buildSpineBook(_perfumes[i], i),
@@ -178,11 +258,40 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
               ),
             ),
           ),
+          // 추가 로딩 인디케이터
+          if (_isFetchingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: SizedBox(
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(color: _gold, strokeWidth: 1.5),
+                  ),
+                ),
+              ),
+            ),
+          // 마지막 도달 표시
+          if (!_hasMore && _perfumes.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 12, 0, 80),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Container(width: 40, height: 0.5, color: const Color(0xFF8B6030).withOpacity(0.4)),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text('✦', style: TextStyle(color: Color(0xFF8B6030), fontSize: 10)),
+                  ),
+                  Container(width: 40, height: 0.5, color: const Color(0xFF8B6030).withOpacity(0.4)),
+                ]),
+              ),
+            ),
         ],
       ),
     );
   }
 
+  // ... (나머지 위젯 메서드들은 동일)
   Widget _buildEmptyOverlay() {
     return Container(
       color: _darkDeep,
@@ -190,8 +299,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
         child: Text(
           '아래 향수를 선택하세요',
           style: TextStyle(
-            fontSize: 11,
-            letterSpacing: 4,
+            fontSize: 11, letterSpacing: 4,
             color: const Color(0xFF3D2010).withOpacity(0.5),
             fontStyle: FontStyle.italic,
           ),
@@ -206,27 +314,19 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
     final name = p['name'] ?? '';
     final brand = p['brandName'] ?? p['brand_name'] ?? (p['brand'] is Map ? p['brand']['brandName'] : '') ?? '';
     final price = _formatPrice(p);
-
     return Container(
       color: _darkDeep,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 향수 이미지
           if (thumbnail != null)
             Positioned(
-              left: 12,
-              top: 56,
-              bottom: 50,
-              width: 80,
+              left: 12, top: 56, bottom: 50, width: 80,
               child: Image.network(thumbnail, fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => const SizedBox()),
             ),
-          // 이름/브랜드
           Positioned(
-            left: 104,
-            top: 60,
-            right: 100,
+            left: 104, top: 60, right: 100,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -242,15 +342,10 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
               ],
             ),
           ),
-          // 노트
           Positioned(
-            right: 8,
-            top: 60,
-            bottom: 48,
-            width: 88,
+            right: 8, top: 60, bottom: 48, width: 88,
             child: _buildNotesPanel(),
           ),
-          // 버튼
           Positioned(
             bottom: 8, left: 104, right: 8,
             child: Row(children: [
@@ -259,8 +354,11 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
                   onTap: _toggleWishlist,
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 7),
-                    decoration: BoxDecoration(border: Border.all(color: _gold.withOpacity(0.6)), color: Colors.white.withOpacity(0.08)),
-                    child: const Text('WISH', textAlign: TextAlign.center, style: TextStyle(color: _gold, fontSize: 9, letterSpacing: 2)),
+                    decoration: BoxDecoration(
+                        border: Border.all(color: _gold.withOpacity(0.6)),
+                        color: Colors.white.withOpacity(0.08)),
+                    child: const Text('WISH', textAlign: TextAlign.center,
+                        style: TextStyle(color: _gold, fontSize: 9, letterSpacing: 2)),
                   ),
                 ),
               ),
@@ -285,7 +383,8 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
 
   Widget _buildNotesPanel() {
     if (_loadingNotes) {
-      return const Center(child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: _gold, strokeWidth: 1.5)));
+      return const Center(child: SizedBox(width: 14, height: 14,
+          child: CircularProgressIndicator(color: _gold, strokeWidth: 1.5)));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,7 +407,9 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 7.5, color: Color(0xFF7A4A1E), letterSpacing: 2, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600)),
+        Text(label, style: const TextStyle(
+            fontSize: 7.5, color: Color(0xFF7A4A1E), letterSpacing: 2,
+            fontStyle: FontStyle.italic, fontWeight: FontWeight.w600)),
         const SizedBox(height: 1),
         Text(
           items.isEmpty ? '—' : items.take(3).join(' · '),
@@ -331,13 +432,20 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
       child: Column(
         children: [
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(width: 32, height: 1, decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, const Color(0xFF8B6030)]))),
-            const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('✦', style: TextStyle(color: Color(0xFF8B6030), fontSize: 10))),
-            Container(width: 32, height: 1, decoration: BoxDecoration(gradient: LinearGradient(colors: [const Color(0xFF8B6030), Colors.transparent]))),
+            Container(width: 32, height: 1,
+                decoration: BoxDecoration(gradient: LinearGradient(
+                    colors: [Colors.transparent, const Color(0xFF8B6030)]))),
+            const Padding(padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('✦', style: TextStyle(color: Color(0xFF8B6030), fontSize: 10))),
+            Container(width: 32, height: 1,
+                decoration: BoxDecoration(gradient: LinearGradient(
+                    colors: [const Color(0xFF8B6030), Colors.transparent]))),
           ]),
           const SizedBox(height: 6),
           Text('${_perfumes.length}개의 향수',
-              style: TextStyle(fontSize: 10, color: const Color(0xFF8B6030).withOpacity(0.6), fontStyle: FontStyle.italic, letterSpacing: 1)),
+              style: TextStyle(fontSize: 10,
+                  color: const Color(0xFF8B6030).withOpacity(0.6),
+                  fontStyle: FontStyle.italic, letterSpacing: 1)),
         ],
       ),
     );
@@ -360,13 +468,18 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.centerLeft, end: Alignment.centerRight,
-            colors: [Color.lerp(bg, Colors.black, 0.4)!, bg, bg, Color.lerp(bg, Colors.black, 0.3)!],
+            colors: [
+              Color.lerp(bg, Colors.black, 0.4)!, bg, bg,
+              Color.lerp(bg, Colors.black, 0.3)!
+            ],
             stops: const [0, 0.12, 0.88, 1],
           ),
           border: Border(
             left: BorderSide(color: accent.withOpacity(0.35), width: 1.5),
             right: BorderSide(color: Colors.black.withOpacity(0.5), width: 0.5),
-            top: isSelected ? const BorderSide(color: _gold, width: 2) : BorderSide.none,
+            top: isSelected
+                ? const BorderSide(color: _gold, width: 2)
+                : BorderSide.none,
           ),
           boxShadow: [
             if (isSelected)
@@ -377,8 +490,10 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
         ),
         child: Stack(
           children: [
-            Positioned(top: 6, left: 0, right: 0, child: Container(height: 0.5, color: accent.withOpacity(0.3))),
-            Positioned(bottom: 0, left: 0, right: 0, child: Container(height: 1, color: accent.withOpacity(0.5))),
+            Positioned(top: 6, left: 0, right: 0,
+                child: Container(height: 0.5, color: accent.withOpacity(0.3))),
+            Positioned(bottom: 0, left: 0, right: 0,
+                child: Container(height: 1, color: accent.withOpacity(0.5))),
             Center(
               child: RotatedBox(
                 quarterTurns: 1,
