@@ -274,6 +274,13 @@ const ScentBlend = () => {
         alert('블렌드가 저장되었습니다!');
         setBlendName('');
         setSelectedIngredients({});
+        setConcentration(CONCENTRATION_TYPES[0]);
+        setVolume(50);
+        setSelectedBottle(null);
+        if (categories.length > 0) {
+          setOpenCategories({ [categories[0].categoryId]: true });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.message || '저장에 실패했습니다.');
@@ -286,7 +293,7 @@ const ScentBlend = () => {
   };
 
   // ── 장바구니 ─────────────────────────────────────────────────────
-  // 흐름: ① 향 조합 저장 → blendId 발급 → ② /api/cart/custom 에 담기
+  // 흐름: ① 향 조합 저장 → ② /api/cart/scent-blend 에 담기
   const handleAddToCart = async () => {
     if (!isLoggedIn) { navigate('/login'); return; }
     if (!validate()) return;
@@ -303,25 +310,50 @@ const ScentBlend = () => {
         alert(err.message || '향 조합 저장에 실패했습니다.');
         return;
       }
-      const saveJson = await saveRes.json();
-      const blendId  = saveJson.data?.blendId ?? saveJson.blendId ?? null;
 
-      // ② 장바구니에 담기 (/api/cart/scent-blend)
+      // ② 장바구니에 담기 - 구성 정보를 imageUrl에 JSON으로 인코딩해서 전달
+      const norms = normalizedRatios();
+      const ingredientDetails = Object.entries(norms).map(([id, ratio]) => {
+        const info = getIngredientInfo(id);
+        return info ? `${info.ingredient.name}(${Math.round(ratio)}%)` : null;
+      }).filter(Boolean);
+
+      const blendMeta = JSON.stringify({
+        blendName:   blendName.trim(),
+        concentration: concentration.name,
+        volume:      `${volume}ml`,
+        bottle:      selectedBottle ? selectedBottle.name : '기본 병',
+        ingredients: ingredientDetails,
+        prices: {
+          base:   concentration.basePrice,
+          volume: Math.max(0, Math.floor((volume - BASE_VOLUME) / 10)) * EXTRA_PRICE_PER_10ML,
+          bottle: selectedBottle?.totalPrice ?? 0,
+        },
+      });
+
       const cartRes = await fetch(`${API_BASE_URL}/api/cart/scent-blend`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          blendId:  blendId,
           name:     `[향조합] ${blendName.trim()}`,
           price:    totalPrice,
           quantity: 1,
-          imageUrl: null,
+          imageUrl: `__blend__${blendMeta}`,  // 구성 정보 인코딩
         }),
       });
       if (cartRes.ok) {
         alert('장바구니에 담겼습니다!');
+        // 전체 초기화
         setBlendName('');
         setSelectedIngredients({});
+        setConcentration(CONCENTRATION_TYPES[0]);
+        setVolume(50);
+        setSelectedBottle(null);
+        // 첫 번째 카테고리만 열기
+        if (categories.length > 0) {
+          setOpenCategories({ [categories[0].categoryId]: true });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const err = await cartRes.json().catch(() => ({}));
         alert(err.message || '장바구니 추가에 실패했습니다.');

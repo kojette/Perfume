@@ -135,30 +135,19 @@ public class CartController {
     ) {
         Member member = memberService.getMemberEntityByToken(token);
 
-        Long blendId    = request.get("blendId") != null
-                ? ((Number) request.get("blendId")).longValue() : null;
         String name     = (String) request.get("name");
         Integer price   = ((Number) request.get("price")).intValue();
         int quantity    = request.get("quantity") != null
                 ? ((Number) request.get("quantity")).intValue() : 1;
         String imageUrl = (String) request.get("imageUrl");
 
-        if (blendId != null) {
-            Optional<Cart> existing = cartRepository.findByMemberAndCustomDesignId(member, blendId);
-            if (existing.isPresent()) {
-                Cart cart = existing.get();
-                cart.setQuantity(cart.getQuantity() + quantity);
-                cartRepository.save(cart);
-                return ApiResponse.success("향 조합이 장바구니에 담겼습니다.");
-            }
-        }
-
+        // custom_design_id 는 Custom_Designs FK 제약이 있어 향조합 ID를 넣을 수 없음 → null 고정
         Cart newCart = new Cart();
         newCart.setMember(member);
         newCart.setQuantity(quantity);
         newCart.setItemType("CUSTOM");
         newCart.setIsCustom(true);
-        newCart.setCustomDesignId(blendId);
+        newCart.setCustomDesignId(null);
         newCart.setCustomName(name);
         newCart.setCustomPrice(price);
         newCart.setCustomImageUrl(imageUrl);
