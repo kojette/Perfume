@@ -128,6 +128,45 @@ public class CartController {
         return ApiResponse.success("장바구니 조회 성공", result);
     }
 
+    @PostMapping("/scent-blend")
+    public ApiResponse<String> addScentBlendToCart(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, Object> request
+    ) {
+        Member member = memberService.getMemberEntityByToken(token);
+
+        Long blendId    = request.get("blendId") != null
+                ? ((Number) request.get("blendId")).longValue() : null;
+        String name     = (String) request.get("name");
+        Integer price   = ((Number) request.get("price")).intValue();
+        int quantity    = request.get("quantity") != null
+                ? ((Number) request.get("quantity")).intValue() : 1;
+        String imageUrl = (String) request.get("imageUrl");
+
+        if (blendId != null) {
+            Optional<Cart> existing = cartRepository.findByMemberAndCustomDesignId(member, blendId);
+            if (existing.isPresent()) {
+                Cart cart = existing.get();
+                cart.setQuantity(cart.getQuantity() + quantity);
+                cartRepository.save(cart);
+                return ApiResponse.success("향 조합이 장바구니에 담겼습니다.");
+            }
+        }
+
+        Cart newCart = new Cart();
+        newCart.setMember(member);
+        newCart.setQuantity(quantity);
+        newCart.setItemType("CUSTOM");
+        newCart.setIsCustom(true);
+        newCart.setCustomDesignId(blendId);
+        newCart.setCustomName(name);
+        newCart.setCustomPrice(price);
+        newCart.setCustomImageUrl(imageUrl);
+        cartRepository.save(newCart);
+
+        return ApiResponse.success("향 조합이 장바구니에 담겼습니다.");
+    }
+
     @PatchMapping("/{cartId}")
     public ApiResponse<String> updateQuantity(
             @RequestHeader("Authorization") String token,
