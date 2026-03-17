@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Ornament } from '../Ornament';
+import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
 const Cart = () => {
     const navigate = useNavigate();
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [totalPrice, setTotalPrice] = useState(0);
@@ -35,7 +38,23 @@ const Cart = () => {
         zipcode: '', address: '', addressDetail: '', name: '', phone: '',
     });
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    // 아이템 상세 펼치기 상태
+    const [expandedItems, setExpandedItems] = useState({});
+    const toggleExpand = (cartId) => setExpandedItems(prev => ({ ...prev, [cartId]: !prev[cartId] }));
+
+    // 향조합 아이템 이름에서 구성 정보 파싱
+    // ScentBlend에서 name을 "[향조합] 블렌드이름" 형식으로 저장하므로
+    // 실제 세부내역은 Cart API 응답에 없어 price 기반으로 표시
+    const isScentBlend = (item) => item.isCustom && item.name?.startsWith('[향조합]');
+    const getBlendDisplayName = (item) => item.name?.replace('[향조합] ', '') || item.name;
+    const getBlendMeta = (item) => {
+        try {
+            if (item.imageUrl?.startsWith('__blend__')) {
+                return JSON.parse(item.imageUrl.replace('__blend__', ''));
+            }
+        } catch {}
+        return null;
+    };
 
     useEffect(() => {
         fetchCartItems();
@@ -371,7 +390,7 @@ const Cart = () => {
                                             <td className="py-6 pl-2">
                                                 <div className="flex items-center gap-6">
                                                     <div
-                                                        className="w-16 h-20 bg-cover bg-center flex items-center justify-center"
+                                                        className="w-16 h-20 bg-cover bg-center flex items-center justify-center shrink-0"
                                                         style={{
                                                             backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : 'none',
                                                             backgroundColor: item.imageUrl ? 'transparent' : '#f5f0e8'
@@ -379,15 +398,60 @@ const Cart = () => {
                                                     >
                                                         {!item.imageUrl && <span className="text-[#c9a961] text-xl">✦</span>}
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[#1a1a1a] font-serif text-lg">{item.name}</p>
-                                                        <p className="text-[9px] text-[#c9a961] tracking-widest mt-1 uppercase">{item.isCustom ? 'Custom Design' : 'Eau De Parfum'}</p>
-                                                        <button
-                                                            onClick={() => handleRemoveItem(item.cartId)}
-                                                            className="text-[9px] text-gray-400 hover:text-red-400 mt-3 tracking-[0.2em] uppercase transition-colors cursor-pointer"
-                                                        >
-                                                            Remove
-                                                        </button>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[#1a1a1a] font-serif text-lg">
+                                                            {isScentBlend(item) ? getBlendDisplayName(item) : item.name}
+                                                        </p>
+                                                        <p className="text-[9px] text-[#c9a961] tracking-widest mt-1 uppercase">
+                                                            {isScentBlend(item) ? '나만의 향 조합' : item.isCustom ? 'Custom Design' : 'Eau De Parfum'}
+                                                        </p>
+
+                                                        {/* 향조합 세부내역 아코디언 */}
+                                                        {isScentBlend(item) && (
+                                                            <div className="mt-2">
+                                                                <button
+                                                                    onClick={() => toggleExpand(item.cartId)}
+                                                                    className="flex items-center gap-1 text-[9px] text-[#8b8278] hover:text-[#c9a961] tracking-widest transition-colors"
+                                                                >
+                                                                    구성 보기
+                                                                    {expandedItems[item.cartId]
+                                                                        ? <ChevronUp size={10} />
+                                                                        : <ChevronDown size={10} />
+                                                                    }
+                                                                </button>
+                                                                {expandedItems[item.cartId] && (() => {
+                                                                    const meta = getBlendMeta(item);
+                                                                    return (
+                                                                        <div className="mt-2 text-[10px] text-[#8b8278] bg-[#faf8f3] px-3 py-2.5 border-l-2 border-[#c9a961]/40 space-y-1.5">
+                                                                            <div className="text-[9px] tracking-wider text-[#c9a961] mb-2 uppercase">Blend Details</div>
+                                                                            {meta ? (<>
+                                                                                {/* 향료 */}
+                                                                                <div>
+                                                                                    <span className="text-[#8b8278]/70">향료</span>
+                                                                                    <div className="mt-0.5 flex flex-wrap gap-1">
+                                                                                        {meta.ingredients?.map((ing, i) => (
+                                                                                            <span key={i} className="bg-white border border-[#c9a961]/20 px-1.5 py-0.5 rounded text-[9px] text-[#2a2620]">{ing}</span>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="h-[1px] bg-[#c9a961]/10 my-1" />
+                                                                                {/* 농도 / 용량 / 병 */}
+                                                                                <div className="flex justify-between"><span className="text-[#8b8278]/70">농도</span><span className="text-[#2a2620]">{meta.concentration}</span></div>
+                                                                                <div className="flex justify-between"><span className="text-[#8b8278]/70">용량</span><span className="text-[#2a2620]">{meta.volume}</span></div>
+                                                                                <div className="flex justify-between"><span className="text-[#8b8278]/70">병</span><span className="text-[#2a2620]">{meta.bottle}</span></div>
+                                                                                <div className="h-[1px] bg-[#c9a961]/10 my-1" />
+                                                                                {/* 가격 내역 */}
+                                                                                <div className="flex justify-between"><span className="text-[#8b8278]/70">기본 가격</span><span className="text-[#2a2620]">₩{meta.prices?.base?.toLocaleString()}</span></div>
+                                                                                {meta.prices?.volume > 0 && <div className="flex justify-between"><span className="text-[#8b8278]/70">추가 용량</span><span className="text-[#2a2620]">+₩{meta.prices?.volume?.toLocaleString()}</span></div>}
+                                                                                {meta.prices?.bottle > 0 && <div className="flex justify-between"><span className="text-[#8b8278]/70">커스텀 병</span><span className="text-[#2a2620]">+₩{meta.prices?.bottle?.toLocaleString()}</span></div>}
+                                                                            </>) : (
+                                                                                <div className="text-[#8b8278]/60 italic text-[9px]">구성 정보를 불러올 수 없습니다.</div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -399,7 +463,18 @@ const Cart = () => {
                                                     <button onClick={() => updateQuantity(item.cartId, item.quantity, 1)} className="w-5 h-5 border border-[#c9a961]/30 text-[#c9a961] flex items-center justify-center hover:bg-[#c9a961] hover:text-white transition-colors">+</button>
                                                 </div>
                                             </td>
-                                            <td className="py-6 pr-2 text-right text-sm font-medium">₩{(item.price * item.quantity).toLocaleString()}</td>
+                                            <td className="py-6 pr-2 text-right text-sm font-medium">
+                                                <div className="flex items-center justify-end gap-3">
+                                                    <span>₩{(item.price * item.quantity).toLocaleString()}</span>
+                                                    <button
+                                                        onClick={() => handleRemoveItem(item.cartId)}
+                                                        className="text-[#c9a961]/40 hover:text-red-400 transition-colors"
+                                                        title="삭제"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

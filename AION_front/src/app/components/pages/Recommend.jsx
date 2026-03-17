@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { getRecommendations } from '../../../services/recommendationApi';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -130,7 +131,7 @@ function PerfumeCard({ perfume, onClick }) {
 }
 
 /* ─── 연령대 섹션 ─── */
-function AgeGroupSection({ group, perfumes, loading }) {
+function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
   const [expanded, setExpanded] = useState(false);
   const { palette } = group;
   const displayPerfumes = expanded ? perfumes : perfumes.slice(0, 3);
@@ -204,7 +205,7 @@ function AgeGroupSection({ group, perfumes, loading }) {
 
             <div className="divide-y divide-[#f0ebe0]">
               {displayPerfumes.map(p => (
-                <PerfumeCard key={p.id} perfume={p} />
+                <PerfumeCard key={p.id} perfume={p} onClick={onPerfumeClick} />
               ))}
             </div>
 
@@ -229,6 +230,7 @@ function AgeGroupSection({ group, perfumes, loading }) {
 
 /* ─── 메인 컴포넌트 ─── */
 export default function Recommend() {
+  const navigate = useNavigate();
   const [perfumeData, setPerfumeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -244,6 +246,10 @@ export default function Recommend() {
   // 연령별 데이터
   const [ageData, setAgeData] = useState({});
   const [ageLoading, setAgeLoading] = useState(false);
+
+  const handlePerfumeClick = (perfume) => {
+    navigate('/collections', { state: { targetPerfumeId: perfume.id } });
+  };
 
   useEffect(() => {
     fetchPerfumes();
@@ -577,7 +583,7 @@ export default function Recommend() {
               ) : filteredPerfumes.length > 0 ? (
                 <div className="max-h-[600px] overflow-y-auto scrollbar-thin divide-y divide-[#f0ebe0]">
                   {filteredPerfumes.map(p => (
-                    <PerfumeCard key={p.id} perfume={p} />
+                    <PerfumeCard key={p.id} perfume={p} onClick={handlePerfumeClick} />
                   ))}
                 </div>
               ) : (
@@ -612,6 +618,7 @@ export default function Recommend() {
                   group={group}
                   perfumes={ageData[group.id] || []}
                   loading={ageLoading}
+                  onPerfumeClick={handlePerfumeClick}
                 />
               </div>
             ))}

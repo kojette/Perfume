@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'profile_edit_screen.dart';
 import 'start_screen.dart';
+import 'order_receipt_screen.dart';
 import '../services/api_service.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -696,17 +697,39 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ],
                     ),
                   ),
-                  OutlinedButton(
-                    onPressed: () => setState(() => _expandedOrderId = isExpanded ? null : orderId),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: _gold),
-                      shape: const RoundedRectangleBorder(),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    child: Text(
-                      isExpanded ? '닫기' : '상세 보기',
-                      style: const TextStyle(fontSize: 10, color: _gold),
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => setState(() => _expandedOrderId = isExpanded ? null : orderId),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: _gold),
+                          shape: const RoundedRectangleBorder(),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        child: Text(
+                          isExpanded ? '닫기' : '상세',
+                          style: const TextStyle(fontSize: 10, color: _gold),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      OutlinedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OrderReceiptScreen(orderId: orderId.toString()),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: _gold.withOpacity(0.4)),
+                          shape: const RoundedRectangleBorder(),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        child: const Text('영수증', style: TextStyle(fontSize: 10, color: _gold)),
+                      ),
+                    ],
                   ),
                 ],
               ),

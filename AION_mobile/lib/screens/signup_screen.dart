@@ -405,28 +405,34 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ],
                         ),
-                        const Padding(
-                          padding: EdgeInsets.only(left: 40),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 40),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '서비스 이용약관 동의 (필수)',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: Color(0xFF8B8278),
-                                  decoration: TextDecoration.underline,
-                                  fontStyle: FontStyle.italic,
+                              GestureDetector(
+                                onTap: () => Navigator.pushNamed(context, '/terms'),
+                                child: const Text(
+                                  '서비스 이용약관 동의 (필수)',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: Color(0xFF8B8278),
+                                    decoration: TextDecoration.underline,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                '개인정보 수집 및 이용 동의 (필수)',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: Color(0xFF8B8278),
-                                  decoration: TextDecoration.underline,
-                                  fontStyle: FontStyle.italic,
+                              const SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () => Navigator.pushNamed(context, '/privacy'),
+                                child: const Text(
+                                  '개인정보 수집 및 이용 동의 (필수)',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: Color(0xFF8B8278),
+                                    decoration: TextDecoration.underline,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ),
                             ],

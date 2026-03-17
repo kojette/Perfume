@@ -128,6 +128,34 @@ public class CartController {
         return ApiResponse.success("장바구니 조회 성공", result);
     }
 
+    @PostMapping("/scent-blend")
+    public ApiResponse<String> addScentBlendToCart(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, Object> request
+    ) {
+        Member member = memberService.getMemberEntityByToken(token);
+
+        String name     = (String) request.get("name");
+        Integer price   = ((Number) request.get("price")).intValue();
+        int quantity    = request.get("quantity") != null
+                ? ((Number) request.get("quantity")).intValue() : 1;
+        String imageUrl = (String) request.get("imageUrl");
+
+        // custom_design_id 는 Custom_Designs FK 제약이 있어 향조합 ID를 넣을 수 없음 → null 고정
+        Cart newCart = new Cart();
+        newCart.setMember(member);
+        newCart.setQuantity(quantity);
+        newCart.setItemType("CUSTOM");
+        newCart.setIsCustom(true);
+        newCart.setCustomDesignId(null);
+        newCart.setCustomName(name);
+        newCart.setCustomPrice(price);
+        newCart.setCustomImageUrl(imageUrl);
+        cartRepository.save(newCart);
+
+        return ApiResponse.success("향 조합이 장바구니에 담겼습니다.");
+    }
+
     @PatchMapping("/{cartId}")
     public ApiResponse<String> updateQuantity(
             @RequestHeader("Authorization") String token,

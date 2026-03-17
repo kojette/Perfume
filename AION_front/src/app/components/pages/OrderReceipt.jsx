@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Ornament } from '../Ornament';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const OrderReceipt = () => {
     const { id } = useParams();
@@ -10,6 +11,19 @@ const OrderReceipt = () => {
     const [loading, setLoading] = useState(true);
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+    const [expandedItems, setExpandedItems] = useState({});
+    const toggleExpand = (idx) => setExpandedItems(prev => ({ ...prev, [idx]: !prev[idx] }));
+
+    const isScentBlend = (item) => (item.perfumeId == null) && (item.perfumeNameSnapshot || item.name)?.startsWith('[향조합]');
+    const getBlendDisplayName = (item) => (item.perfumeNameSnapshot || item.name)?.replace('[향조합] ', '') || item.name;
+    const getBlendMeta = (item) => {
+        try {
+            const src = item.imageUrl || item.customImageUrl || '';
+            if (src.startsWith('__blend__')) return JSON.parse(src.replace('__blend__', ''));
+        } catch {}
+        return null;
+    };
 
     useEffect(() => {
         if (id) fetchOrderDetail();
@@ -110,23 +124,67 @@ const OrderReceipt = () => {
                 <div className="space-y-6 mb-10">
                     <h3 className="text-[10px] tracking-[0.3em] text-[#8b8278] mb-2 uppercase font-bold">Items</h3>
                     {(order.orderItems || []).map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-6 pb-6 border-b border-[#eee] last:border-0">
-                            <div
-                                className="w-20 h-24 bg-gray-50 bg-cover bg-center border border-[#eee]"
-                                style={{ backgroundImage: item.imageUrl ? `url(${item.imageUrl})` : 'none', backgroundColor: item.perfumeId == null ? '#f5f0e8' : undefined }}
-                            >
-                                {!item.imageUrl && (
-                                    <div className="w-full h-full flex items-center justify-center text-[#c9a961] text-2xl">✦</div>
-                                )}
-                            </div>
-                            <div className="flex-1">
-                                <p className="font-serif text-lg text-[#1a1a1a] mb-1">{item.perfumeNameSnapshot || item.name}</p>
-                                <p className="text-[10px] text-[#8b8278] tracking-widest uppercase italic">
-                                    {item.perfumeId == null ? 'CUSTOM' : `${item.volumeMl || 50}ML`} / {item.quantity} Unit(s)
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm font-bold text-[#1a1a1a]">₩{(item.finalPrice || 0).toLocaleString()}</p>
+                        <div key={idx} className="pb-6 border-b border-[#eee] last:border-0">
+                            <div className="flex items-center gap-6">
+                                <div
+                                    className="w-20 h-24 bg-gray-50 bg-cover bg-center border border-[#eee] shrink-0"
+                                    style={{ backgroundImage: (!isScentBlend(item) && item.imageUrl) ? `url(${item.imageUrl})` : 'none', backgroundColor: item.perfumeId == null ? '#f5f0e8' : undefined }}
+                                >
+                                    {(!item.imageUrl || isScentBlend(item)) && (
+                                        <div className="w-full h-full flex items-center justify-center text-[#c9a961] text-2xl">✦</div>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-serif text-lg text-[#1a1a1a] mb-1">
+                                        {isScentBlend(item) ? getBlendDisplayName(item) : (item.perfumeNameSnapshot || item.name)}
+                                    </p>
+                                    <p className="text-[10px] text-[#8b8278] tracking-widest uppercase italic">
+                                        {isScentBlend(item) ? '나만의 향 조합' : `${item.volumeMl || 50}ML`} / {item.quantity} Unit(s)
+                                    </p>
+                                    {/* 향조합 아코디언 */}
+                                    {isScentBlend(item) && (
+                                        <div className="mt-2">
+                                            <button
+                                                onClick={() => toggleExpand(idx)}
+                                                className="flex items-center gap-1 text-[9px] text-[#8b8278] hover:text-[#c9a961] tracking-widest transition-colors"
+                                            >
+                                                구성 보기
+                                                {expandedItems[idx] ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                                            </button>
+                                            {expandedItems[idx] && (() => {
+                                                const meta = getBlendMeta(item);
+                                                return (
+                                                    <div className="mt-2 text-[10px] text-[#8b8278] bg-[#faf8f3] px-3 py-2.5 border-l-2 border-[#c9a961]/40 space-y-1.5">
+                                                        <div className="text-[9px] tracking-wider text-[#c9a961] mb-2 uppercase">Blend Details</div>
+                                                        {meta ? (<>
+                                                            <div>
+                                                                <span className="text-[#8b8278]/70">향료</span>
+                                                                <div className="mt-0.5 flex flex-wrap gap-1">
+                                                                    {meta.ingredients?.map((ing, i) => (
+                                                                        <span key={i} className="bg-white border border-[#c9a961]/20 px-1.5 py-0.5 rounded text-[9px] text-[#2a2620]">{ing}</span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            <div className="h-[1px] bg-[#c9a961]/10 my-1" />
+                                                            <div className="flex justify-between"><span className="text-[#8b8278]/70">농도</span><span className="text-[#2a2620]">{meta.concentration}</span></div>
+                                                            <div className="flex justify-between"><span className="text-[#8b8278]/70">용량</span><span className="text-[#2a2620]">{meta.volume}</span></div>
+                                                            <div className="flex justify-between"><span className="text-[#8b8278]/70">병</span><span className="text-[#2a2620]">{meta.bottle}</span></div>
+                                                            <div className="h-[1px] bg-[#c9a961]/10 my-1" />
+                                                            <div className="flex justify-between"><span className="text-[#8b8278]/70">기본 가격</span><span className="text-[#2a2620]">₩{meta.prices?.base?.toLocaleString()}</span></div>
+                                                            {meta.prices?.volume > 0 && <div className="flex justify-between"><span className="text-[#8b8278]/70">추가 용량</span><span className="text-[#2a2620]">+₩{meta.prices?.volume?.toLocaleString()}</span></div>}
+                                                            {meta.prices?.bottle > 0 && <div className="flex justify-between"><span className="text-[#8b8278]/70">커스텀 병</span><span className="text-[#2a2620]">+₩{meta.prices?.bottle?.toLocaleString()}</span></div>}
+                                                        </>) : (
+                                                            <div className="text-[#8b8278]/60 italic text-[9px]">구성 정보를 불러올 수 없습니다.</div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="text-sm font-bold text-[#1a1a1a]">₩{(item.finalPrice || 0).toLocaleString()}</p>
+                                </div>
                             </div>
                         </div>
                     ))}

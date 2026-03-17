@@ -68,12 +68,12 @@ public class RecommendationService {
         // 검색어 필터
         if (search != null && !search.isEmpty()) {
             String searchLower = search.toLowerCase();
-            boolean matchesSearch = 
+            boolean matchesSearch =
                 (perfume.getName() != null && perfume.getName().toLowerCase().contains(searchLower)) ||
                 (perfume.getNameEn() != null && perfume.getNameEn().toLowerCase().contains(searchLower)) ||
-                (perfume.getBrand() != null && perfume.getBrand().getBrandName() != null && 
+                (perfume.getBrand() != null && perfume.getBrand().getBrandName() != null &&
                  perfume.getBrand().getBrandName().toLowerCase().contains(searchLower));
-            
+
             if (!matchesSearch) return false;
         }
 
@@ -103,6 +103,8 @@ public class RecommendationService {
         Integer salePrice = perfume.getSalePrice() != null ? perfume.getSalePrice() : perfume.getPrice();
         Integer originalPrice = perfume.getSaleRate() != null && perfume.getSaleRate() > 0 ? perfume.getPrice() : null;
 
+
+
         return RecommendationResponse.builder()
                 .id(perfume.getPerfumeId())
                 .name(perfume.getName())
@@ -127,6 +129,7 @@ public class RecommendationService {
                 .totalStock(perfume.getTotalStock())
                 .isActive(perfume.getIsActive())
                 .createdAt(perfume.getCreatedAt())
+                .imageUrl(perfume.getImageUrl()) // DB에서 직접 읽어옴
                 // 태그 및 향 정보는 추후 추가
                 .tags(new ArrayList<>())
                 .seasons(new ArrayList<>())
@@ -149,7 +152,6 @@ public class RecommendationService {
      * 카테고리별 추천
      */
     public List<RecommendationResponse> getRecommendationsByCategory(String category, int limit) {
-        // 카테고리에 따른 필터링 로직
         List<Perfume> perfumes;
 
         switch (category.toUpperCase()) {
@@ -195,7 +197,6 @@ public class RecommendationService {
      */
     public List<RecommendationResponse> getRecommendationsByAge(String ageGroup, int limit) {
 
-        // 연령대 → 선호 키워드 매핑
         List<String> keywords = switch (ageGroup.toLowerCase()) {
             case "10s" -> List.of("플로럴", "프루티", "청량한", "달콤한");
             case "20s" -> List.of("시트러스", "아쿠아틱", "머스크", "청량한");
@@ -205,7 +206,6 @@ public class RecommendationService {
             default    -> List.of();
         };
 
-        // 활성 향수를 충분히 가져온 뒤 키워드로 필터링
         List<Perfume> all = perfumeRepository.findByIsActiveTrue(
                 org.springframework.data.domain.PageRequest.of(0, 200)
         ).getContent();

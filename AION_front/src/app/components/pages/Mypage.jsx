@@ -722,12 +722,20 @@ const Mypage = () => {
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => toggleOrderDetails(order.orderId)}
-                        className="text-[10px] text-[#c9a961] border border-[#c9a961] px-4 py-2 hover:bg-[#c9a961] hover:text-white transition-colors cursor-pointer tracking-widest"
-                      >
-                        {expandedOrderId === order.orderId ? '닫기 ×' : '상세 보기'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => navigate(`/orders/${order.orderId}`)}
+                          className="text-[10px] text-white bg-[#1a1a1a] px-4 py-2 hover:bg-[#c9a961] transition-colors cursor-pointer tracking-widest"
+                        >
+                          영수증 보기
+                        </button>
+                        <button
+                          onClick={() => toggleOrderDetails(order.orderId)}
+                          className="text-[10px] text-[#c9a961] border border-[#c9a961] px-4 py-2 hover:bg-[#c9a961] hover:text-white transition-colors cursor-pointer tracking-widest"
+                        >
+                          {expandedOrderId === order.orderId ? '닫기 ×' : '상세 보기'}
+                        </button>
+                      </div>
                     </div>
 
                     {expandedOrderId === order.orderId && (

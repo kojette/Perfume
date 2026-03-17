@@ -117,6 +117,11 @@ const ScentBlend = () => {
   const [myBlends,      setMyBlends]      = useState([]);
   const [loadingBlends, setLoadingBlends] = useState(false);
 
+  // 병 선택
+  const [myBottles,      setMyBottles]      = useState([]);   // 내가 만든 병 목록
+  const [loadingBottles, setLoadingBottles] = useState(false);
+  const [selectedBottle, setSelectedBottle] = useState(null); // null = 기본병
+
   // ────────────────────────────────────────────────────────────────
   // 마운트 시 카테고리+재료 로드
   // ────────────────────────────────────────────────────────────────
@@ -142,7 +147,27 @@ const ScentBlend = () => {
     })();
   }, []);
 
-  // ── 내 조합 목록 ─────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────
+  // 마운트 시 내 병 목록 로드 (로그인 상태일 때만)
+  // ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    (async () => {
+      setLoadingBottles(true);
+      try {
+        const res  = await fetch(`${API_BASE_URL}/api/custom/designs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        setMyBottles(json.data ?? json);
+      } catch (e) {
+        console.error('내 병 목록 로드 실패:', e);
+      } finally {
+        setLoadingBottles(false);
+      }
+    })();
+  }, [isLoggedIn, token]);
   const loadMyBlends = useCallback(async () => {
     if (!isLoggedIn) { navigate('/login'); return; }
     setLoadingBlends(true);
@@ -199,7 +224,8 @@ const ScentBlend = () => {
   }, [selectedList, ratioSum]);
 
   const totalPrice = concentration.basePrice
-    + Math.max(0, Math.floor((volume - BASE_VOLUME) / 10)) * EXTRA_PRICE_PER_10ML;
+    + Math.max(0, Math.floor((volume - BASE_VOLUME) / 10)) * EXTRA_PRICE_PER_10ML
+    + (selectedBottle?.totalPrice ?? 0);
 
   const getIngredientInfo = (ingredientId) => {
     const key = String(ingredientId);
@@ -219,6 +245,7 @@ const ScentBlend = () => {
       concentration: concentration.id,
       volumeMl:      volume,
       totalPrice,
+      bottleDesignId: selectedBottle ? selectedBottle.designId : null,
       items: Object.entries(norms).map(([ingredientId, ratio]) => ({
         ingredientId: Number(ingredientId),
         ratio,
@@ -247,6 +274,13 @@ const ScentBlend = () => {
         alert('블렌드가 저장되었습니다!');
         setBlendName('');
         setSelectedIngredients({});
+        setConcentration(CONCENTRATION_TYPES[0]);
+        setVolume(50);
+        setSelectedBottle(null);
+        if (categories.length > 0) {
+          setOpenCategories({ [categories[0].categoryId]: true });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.message || '저장에 실패했습니다.');
@@ -259,20 +293,69 @@ const ScentBlend = () => {
   };
 
   // ── 장바구니 ─────────────────────────────────────────────────────
+  // 흐름: ① 향 조합 저장 → ② /api/cart/scent-blend 에 담기
   const handleAddToCart = async () => {
     if (!isLoggedIn) { navigate('/login'); return; }
     if (!validate()) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/cart/scent-blend`, {
+      // ① 향 조합 저장
+      const saveRes = await fetch(`${API_BASE_URL}/api/custom/scent-blends`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(buildPayload()),
       });
-      if (res.ok) {
+      if (!saveRes.ok) {
+        const err = await saveRes.json().catch(() => ({}));
+        alert(err.message || '향 조합 저장에 실패했습니다.');
+        return;
+      }
+
+      // ② 장바구니에 담기 - 구성 정보를 imageUrl에 JSON으로 인코딩해서 전달
+      const norms = normalizedRatios();
+      const ingredientDetails = Object.entries(norms).map(([id, ratio]) => {
+        const info = getIngredientInfo(id);
+        return info ? `${info.ingredient.name}(${Math.round(ratio)}%)` : null;
+      }).filter(Boolean);
+
+      const blendMeta = JSON.stringify({
+        blendName:   blendName.trim(),
+        concentration: concentration.name,
+        volume:      `${volume}ml`,
+        bottle:      selectedBottle ? selectedBottle.name : '기본 병',
+        ingredients: ingredientDetails,
+        prices: {
+          base:   concentration.basePrice,
+          volume: Math.max(0, Math.floor((volume - BASE_VOLUME) / 10)) * EXTRA_PRICE_PER_10ML,
+          bottle: selectedBottle?.totalPrice ?? 0,
+        },
+      });
+
+      const cartRes = await fetch(`${API_BASE_URL}/api/cart/scent-blend`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:     `[향조합] ${blendName.trim()}`,
+          price:    totalPrice,
+          quantity: 1,
+          imageUrl: `__blend__${blendMeta}`,  // 구성 정보 인코딩
+        }),
+      });
+      if (cartRes.ok) {
         alert('장바구니에 담겼습니다!');
+        // 전체 초기화
+        setBlendName('');
+        setSelectedIngredients({});
+        setConcentration(CONCENTRATION_TYPES[0]);
+        setVolume(50);
+        setSelectedBottle(null);
+        // 첫 번째 카테고리만 열기
+        if (categories.length > 0) {
+          setOpenCategories({ [categories[0].categoryId]: true });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        const err = await res.json().catch(() => ({}));
+        const err = await cartRes.json().catch(() => ({}));
         alert(err.message || '장바구니 추가에 실패했습니다.');
       }
     } catch (e) {
@@ -298,6 +381,36 @@ const ScentBlend = () => {
     } catch (e) {
       alert('오류가 발생했습니다.');
     }
+  };
+
+  // ── 저장된 조합 불러오기 ─────────────────────────────────────────
+  const handleLoadBlend = (blend) => {
+    // 이름
+    setBlendName(blend.name || '');
+
+    // 농도
+    const conc = CONCENTRATION_TYPES.find(c => c.id === blend.concentration);
+    if (conc) setConcentration(conc);
+
+    // 용량
+    if (blend.volumeMl && VOLUME_OPTIONS.includes(blend.volumeMl)) {
+      setVolume(blend.volumeMl);
+    }
+
+    // 재료 비율 복원
+    if (blend.items && blend.items.length > 0) {
+      const restored = {};
+      blend.items.forEach(item => {
+        // ratio가 0~100 사이면 그대로, 소수(0~1)면 *100
+        const ratio = item.ratio > 1 ? Math.round(item.ratio) : Math.round(item.ratio * 100);
+        restored[String(item.ingredientId)] = Math.max(1, Math.min(100, ratio));
+      });
+      setSelectedIngredients(restored);
+    }
+
+    setShowMyBlends(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    alert(`"${blend.name}" 조합을 불러왔습니다.`);
   };
 
   // ────────────────────────────────────────────────────────────────
@@ -341,21 +454,29 @@ const ScentBlend = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {myBlends.map(blend => (
-                  <div key={blend.blendId} className="border border-[#c9a961]/15 p-4 relative">
+                  <div
+                    key={blend.blendId}
+                    onClick={() => handleLoadBlend(blend)}
+                    className="border border-[#c9a961]/15 p-4 relative cursor-pointer hover:border-[#c9a961] hover:bg-[#faf8f3] transition-all group"
+                  >
+                    {/* 삭제 버튼 - 클릭 이벤트 전파 차단 */}
                     <button
-                      onClick={() => handleDeleteBlend(blend.blendId)}
+                      onClick={e => { e.stopPropagation(); handleDeleteBlend(blend.blendId); }}
                       className="absolute top-2 right-2 text-[#8b8278] hover:text-red-400 transition-colors"
                     >
                       <Trash2 size={12} />
                     </button>
                     <div className="pr-5">
-                      <div className="text-[12px] tracking-wider text-[#2a2620] font-medium mb-1 truncate">
+                      <div className="text-[12px] tracking-wider text-[#2a2620] font-medium mb-1 truncate group-hover:text-[#c9a961] transition-colors">
                         {blend.name}
                       </div>
                       <div className="text-[10px] text-[#8b8278] space-y-0.5">
                         <div>{blend.concentration} · {blend.volumeMl}ml</div>
                         <div className="text-[#c9a961]">₩{blend.totalPrice?.toLocaleString()}</div>
                         <div className="text-[#8b8278]/60">재료 {blend.items?.length ?? 0}종</div>
+                      </div>
+                      <div className="mt-2 text-[9px] text-[#c9a961]/60 tracking-wider group-hover:text-[#c9a961] transition-colors">
+                        클릭하여 불러오기 →
                       </div>
                     </div>
                   </div>
@@ -613,9 +734,86 @@ const ScentBlend = () => {
                 </div>
               </div>
 
-              {/* ⑤ 이름 + 저장 */}
+              {/* ⑤ 병 선택 */}
+              <div className="bg-white border border-[#c9a961]/20 p-5">
+                <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase mb-4">⑤ 병 선택</div>
+
+                {loadingBottles ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 size={16} className="animate-spin text-[#c9a961]" />
+                  </div>
+                ) : myBottles.length === 0 ? (
+                  /* 내 병이 없으면 기본병 고정 안내 */
+                  <div className="border border-[#c9a961]/30 bg-[#faf8f3] px-4 py-3 flex items-center gap-3">
+                    <span className="text-xl">🧴</span>
+                    <div>
+                      <div className="text-[12px] tracking-wider text-[#2a2620]">기본 병</div>
+                      <div className="text-[9px] text-[#8b8278] mt-0.5">
+                        커스텀 병이 없어 기본 병이 사용됩니다
+                      </div>
+                      <button
+                        onClick={() => navigate('/custom')}
+                        className="text-[9px] text-[#c9a961] underline mt-1 hover:text-[#a8882a] transition-colors"
+                      >
+                        + 나만의 병 디자인하기
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* 내 병이 있으면 선택 가능 */
+                  <div className="space-y-2">
+                    {/* 기본병 옵션 */}
+                    <button
+                      onClick={() => setSelectedBottle(null)}
+                      className={`w-full text-left px-4 py-3 border transition-all flex items-center gap-3 ${
+                        selectedBottle === null
+                          ? 'border-[#c9a961] bg-[#c9a961]/5'
+                          : 'border-[#c9a961]/15 hover:border-[#c9a961]/40'
+                      }`}
+                    >
+                      <span className="text-lg">🧴</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] tracking-wider text-[#2a2620]">기본 병</div>
+                        <div className="text-[9px] text-[#8b8278]">AION 기본 제공 병</div>
+                      </div>
+                      {selectedBottle === null && (
+                        <div className="w-2 h-2 rounded-full bg-[#c9a961] shrink-0" />
+                      )}
+                    </button>
+
+                    {/* 내가 만든 병 목록 */}
+                    {myBottles.map(bottle => (
+                      <button
+                        key={bottle.designId}
+                        onClick={() => setSelectedBottle(bottle)}
+                        className={`w-full text-left px-4 py-3 border transition-all flex items-center gap-3 ${
+                          selectedBottle?.designId === bottle.designId
+                            ? 'border-[#c9a961] bg-[#c9a961]/5'
+                            : 'border-[#c9a961]/15 hover:border-[#c9a961]/40'
+                        }`}
+                      >
+                        <span className="text-lg">✨</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[12px] tracking-wider text-[#2a2620] truncate">
+                            {bottle.name || '나만의 병'}
+                          </div>
+                          <div className="text-[9px] text-[#8b8278]">
+                            커스텀 디자인
+                            {bottle.totalPrice > 0 && ` · ₩${bottle.totalPrice.toLocaleString()}`}
+                          </div>
+                        </div>
+                        {selectedBottle?.designId === bottle.designId && (
+                          <div className="w-2 h-2 rounded-full bg-[#c9a961] shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ⑥ 이름 + 저장 */}
               <div className="bg-white border border-[#c9a961]/20 p-5 space-y-4">
-                <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase">⑤ 저장</div>
+                <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase">⑥ 저장</div>
 
                 <div>
                   <label className="text-[10px] tracking-wider text-[#8b8278] block mb-1.5">블렌드 이름 *</label>
@@ -639,6 +837,12 @@ const ScentBlend = () => {
                     <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
                       <span>추가 용량 +{volume - BASE_VOLUME}ml</span>
                       <span>+₩{(Math.floor((volume - BASE_VOLUME) / 10) * EXTRA_PRICE_PER_10ML).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {selectedBottle && (
+                    <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
+                      <span>커스텀 병 ({selectedBottle.name})</span>
+                      <span>+₩{(selectedBottle.totalPrice ?? 0).toLocaleString()}</span>
                     </div>
                   )}
                   <div className="h-[1px] bg-[#c9a961]/20 my-2" />
