@@ -383,6 +383,36 @@ const ScentBlend = () => {
     }
   };
 
+  // ── 저장된 조합 불러오기 ─────────────────────────────────────────
+  const handleLoadBlend = (blend) => {
+    // 이름
+    setBlendName(blend.name || '');
+
+    // 농도
+    const conc = CONCENTRATION_TYPES.find(c => c.id === blend.concentration);
+    if (conc) setConcentration(conc);
+
+    // 용량
+    if (blend.volumeMl && VOLUME_OPTIONS.includes(blend.volumeMl)) {
+      setVolume(blend.volumeMl);
+    }
+
+    // 재료 비율 복원
+    if (blend.items && blend.items.length > 0) {
+      const restored = {};
+      blend.items.forEach(item => {
+        // ratio가 0~100 사이면 그대로, 소수(0~1)면 *100
+        const ratio = item.ratio > 1 ? Math.round(item.ratio) : Math.round(item.ratio * 100);
+        restored[String(item.ingredientId)] = Math.max(1, Math.min(100, ratio));
+      });
+      setSelectedIngredients(restored);
+    }
+
+    setShowMyBlends(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    alert(`"${blend.name}" 조합을 불러왔습니다.`);
+  };
+
   // ────────────────────────────────────────────────────────────────
   // 렌더
   // ────────────────────────────────────────────────────────────────
@@ -424,21 +454,29 @@ const ScentBlend = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {myBlends.map(blend => (
-                  <div key={blend.blendId} className="border border-[#c9a961]/15 p-4 relative">
+                  <div
+                    key={blend.blendId}
+                    onClick={() => handleLoadBlend(blend)}
+                    className="border border-[#c9a961]/15 p-4 relative cursor-pointer hover:border-[#c9a961] hover:bg-[#faf8f3] transition-all group"
+                  >
+                    {/* 삭제 버튼 - 클릭 이벤트 전파 차단 */}
                     <button
-                      onClick={() => handleDeleteBlend(blend.blendId)}
+                      onClick={e => { e.stopPropagation(); handleDeleteBlend(blend.blendId); }}
                       className="absolute top-2 right-2 text-[#8b8278] hover:text-red-400 transition-colors"
                     >
                       <Trash2 size={12} />
                     </button>
                     <div className="pr-5">
-                      <div className="text-[12px] tracking-wider text-[#2a2620] font-medium mb-1 truncate">
+                      <div className="text-[12px] tracking-wider text-[#2a2620] font-medium mb-1 truncate group-hover:text-[#c9a961] transition-colors">
                         {blend.name}
                       </div>
                       <div className="text-[10px] text-[#8b8278] space-y-0.5">
                         <div>{blend.concentration} · {blend.volumeMl}ml</div>
                         <div className="text-[#c9a961]">₩{blend.totalPrice?.toLocaleString()}</div>
                         <div className="text-[#8b8278]/60">재료 {blend.items?.length ?? 0}종</div>
+                      </div>
+                      <div className="mt-2 text-[9px] text-[#c9a961]/60 tracking-wider group-hover:text-[#c9a961] transition-colors">
+                        클릭하여 불러오기 →
                       </div>
                     </div>
                   </div>
