@@ -152,7 +152,7 @@ const PerfumeManagement = () => {
             brand_id: formData.brand_id,
             price: formData.price,
             sale_rate: formData.sale_rate,
-            sale_price: formData.price * (1 - formData.sale_rate / 100),
+            //sale_price: formData.price * (1 - formData.sale_rate / 100),
             volume_ml: formData.volume_ml,
             concentration: formData.concentration,
             gender: formData.gender,
@@ -192,7 +192,7 @@ const PerfumeManagement = () => {
             brand_id: formData.brand_id,
             price: formData.price,
             sale_rate: formData.sale_rate,
-            sale_price: formData.price * (1 - formData.sale_rate / 100),
+            //sale_price: formData.price * (1 - formData.sale_rate / 100),
             cost: formData.price * 0.6, // 임시 원가 설정
             volume_ml: formData.volume_ml,
             concentration: formData.concentration,
@@ -425,7 +425,7 @@ const PerfumeManagement = () => {
             .from('Perfumes')
             .update({ 
               sale_rate: parseInt(rate),
-              sale_price: perfume.price * (1 - parseInt(rate) / 100)
+              //sale_price: perfume.price * (1 - parseInt(rate) / 100)
             })
             .eq('perfume_id', id);
         }
