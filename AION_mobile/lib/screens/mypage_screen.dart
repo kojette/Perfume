@@ -5,6 +5,9 @@ import 'profile_edit_screen.dart';
 import 'start_screen.dart';
 import 'order_receipt_screen.dart';
 import '../services/api_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -95,41 +98,87 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
+  // ─── 스프링부트 백엔드 연동 ──────────────────────────────────────
+
   Future<void> _fetchCoupons(String email) async {
     try {
-      final data = await _supabase
-          .from('UserCoupons')
-          .select('*, coupon:coupon_id(id, code, discount_type, discount_value, expiry_date)')
-          .eq('user_email', email)
-          .order('created_at', ascending: false);
-      if (mounted) setState(() => _coupons = List<Map<String, dynamic>>.from(data));
-    } catch (_) {}
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken') ?? '';
+      
+      final res = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/coupons/my'), 
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      );
+      
+      if (res.statusCode == 200) {
+        final decoded = utf8.decode(res.bodyBytes);
+        final data = jsonDecode(decoded);
+        final items = (data['data'] ?? data['content'] ?? data) as List? ?? [];
+        if (mounted) setState(() => _coupons = List<Map<String, dynamic>>.from(items));
+      }
+    } catch (e) {
+      print('쿠폰 조회 오류: $e');
+    }
   }
 
   Future<void> _fetchPoints(String email) async {
     try {
-      final data = await _supabase
-          .from('UserPoints')
-          .select('*')
-          .eq('user_email', email)
-          .order('created_at', ascending: false);
-      if (mounted) {
-        final list = List<Map<String, dynamic>>.from(data);
-        final total = list.fold<int>(0, (s, p) => s + ((p['points'] as num?)?.toInt() ?? 0));
-        setState(() { _points = list; _totalPoints = total; });
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken') ?? '';
+      
+      final historyRes = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/points/history'),
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      );
+
+      final balanceRes = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/points/balance'),
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      );
+
+      if (historyRes.statusCode == 200) {
+        final historyData = jsonDecode(utf8.decode(historyRes.bodyBytes));
+        final items = (historyData['data'] ?? []) as List;
+        if (mounted) setState(() => _points = List<Map<String, dynamic>>.from(items));
       }
-    } catch (_) {}
+
+      if (balanceRes.statusCode == 200) {
+        final balanceData = jsonDecode(utf8.decode(balanceRes.bodyBytes));
+        final bData = balanceData['data'];
+        if (mounted) {
+          setState(() {
+            if (bData is Map) {
+              _totalPoints = ((bData['balance'] ?? bData['totalPoints'] ?? bData['points'] ?? 0) as num).toInt();
+            } else if (bData is num) {
+              _totalPoints = bData.toInt();
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('포인트 조회 오류: $e');
+    }
   }
 
   Future<void> _fetchEvents(String email) async {
     try {
-      final data = await _supabase
-          .from('EventParticipations')
-          .select('*, event:event_id(*)')
-          .eq('user_email', email)
-          .order('participated_at', ascending: false);
-      if (mounted) setState(() => _events = List<Map<String, dynamic>>.from(data));
-    } catch (_) {}
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken') ?? '';
+      
+      final res = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/events/participations'), 
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      );
+      
+      if (res.statusCode == 200) {
+        final decoded = utf8.decode(res.bodyBytes);
+        final data = jsonDecode(decoded);
+        final items = (data['data'] ?? data['content'] ?? data) as List? ?? [];
+        if (mounted) setState(() => _events = List<Map<String, dynamic>>.from(items));
+      }
+    } catch (e) {
+      print('이벤트 로드 오류: $e');
+    }
   }
 
   Future<void> _fetchOrders() async {
@@ -373,7 +422,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 children: [
                   _buildStat('POINTS', '${_totalPoints}P'),
                   const SizedBox(height: 8),
-                  _buildStat('COUPONS', '${_coupons.length}'),
+                  _buildStat('COUPONS', '${_coupons.where((c) => c['isUsed'] != true).length}'),
                 ],
               ),
             ],
@@ -463,8 +512,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
     return Column(
       children: _coupons.map((uc) {
-        final coupon = uc['coupon'] as Map<String, dynamic>? ?? {};
-        final isUsed = uc['used_at'] != null;
+        //final coupon = uc['coupon'] as Map<String, dynamic>? ?? {};
+        final isUsed = uc['isUsed'] == true;
         return _buildCard(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,19 +525,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      coupon['code'] as String? ?? '이벤트 당첨 쿠폰',
+                      //coupon['code'] as String? ?? '이벤트 당첨 쿠폰',
+                      uc['couponCode'] as String? ?? '이벤트 당첨 쿠폰',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _dark, fontFamily: 'monospace'),
                     ),
                     const SizedBox(height: 4),
-                    if (coupon['discount_type'] != null)
+                    if (uc['discountType'] != null)
                       Text(
-                        coupon['discount_type'] == 'PERCENTAGE'
-                            ? '할인: ${coupon['discount_value']}%'
-                            : '할인: ₩${coupon['discount_value']}',
+                        uc['discountType'] == 'PERCENTAGE'
+                            ? '할인: ${uc['discountValue']}%'
+                            : '할인: ₩${uc['discountValue']}',
                         style: const TextStyle(fontSize: 12, color: _grey),
                       ),
-                    if (coupon['expiry_date'] != null)
-                      Text('만료: ${coupon['expiry_date']}', style: const TextStyle(fontSize: 11, color: _grey)),
+                    if (uc['expiryDate'] != null)
+                      Text('만료: ${uc['expiryDate']}', style: const TextStyle(fontSize: 11, color: _grey)),
                     Text('발급: ${_formatDate(uc['created_at'] as String? ?? '')}',
                         style: const TextStyle(fontSize: 11, color: _grey)),
                   ],
