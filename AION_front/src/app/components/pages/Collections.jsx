@@ -817,22 +817,27 @@ ${noteText ? `노트: ${noteText}` : ''}`;
   }, [selectedPerfume, loadNotes, scheduleGemini]);
 
   useEffect(() => {
-    const targetId = location.state?.targetPerfumeId;
+    const stateId = location.state?.targetPerfumeId;
+    const params = new URLSearchParams(window.location.search);
+    const queryId = params.get('perfumeId') ? parseInt(params.get('perfumeId')) : null;
+    const targetId = stateId || queryId;
+
     if (targetId && allPerfumes.length > 0 && !autoSelectDone.current) {
       const targetPerfume = allPerfumes.find(p => p.perfume_id === targetId);
-
       if (targetPerfume) {
-        handleSelect(targetPerfume);
         autoSelectDone.current = true;
+        setSelectedPerfume(targetPerfume);
+        setGeminiReview('');
+        loadNotes(targetPerfume.perfume_id).then(grouped => {
+          if (grouped) scheduleGemini(targetPerfume, grouped);
+        });
         window.history.replaceState({}, document.title);
-
-        // 책장 영역으로 스크롤
         setTimeout(() => {
           shelfRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 300);
+        }, 500);
       }
     }
-  }, [location.state, allPerfumes, handleSelect]);
+  }, [location.state, allPerfumes, loadNotes, scheduleGemini]);
 
   const selectedIdx = selectedPerfume
     ? allPerfumes.findIndex(p => p.perfume_id === selectedPerfume.perfume_id)

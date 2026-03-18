@@ -110,7 +110,8 @@ const SearchResult = () => {
               <div 
                 key={item.perfumeId} 
                 className="group cursor-pointer"
-                onClick={() => navigate(`/perfume/${item.perfumeId}`)}
+                onClick={() => navigate(`/collections?perfumeId=${item.perfumeId}`)}
+
               >
                 {/* 상품 이미지 영역 */}
                 <div 
