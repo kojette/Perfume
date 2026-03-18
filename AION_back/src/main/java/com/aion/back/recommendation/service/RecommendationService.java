@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class RecommendationService {
 
     private final PerfumeRepository perfumeRepository;
+    private final com.aion.back.perfume.repository.PerfumeImageRepository perfumeImageRepository;
 
     /**
      * 추천 향수 목록 조회 (필터링 + 정렬)
@@ -129,8 +130,11 @@ public class RecommendationService {
                 .totalStock(perfume.getTotalStock())
                 .isActive(perfume.getIsActive())
                 .createdAt(perfume.getCreatedAt())
-                .imageUrl(perfume.getImageUrl()) // DB에서 직접 읽어옴
-                // 태그 및 향 정보는 추후 추가
+                //.imageUrl(perfume.getImageUrl())
+                .imageUrl(perfumeImageRepository
+                        .findByPerfumeAndIsThumbnailTrue(perfume)
+                        .map(img -> img.getImageUrl())
+                        .orElse(perfume.getImageUrl()))
                 .tags(new ArrayList<>())
                 .seasons(new ArrayList<>())
                 .occasions(new ArrayList<>())
