@@ -37,6 +37,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
   Map<String, List<String>> _notes = {'top': [], 'middle': [], 'base': []};
   bool _loadingNotes = false;
   final Map<int, Map<String, List<String>>> _notesCache = {};
+  int? _initialPerfumeId;
 
   late final ScrollController _scrollController;
 
@@ -46,6 +47,15 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
     _fetchPerfumes(reset: true);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null && args is int && _initialPerfumeId == null) {
+      _initialPerfumeId = args;
+    }
   }
 
   @override
@@ -115,6 +125,16 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
       debugPrint('향수 로드 오류: $e');
     } finally {
       if (mounted) setState(() { _loading = false; _isFetchingMore = false; });
+
+      if (_initialPerfumeId != null && _perfumes.isNotEmpty) {
+        final found = _perfumes.where((p) =>
+          (p['perfumeId'] ?? p['perfume_id']) == _initialPerfumeId
+        ).toList();
+        if (found.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _selectPerfume(found.first));
+        }
+        _initialPerfumeId = null;
+      }
     }
   }
 

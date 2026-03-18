@@ -419,58 +419,67 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPerfumeCard(Perfume perfume) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: _gold.withOpacity(0.15)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 3,
-            child: Container(
-              width: double.infinity,
-              color: const Color(0xFFF5F0E8),
-              child: perfume.imageUrl != null
-                  ? Image.network(perfume.imageUrl!, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholderImage())
-                  : _placeholderImage(),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (perfume.brandName != null)
-                    Text(perfume.brandName!, style: const TextStyle(color: _grey, fontSize: 9, letterSpacing: 1), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 3),
-                  Text(perfume.name,
-                      style: const TextStyle(color: _dark, fontSize: 12, fontWeight: FontWeight.w500, height: 1.3),
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
-                  const Spacer(),
-                  Row(children: [
-                    if (perfume.isOnSale) ...[
-                      Text(
-                        '₩${_numFmt(perfume.price)}',
-                        style: const TextStyle(color: _grey, fontSize: 9, decoration: TextDecoration.lineThrough),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-                    Text(
-                      '₩${_numFmt(perfume.displayPrice)}',
-                      style: TextStyle(color: perfume.isOnSale ? Colors.red : _gold, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ]),
-                ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          '/collections',
+          arguments: perfume.id,
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: _gold.withOpacity(0.15)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Container(
+                width: double.infinity,
+                color: const Color(0xFFF5F0E8),
+                child: perfume.imageUrl != null
+                    ? Image.network(perfume.imageUrl!, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _placeholderImage())
+                    : _placeholderImage(),
               ),
             ),
-          ),
-        ],
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (perfume.brandName != null)
+                      Text(perfume.brandName!, style: const TextStyle(color: _grey, fontSize: 9, letterSpacing: 1), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 3),
+                    Text(perfume.name,
+                        style: const TextStyle(color: _dark, fontSize: 12, fontWeight: FontWeight.w500, height: 1.3),
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const Spacer(),
+                    Row(children: [
+                      if (perfume.isOnSale) ...[
+                        Text(
+                          '₩${_numFmt(perfume.price)}',
+                          style: const TextStyle(color: _grey, fontSize: 9, decoration: TextDecoration.lineThrough),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        '₩${_numFmt(perfume.displayPrice)}',
+                        style: TextStyle(color: perfume.isOnSale ? Colors.red : _gold, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ]),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
