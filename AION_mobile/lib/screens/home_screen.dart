@@ -131,6 +131,10 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () => Navigator.pushNamed(context, '/search'),
         ),
         IconButton(
+          icon: const Icon(Icons.favorite_border, color: _dark, size: 22),
+          onPressed: () => Navigator.pushNamed(context, '/wishlist'),
+        ),
+        IconButton(
           icon: const Icon(Icons.shopping_bag_outlined, color: _dark, size: 22),
           onPressed: () => Navigator.pushNamed(context, '/cart'),
         ),
