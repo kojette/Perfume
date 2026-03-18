@@ -72,7 +72,12 @@ class Perfume {
           : json['brandName'],
 
       // 백엔드 미구현 필드 → null safe
-      imageUrl: json['imageUrl'] ?? json['thumbnailUrl'] ?? json['image_url'],
+      imageUrl: json['imageUrl'] ?? 
+                json['thumbnailUrl'] ?? 
+                json['image_url'] ??
+                (json['Perfume_Images'] != null && (json['Perfume_Images'] as List).isNotEmpty
+                ? json['Perfume_Images'][0]['image_url']
+                : null),
       tags: json['tags'] != null
           ? List<String>.from(json['tags'])
           : null,

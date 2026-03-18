@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import '../config/api_config.dart';
 import '../models/perfume.dart';
 import '../models/hero_data.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ApiService {
   static Future<String> _getToken() async {
@@ -27,21 +28,33 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════
 
   static Future<HeroData?> getActiveHero() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/hero/active'),
-      );
+  try {
+    final supabase = Supabase.instance.client;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return HeroData.fromJson(data);
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Hero 조회 오류: $e');
-      return null;
-    }
+    final data = await supabase
+        .from('hero_history')
+        .select('title, subtitle, tagline, hero_images(image_url)')
+        .eq('is_active', true)
+        .limit(1);
+
+    if (data.isEmpty) return null;
+
+    final item = data[0];
+
+    final imagesList = item['hero_images'] as List?;
+    final images = imagesList?.map((img) => img['image_url'] as String).toList() ?? [];
+
+    return HeroData(
+      title: item['title'] ?? 'AION',
+      subtitle: item['subtitle'] ?? '영원한 그들의 향을 담다',
+      tagline: item['tagline'] ?? 'ESSENCE OF DIVINE',
+      images: images,
+    );
+  } catch (e) {
+    debugPrint('Hero 조회 오류: $e');
+    return null;
   }
+}
 
   // ═══════════════════════════════════════════════════════════════
   // 향수 목록 및 검색
