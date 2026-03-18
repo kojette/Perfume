@@ -778,7 +778,7 @@ export default function Signature() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f3]">
+    <div className="min-h-screen bg-[#faf8f3]" style={{ marginTop: '-2px' }}>
 
       <div className="relative h-[72vh] overflow-hidden">
 

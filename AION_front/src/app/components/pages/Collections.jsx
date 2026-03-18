@@ -862,7 +862,7 @@ ${noteText ? `노트: ${noteText}` : ''}`;
   const l = layout;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5ede0', fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+    <div style={{ minHeight: '100vh', background: '#f5ede0', fontFamily: "'Georgia', 'Times New Roman', serif" , marginTop: '-2px'}}>
 
       {/* ─────── 상단: 배경 + 오버레이 ─────── */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
