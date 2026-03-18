@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import com.aion.back.perfume.repository.PerfumeImageRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class CartController {
     private final CartRepository cartRepository;
     private final PerfumeRepository perfumeRepository;
     private final MemberService memberService;
+    private final PerfumeImageRepository perfumeImageRepository;
 
     @PostMapping("/add")
     public ApiResponse<String> addToCart(
@@ -119,7 +121,11 @@ public class CartController {
                 map.put("name", cart.getPerfume().getName());
                 map.put("brand", cart.getPerfume().getBrand() != null ? cart.getPerfume().getBrand().getBrandId() : null);
                 map.put("price", cart.getPerfume().getSalePrice() != null ? cart.getPerfume().getSalePrice() : cart.getPerfume().getPrice());
-                map.put("imageUrl", "https://via.placeholder.com/150");
+                String imageUrl = perfumeImageRepository
+                        .findByPerfumeAndIsThumbnailTrue(cart.getPerfume())
+                        .map(img -> img.getImageUrl())
+                        .orElse(null);
+                map.put("imageUrl", imageUrl);
             }
 
             return map;

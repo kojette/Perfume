@@ -7,7 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "perfume_images")
+@Table(name = "\"Perfume_Images\"")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,8 +33,8 @@ public class PerfumeImage {
     @Column(name = "display_order")
     private Integer displayOrder;
 
-    @Column(name = "alt_text", length = 200)
-    private String altText;
+    //@Column(name = "alt_text", length = 200)
+    //private String altText;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
