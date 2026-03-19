@@ -691,86 +691,25 @@ export default function Collections() {
     })();
   }, []);
 
-  // ─────────────────────────────────────
+// ─────────────────────────────────────
   // API 최적화 — 캐시 & 중복 방지
   // ─────────────────────────────────────
-  const geminiCache  = useRef({});
-  const notesCache   = useRef({});     // ★ 노트 캐시 (향수당 1회만 API 호출)
-  const geminiTimer  = useRef(null);
-  const isRequesting = useRef(false);
-  const isHandling   = useRef(false);  // ★ handleSelect 중복 클릭 방지 (300ms)
+  // [삭제] const geminiCache = useRef({}); (더 이상 AI 캐시 불필요)
+  const notesCache   = useRef({});      
+  // [삭제] const geminiTimer = useRef(null); (3초 대기 타이머 불필요)
+  // [삭제] const isRequesting = useRef(false); (AI 요청 상태 불필요)
+  const isHandling   = useRef(false);  
 
-  const fetchGeminiReview = useCallback(async (perfume, notesData) => {
-    const cacheKey = perfume.perfume_id;
-
-    if (geminiCache.current[cacheKey]) {
-      setGeminiReview(geminiCache.current[cacheKey]);
-      return;
-    }
-    if (isRequesting.current) {
-      setTimeout(() => fetchGeminiReview(perfume, notesData), 500);
-      return;
-    }
-
-    setLoadingReview(true);
-    setGeminiReview('');
-    isRequesting.current = true;
-
-    try {
-      const noteText = [
-        notesData.top?.length    ? `Top: ${notesData.top.join(', ')}`       : '',
-        notesData.middle?.length ? `Middle: ${notesData.middle.join(', ')}` : '',
-        notesData.base?.length   ? `Base: ${notesData.base.join(', ')}`     : '',
-      ].filter(Boolean).join(' / ');
-
-      const prompt = `향수 전문가로서 다음 향수에 대해 감성적이고 시적인 한줄평을 한국어로 작성해주세요. 40자 이내로, 마침표 없이.
-향수명: ${perfume.name}${perfume.name_en ? ` (${perfume.name_en})` : ''}
-브랜드: ${perfume.brand_name || ''}
-${noteText ? `노트: ${noteText}` : ''}`;
-
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        }
-      );
-
-      if (res.status === 429) {
-        setGeminiReview('제미나이가 바쁩니다. 잠시 후 다시 클릭해주세요.');
-        setTimeout(() => { isRequesting.current = false; }, 2000);
-        setLoadingReview(false);
-        return;
-      }
-      if (!res.ok) throw new Error(`Gemini ${res.status}`);
-
-      const json = await res.json();
-      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      if (text) {
-        geminiCache.current[cacheKey] = text;
-        setGeminiReview(text);
-      }
-    } catch (e) {
-      console.error('Gemini 실패:', e);
-      setGeminiReview('평론을 불러오지 못했습니다');
-    } finally {
-      setLoadingReview(false);
-      setTimeout(() => { isRequesting.current = false; }, 500);
-    }
+  // [수정] fetchGeminiReview 대신 단순 설명 설정 함수로 변경
+  const displayDescription = useCallback((perfume) => {
+    // DB에서 가져온 description이 있으면 그것을 쓰고, 없으면 기본 문구 표시
+    const description = perfume.description || "등록된 향수 설명이 없습니다.";
+    setGeminiReview(description); // 상태 변수명은 유지 (UI 수정을 최소화하기 위해)
   }, []);
 
-  // ★ scheduleGemini — useRef stable reference → 타이머 중복 방지
-  const scheduleGeminiRef = useRef(null);
-  scheduleGeminiRef.current = (perfume, grouped) => {
-    if (geminiTimer.current) clearTimeout(geminiTimer.current);
-    geminiTimer.current = setTimeout(() => fetchGeminiReview(perfume, grouped), 3000);
-  };
-  const scheduleGemini = useCallback((perfume, grouped) => {
-    scheduleGeminiRef.current(perfume, grouped);
-  }, []);
+  // [삭제] scheduleGemini 관련 로직 전부 삭제 (기다릴 필요 없이 바로 보여주기 때문)
 
-  // ★ loadNotes — notesCache로 중복 API 호출 차단
+  // ★ loadNotes — 기존과 동일하게 유지 (노트 정보는 DB에서 계속 불러와야 함)
   const loadNotes = useCallback(async (perfumeId) => {
     if (notesCache.current[perfumeId]) {
       setNotes(notesCache.current[perfumeId]);
@@ -795,7 +734,7 @@ ${noteText ? `노트: ${noteText}` : ''}`;
     return null;
   }, []);
 
-  // ★ handleSelect — 300ms 중복 클릭 잠금
+  // [수정] handleSelect — AI 스케줄러 대신 displayDescription 호출
   const handleSelect = useCallback((p) => {
     if (isHandling.current) return;
     isHandling.current = true;
@@ -805,17 +744,15 @@ ${noteText ? `노트: ${noteText}` : ''}`;
       setSelectedPerfume(null);
       setNotes({ top: [], middle: [], base: [] });
       setGeminiReview('');
-      if (geminiTimer.current) clearTimeout(geminiTimer.current);
     } else {
       setSelectedPerfume(p);
-      setGeminiReview('');
-      if (geminiTimer.current) clearTimeout(geminiTimer.current);
-      loadNotes(p.perfume_id).then(grouped => {
-        if (grouped) scheduleGemini(p, grouped);
-      });
+      // [수정 부분] AI 호출 대신 즉시 설명 표시
+      displayDescription(p); 
+      loadNotes(p.perfume_id);
     }
-  }, [selectedPerfume, loadNotes, scheduleGemini]);
+  }, [selectedPerfume, loadNotes, displayDescription]);
 
+  // [수정] useEffect (자동 선택 시에도 AI 대신 설명 표시)
   useEffect(() => {
     const stateId = location.state?.targetPerfumeId;
     const params = new URLSearchParams(window.location.search);
@@ -827,38 +764,48 @@ ${noteText ? `노트: ${noteText}` : ''}`;
       if (targetPerfume) {
         autoSelectDone.current = true;
         setSelectedPerfume(targetPerfume);
-        setGeminiReview('');
-        loadNotes(targetPerfume.perfume_id).then(grouped => {
-          if (grouped) scheduleGemini(targetPerfume, grouped);
-        });
+        // [수정 부분] AI 호출 대신 즉시 설명 표시
+        displayDescription(targetPerfume);
+        loadNotes(targetPerfume.perfume_id);
+        
         window.history.replaceState({}, document.title);
         setTimeout(() => {
           shelfRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 500);
       }
     }
-  }, [location.state, allPerfumes, loadNotes, scheduleGemini]);
+  }, [location.state, allPerfumes, loadNotes, displayDescription]);
 
-  const selectedIdx = selectedPerfume
-    ? allPerfumes.findIndex(p => p.perfume_id === selectedPerfume.perfume_id)
-    : -1;
-  const canPrev = selectedIdx > 0;
-  const canNext = selectedIdx >= 0 && selectedIdx < allPerfumes.length - 1;
-
+  // [수정] moveTo (이전/다음 이동 시에도 즉시 설명 표시)
   const moveTo = (idx) => {
     const p = allPerfumes[idx];
     if (!p) return;
     setSelectedPerfume(p);
-    setGeminiReview('');
-    if (geminiTimer.current) clearTimeout(geminiTimer.current);
-    loadNotes(p.perfume_id).then(grouped => {
-      if (grouped) scheduleGemini(p, grouped);
-    });
+    // [수정 부분] AI 호출 대신 즉시 설명 표시
+    displayDescription(p); 
+    loadNotes(p.perfume_id);
   };
 
-  const shelves = [];
-  for (let i = 0; i < allPerfumes.length; i += SHELF_SIZE) shelves.push(allPerfumes.slice(i, i + SHELF_SIZE));
+  // ─────────────────────────────────────
+  // [추가] 이전/다음 버튼 활성화를 위한 계산 로직
+  // ─────────────────────────────────────
+  // 현재 선택된 향수가 전체 리스트에서 몇 번째인지 찾습니다.
+  const selectedIdx = selectedPerfume
+    ? allPerfumes.findIndex(p => p.perfume_id === selectedPerfume.perfume_id)
+    : -1;
 
+  // 이전 버튼을 누를 수 있는지 (첫 번째가 아니면 true)
+  const canPrev = selectedIdx > 0;
+  
+  // 다음 버튼을 누를 수 있는지 (마지막이 아니면 true)
+  const canNext = selectedIdx >= 0 && selectedIdx < allPerfumes.length - 1;
+
+  // ─────────────────────────────────────
+  // 진열장(Shelf) 레이아웃 계산 (기존 유지)
+  // ───────────────────────────────────── 
+    const shelves = [];
+
+  for (let i = 0; i < allPerfumes.length; i += SHELF_SIZE) shelves.push(allPerfumes.slice(i, i + SHELF_SIZE));
   const l = layout;
 
   return (
