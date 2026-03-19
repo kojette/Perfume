@@ -10,10 +10,10 @@
  * - 장바구니:        POST /api/cart/scent-blend
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   ShoppingBag, Save, ChevronDown, ChevronUp, X,
-  Loader2, RefreshCw, AlertCircle, Trash2, ListOrdered
+  Loader2, RefreshCw, AlertCircle, Trash2, ListOrdered, Search
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -38,23 +38,178 @@ const CATEGORY_COLORS = [
   '#a8e6cf', // 헤르비셔스
 ];
 
-const CATEGORY_ICONS = {
-  '플로럴':     '🌸',
-  '시트러스':   '🍋',
-  '우디':       '🌲',
-  '머스크':     '🔮',
-  '스파이시':   '🌶',
-  '프루티':     '🍑',
-  '그린':       '🌿',
-  '아쿠아틱':   '💧',
-  '구르망':     '🍯',
-  '발사믹/레진':'🪨',
-  '파우더리':   '🌫',
-  '어시':       '🔥',
-  '얼씨':       '🌍',
-  '알데하이딕': '🧪',
-  '헤르비셔스': '🌾',
+// ── 카테고리 SVG 선화 아이콘 ─────────────────────────────────────────────────
+// 금빛(#c9a961) / 깊은 초록(#3d6b4f) 번갈아 사용, stroke-only 선화
+const CATEGORY_SVG_ICONS = {
+  '플로럴': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <circle cx="16" cy="16" r="3.2" stroke="#c9a961" strokeWidth="1.1"/>
+      <ellipse cx="16" cy="9.5" rx="2.2" ry="3.8" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <ellipse cx="16" cy="22.5" rx="2.2" ry="3.8" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <ellipse cx="9.5" cy="16" rx="3.8" ry="2.2" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <ellipse cx="22.5" cy="16" rx="3.8" ry="2.2" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <ellipse cx="11.2" cy="11.2" rx="2.2" ry="3.6" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" transform="rotate(-45 11.2 11.2)"/>
+      <ellipse cx="20.8" cy="11.2" rx="2.2" ry="3.6" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" transform="rotate(45 20.8 11.2)"/>
+      <ellipse cx="11.2" cy="20.8" rx="2.2" ry="3.6" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" transform="rotate(45 11.2 20.8)"/>
+      <ellipse cx="20.8" cy="20.8" rx="2.2" ry="3.6" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" transform="rotate(-45 20.8 20.8)"/>
+    </svg>
+  ),
+  '시트러스': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <circle cx="16" cy="17" r="8.5" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M16 8.5 C16 8.5 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M7.5 17 C7.5 17 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M9.2 11.2 C9.2 11.2 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M22.8 11.2 C22.8 11.2 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M24.5 17 C24.5 17 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M9.2 22.8 C9.2 22.8 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M22.8 22.8 C22.8 22.8 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M16 25.5 C16 25.5 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M14 6 Q16 3 18 6" stroke="#3d6b4f" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <path d="M16 6 Q18 2 22 4" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+    </svg>
+  ),
+  '우디': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <rect x="13.5" y="10" width="5" height="16" rx="1" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M16 10 L10 4 L16 7 L22 4 L16 10Z" stroke="#3d6b4f" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+      <path d="M13.5 14 L8 11 L13.5 13" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <path d="M18.5 16 L24 13 L18.5 15" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <path d="M13.5 19 L8 17 L13.5 18.5" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <line x1="12" y1="26" x2="20" y2="26" stroke="#c9a961" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  ),
+  '머스크': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 6 C16 6 10 10 10 16 C10 20 12.5 24 16 25 C19.5 24 22 20 22 16 C22 10 16 6 16 6Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round"/>
+      <path d="M16 10 C16 10 12 13 12 16.5 C12 19 13.5 21.5 16 22.5" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.6"/>
+      <circle cx="16" cy="16" r="2" stroke="#c9a961" strokeWidth="0.9"/>
+      <path d="M13 8 Q10 5 8 8" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M19 8 Q22 5 24 8" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M10 23 Q8 27 12 27" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M22 23 Q24 27 20 27" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+    </svg>
+  ),
+  '스파이시': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 26 C16 26 9 20 9 14 C9 10 12 7 15 7 C15 7 14 10 16 12 C18 10 20 8 20 6 C23 7 24 11 23 15 C22 19 16 26 16 26Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M14 14 C14 14 13 17 14 20" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.6"/>
+      <path d="M18 15 C18 15 18.5 18 17.5 21" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.6"/>
+    </svg>
+  ),
+  '프루티': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <ellipse cx="12" cy="19" rx="5.5" ry="6" stroke="#c9a961" strokeWidth="1.1"/>
+      <ellipse cx="20" cy="19" rx="5.5" ry="6" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M16 14 Q16 8 20 6" stroke="#3d6b4f" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <path d="M20 6 Q24 4 23 8" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <path d="M10 17 Q10 15 12 15" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+      <path d="M18 17 Q18 15 20 15" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+    </svg>
+  ),
+  '그린': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 26 Q16 26 16 14" stroke="#3d6b4f" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M16 20 Q10 18 8 12 Q13 11 16 16" stroke="#3d6b4f" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M16 16 Q22 14 24 8 Q19 7 16 12" stroke="#3d6b4f" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M16 24 Q11 22 9 18" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.6"/>
+    </svg>
+  ),
+  '아쿠아틱': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 6 C16 6 10 14 10 19 C10 22.3 12.7 25 16 25 C19.3 25 22 22.3 22 19 C22 14 16 6 16 6Z" stroke="#c9a961" strokeWidth="1.1" fill="none"/>
+      <path d="M12 20 Q14 17 16 20 Q18 23 20 20" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.6"/>
+      <path d="M13 17 Q14.5 15 16 17" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.4"/>
+    </svg>
+  ),
+  '구르망': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M9 20 L10 14 Q16 11 22 14 L23 20 Q16 24 9 20Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M10 14 Q16 8 22 14" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <path d="M15 11 Q16 6 17 11" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <ellipse cx="16" cy="20" rx="4" ry="1.5" stroke="#c9a961" strokeWidth="0.8" opacity="0.5"/>
+    </svg>
+  ),
+  '발사믹/레진': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M10 24 L12 14 Q16 10 20 14 L22 24 Q16 27 10 24Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M14 16 Q16 13 18 16" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.6"/>
+      <path d="M13 20 Q16 18 19 20" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M15 10 Q16 6 17 10" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <circle cx="16" cy="5.5" r="1.2" stroke="#c9a961" strokeWidth="0.9"/>
+    </svg>
+  ),
+  '파우더리': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <circle cx="16" cy="17" r="8" stroke="#c9a961" strokeWidth="1.1"/>
+      <circle cx="16" cy="17" r="5" stroke="#c9a961" strokeWidth="0.8" opacity="0.5"/>
+      <circle cx="16" cy="17" r="2" stroke="#c9a961" strokeWidth="0.7" opacity="0.4"/>
+      <circle cx="10" cy="10" r="0.9" stroke="#c9a961" strokeWidth="0.8" opacity="0.5"/>
+      <circle cx="22" cy="10" r="0.7" stroke="#c9a961" strokeWidth="0.8" opacity="0.4"/>
+      <circle cx="8" cy="18" r="0.7" stroke="#c9a961" strokeWidth="0.7" opacity="0.3"/>
+      <circle cx="24" cy="20" r="0.9" stroke="#c9a961" strokeWidth="0.8" opacity="0.4"/>
+    </svg>
+  ),
+  '어시': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 26 C16 26 10 20 11 14 C11.5 11 13 9 14 8 C14 10 15 11 16 11 C17 10 17.5 8 18 7 C20 9 21.5 12 21 16 C20.5 20 16 26 16 26Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M14 14 C14 14 13.5 17 14.5 20" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+      <path d="M18 15 C18 15 18 18 17 21" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+      <path d="M13 26 Q16 28 19 26" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.4"/>
+    </svg>
+  ),
+  '얼씨': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <ellipse cx="16" cy="22" rx="9" ry="4" stroke="#3d6b4f" strokeWidth="1.1"/>
+      <path d="M10 22 Q10 16 16 12 Q22 16 22 22" stroke="#3d6b4f" strokeWidth="1" fill="none"/>
+      <path d="M13 22 Q13 18 16 15" stroke="#3d6b4f" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.6"/>
+      <path d="M16 12 Q16 8 16 8" stroke="#3d6b4f" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M13 10 Q16 7 19 10" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+    </svg>
+  ),
+  '알데하이딕': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <rect x="12" y="18" width="8" height="7" rx="1" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M14 18 L14 13 L12 10" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M18 18 L18 13 L20 10" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M12 10 Q16 8 20 10" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <path d="M11 8 Q13 5 16 6" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M21 8 Q19 5 16 6" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <line x1="12" y1="21" x2="20" y2="21" stroke="#c9a961" strokeWidth="0.7" opacity="0.4"/>
+    </svg>
+  ),
+  '헤르비셔스': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 26 Q16 26 16 16" stroke="#3d6b4f" strokeWidth="1.1" strokeLinecap="round"/>
+      <path d="M16 22 Q12 20 11 16 Q14 15 16 18" stroke="#3d6b4f" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+      <path d="M16 18 Q20 16 21 12 Q18 11 16 14" stroke="#3d6b4f" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+      <path d="M16 14 Q13 12 13 8 Q16 9 16 12" stroke="#3d6b4f" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+      <path d="M14 26 Q16 27 18 26" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.5"/>
+    </svg>
+  ),
 };
+
+// ── 병 선택 SVG 아이콘 ────────────────────────────────────────────────────────
+const BOTTLE_SVG_DEFAULT = (
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+    <rect x="11" y="16" width="10" height="11" rx="2" stroke="#c9a961" strokeWidth="1.1"/>
+    <path d="M13 16 L13 12 Q16 10 19 12 L19 16" stroke="#c9a961" strokeWidth="1" fill="none"/>
+    <rect x="13" y="9" width="6" height="3" rx="1" stroke="#c9a961" strokeWidth="0.9"/>
+    <line x1="11" y1="20" x2="21" y2="20" stroke="#c9a961" strokeWidth="0.7" opacity="0.4"/>
+    <line x1="11" y1="23" x2="21" y2="23" stroke="#c9a961" strokeWidth="0.7" opacity="0.3"/>
+    <circle cx="16" cy="18" r="1" stroke="#c9a961" strokeWidth="0.7" opacity="0.4"/>
+  </svg>
+);
+
+const BOTTLE_SVG_CUSTOM = (
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+    <path d="M10 26 L10 17 Q10 15 13 14 L13 11 Q13 10 14 10 L18 10 Q19 10 19 11 L19 14 Q22 15 22 17 L22 26 Q22 27 21 27 L11 27 Q10 27 10 26Z" stroke="#c9a961" strokeWidth="1.1" fill="none"/>
+    <path d="M14 10 L14 8 L18 8 L18 10" stroke="#c9a961" strokeWidth="0.9" fill="none"/>
+    <polygon points="16,5 17.2,7.5 14.8,7.5" stroke="#c9a961" strokeWidth="0.9" fill="none"/>
+    <path d="M13 19 Q16 17 19 19" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+    <path d="M12 22 Q16 20.5 20 22" stroke="#c9a961" strokeWidth="0.7" strokeLinecap="round" fill="none" opacity="0.4"/>
+  </svg>
+);
 
 // ── 향수 농도 (고정) ─────────────────────────────────────────────────────────
 const CONCENTRATION_TYPES = [
@@ -101,6 +256,9 @@ const ScentBlend = () => {
   const [loadingScents, setLoadingScents] = useState(true);
   const [scentsError,   setScentsError]   = useState(null);
 
+  // ── 검색 ────────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
+
   // 선택된 재료 { "ingredientId": ratio(0-100) }
   const [selectedIngredients, setSelectedIngredients] = useState({});
   // 열린 카테고리 아코디언
@@ -118,9 +276,40 @@ const ScentBlend = () => {
   const [loadingBlends, setLoadingBlends] = useState(false);
 
   // 병 선택
-  const [myBottles,      setMyBottles]      = useState([]);   // 내가 만든 병 목록
+  const [myBottles,      setMyBottles]      = useState([]);
   const [loadingBottles, setLoadingBottles] = useState(false);
-  const [selectedBottle, setSelectedBottle] = useState(null); // null = 기본병
+  const [selectedBottle, setSelectedBottle] = useState(null);
+
+  // ────────────────────────────────────────────────────────────────
+  // 검색 필터링: 검색어가 있으면 재료명/설명 매칭 카테고리+재료만 추출
+  // ────────────────────────────────────────────────────────────────
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+
+  const filteredCategories = useMemo(() => {
+    if (!trimmedQuery) return categories;
+    return categories
+      .map(cat => {
+        const matchedIngredients = cat.ingredients.filter(ing =>
+          ing.name?.toLowerCase().includes(trimmedQuery) ||
+          ing.description?.toLowerCase().includes(trimmedQuery)
+        );
+        // 카테고리명 자체가 검색어와 맞으면 전체 재료 표시
+        const catNameMatches = cat.categoryName?.toLowerCase().includes(trimmedQuery);
+        if (catNameMatches) return cat;
+        if (matchedIngredients.length === 0) return null;
+        return { ...cat, ingredients: matchedIngredients };
+      })
+      .filter(Boolean);
+  }, [categories, trimmedQuery]);
+
+  // 검색 중일 때 결과 카테고리 모두 열기
+  useEffect(() => {
+    if (trimmedQuery) {
+      const openAll = {};
+      filteredCategories.forEach(cat => { openAll[cat.categoryId] = true; });
+      setOpenCategories(openAll);
+    }
+  }, [trimmedQuery, filteredCategories]);
 
   // ────────────────────────────────────────────────────────────────
   // 마운트 시 카테고리+재료 로드
@@ -168,6 +357,7 @@ const ScentBlend = () => {
       }
     })();
   }, [isLoggedIn, token]);
+
   const loadMyBlends = useCallback(async () => {
     if (!isLoggedIn) { navigate('/login'); return; }
     setLoadingBlends(true);
@@ -192,7 +382,16 @@ const ScentBlend = () => {
 
   // ── 유틸 ────────────────────────────────────────────────────────
   const getCategoryColor = (idx) => CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
-  const getCategoryIcon  = (name) => CATEGORY_ICONS[name] || '✦';
+  const getCategoryIcon  = (name) => CATEGORY_SVG_ICONS[name] || (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <circle cx="16" cy="16" r="7" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M16 10 L16 22 M10 16 L22 16" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+    </svg>
+  );
+
+  // 카테고리 원본 인덱스 (색상 고정)
+  const getCategoryOriginalIndex = (categoryId) =>
+    categories.findIndex(c => c.categoryId === categoryId);
 
   const toggleIngredient = (ingredientId) => {
     setSelectedIngredients(prev => {
@@ -277,6 +476,7 @@ const ScentBlend = () => {
         setConcentration(CONCENTRATION_TYPES[0]);
         setVolume(50);
         setSelectedBottle(null);
+        setSearchQuery('');
         if (categories.length > 0) {
           setOpenCategories({ [categories[0].categoryId]: true });
         }
@@ -293,13 +493,11 @@ const ScentBlend = () => {
   };
 
   // ── 장바구니 ─────────────────────────────────────────────────────
-  // 흐름: ① 향 조합 저장 → ② /api/cart/scent-blend 에 담기
   const handleAddToCart = async () => {
     if (!isLoggedIn) { navigate('/login'); return; }
     if (!validate()) return;
     setSaving(true);
     try {
-      // ① 향 조합 저장
       const saveRes = await fetch(`${API_BASE_URL}/api/custom/scent-blends`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -311,7 +509,6 @@ const ScentBlend = () => {
         return;
       }
 
-      // ② 장바구니에 담기 - 구성 정보를 imageUrl에 JSON으로 인코딩해서 전달
       const norms = normalizedRatios();
       const ingredientDetails = Object.entries(norms).map(([id, ratio]) => {
         const info = getIngredientInfo(id);
@@ -338,18 +535,17 @@ const ScentBlend = () => {
           name:     `[향조합] ${blendName.trim()}`,
           price:    totalPrice,
           quantity: 1,
-          imageUrl: `__blend__${blendMeta}`,  // 구성 정보 인코딩
+          imageUrl: `__blend__${blendMeta}`,
         }),
       });
       if (cartRes.ok) {
         alert('장바구니에 담겼습니다!');
-        // 전체 초기화
         setBlendName('');
         setSelectedIngredients({});
         setConcentration(CONCENTRATION_TYPES[0]);
         setVolume(50);
         setSelectedBottle(null);
-        // 첫 번째 카테고리만 열기
+        setSearchQuery('');
         if (categories.length > 0) {
           setOpenCategories({ [categories[0].categoryId]: true });
         }
@@ -385,29 +581,20 @@ const ScentBlend = () => {
 
   // ── 저장된 조합 불러오기 ─────────────────────────────────────────
   const handleLoadBlend = (blend) => {
-    // 이름
     setBlendName(blend.name || '');
-
-    // 농도
     const conc = CONCENTRATION_TYPES.find(c => c.id === blend.concentration);
     if (conc) setConcentration(conc);
-
-    // 용량
     if (blend.volumeMl && VOLUME_OPTIONS.includes(blend.volumeMl)) {
       setVolume(blend.volumeMl);
     }
-
-    // 재료 비율 복원
     if (blend.items && blend.items.length > 0) {
       const restored = {};
       blend.items.forEach(item => {
-        // ratio가 0~100 사이면 그대로, 소수(0~1)면 *100
         const ratio = item.ratio > 1 ? Math.round(item.ratio) : Math.round(item.ratio * 100);
         restored[String(item.ingredientId)] = Math.max(1, Math.min(100, ratio));
       });
       setSelectedIngredients(restored);
     }
-
     setShowMyBlends(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     alert(`"${blend.name}" 조합을 불러왔습니다.`);
@@ -459,7 +646,6 @@ const ScentBlend = () => {
                     onClick={() => handleLoadBlend(blend)}
                     className="border border-[#c9a961]/15 p-4 relative cursor-pointer hover:border-[#c9a961] hover:bg-[#faf8f3] transition-all group"
                   >
-                    {/* 삭제 버튼 - 클릭 이벤트 전파 차단 */}
                     <button
                       onClick={e => { e.stopPropagation(); handleDeleteBlend(blend.blendId); }}
                       className="absolute top-2 right-2 text-[#8b8278] hover:text-red-400 transition-colors"
@@ -514,97 +700,161 @@ const ScentBlend = () => {
             <div className="lg:col-span-2 space-y-3">
               <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase mb-4">① 향 재료 선택</div>
 
-              {categories.map((cat, catIdx) => {
-                const color        = getCategoryColor(catIdx);
-                const icon         = getCategoryIcon(cat.categoryName);
-                const isOpen       = !!openCategories[cat.categoryId];
-                const selectedCount = cat.ingredients.filter(
-                  g => String(g.ingredientId) in selectedIngredients
-                ).length;
+              {/* ── 검색창 ── */}
+              <div className="relative mb-4">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                  <Search size={13} className="text-[#8b8278]" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="향 재료 검색 (예: 로즈, 바닐라, 시트러스...)"
+                  className="w-full bg-white border border-[#c9a961]/25 pl-9 pr-9 py-2.5 text-[12px] tracking-wider text-[#2a2620] placeholder-[#8b8278]/50 outline-none focus:border-[#c9a961] transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-3 flex items-center text-[#8b8278] hover:text-[#c9a961] transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
 
-                return (
-                  <div key={cat.categoryId} className="bg-white border border-[#c9a961]/20 overflow-hidden">
+              {/* 검색 결과 카운트 */}
+              {trimmedQuery && (
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-[10px] tracking-wider text-[#8b8278]">
+                    {filteredCategories.length === 0
+                      ? '검색 결과 없음'
+                      : `"${trimmedQuery}" — ${filteredCategories.reduce((s, c) => s + c.ingredients.length, 0)}종 재료 발견`
+                    }
+                  </span>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="text-[9px] tracking-wider text-[#c9a961]/70 hover:text-[#c9a961] transition-colors underline"
+                  >
+                    전체 보기
+                  </button>
+                </div>
+              )}
 
-                    {/* 헤더 */}
-                    <button
-                      onClick={() => setOpenCategories(prev => ({
-                        ...prev, [cat.categoryId]: !prev[cat.categoryId],
-                      }))}
-                      className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#faf8f3] transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">{icon}</span>
-                        <div className="text-left">
-                          <span className="text-[12px] tracking-[0.2em] text-[#2a2620] font-medium">
-                            {cat.categoryName}
-                          </span>
-                          <span className="ml-2 text-[9px] tracking-widest text-[#8b8278]">
-                            {cat.ingredients.length}종
-                          </span>
-                        </div>
-                        {selectedCount > 0 && (
-                          <span
-                            className="text-[9px] px-2 py-0.5 rounded-full text-white tracking-wider"
-                            style={{ background: color }}
-                          >
-                            {selectedCount}
-                          </span>
-                        )}
-                      </div>
-                      {isOpen
-                        ? <ChevronUp size={14} className="text-[#8b8278]" />
-                        : <ChevronDown size={14} className="text-[#8b8278]" />
-                      }
-                    </button>
+              {/* 검색 결과 없음 */}
+              {trimmedQuery && filteredCategories.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white border border-[#c9a961]/20">
+                  <Search size={24} className="text-[#c9a961]/30" />
+                  <p className="text-[11px] text-[#8b8278]/60 italic">
+                    "{trimmedQuery}"에 해당하는 재료가 없습니다.
+                  </p>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="text-[10px] tracking-wider text-[#c9a961] border border-[#c9a961]/40 px-4 py-1.5 hover:bg-[#c9a961]/5 transition-all"
+                  >
+                    전체 재료 보기
+                  </button>
+                </div>
+              ) : (
+                filteredCategories.map((cat) => {
+                  const catOriginalIdx = getCategoryOriginalIndex(cat.categoryId);
+                  const color          = getCategoryColor(catOriginalIdx);
+                  const icon           = getCategoryIcon(cat.categoryName);
+                  const isOpen         = !!openCategories[cat.categoryId];
+                  const selectedCount  = cat.ingredients.filter(
+                    g => String(g.ingredientId) in selectedIngredients
+                  ).length;
 
-                    {/* 재료 그리드 */}
-                    {isOpen && (
-                      <div className="border-t border-[#c9a961]/10 px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {cat.ingredients.length === 0 ? (
-                          <p className="col-span-3 text-center text-[10px] text-[#8b8278]/50 py-4 italic">
-                            등록된 재료가 없습니다.
-                          </p>
-                        ) : cat.ingredients.map(ingredient => {
-                          const selected = String(ingredient.ingredientId) in selectedIngredients;
-                          return (
-                            <button
-                              key={ingredient.ingredientId}
-                              onClick={() => toggleIngredient(ingredient.ingredientId)}
-                              className={`text-left px-3 py-2.5 border text-[11px] tracking-wider transition-all ${
-                                selected
-                                  ? 'border-[#c9a961] bg-[#c9a961]/8 text-[#2a2620]'
-                                  : 'border-[#c9a961]/15 bg-[#faf8f3] text-[#8b8278] hover:border-[#c9a961]/40 hover:text-[#2a2620]'
-                              }`}
+                  return (
+                    <div key={cat.categoryId} className="bg-white border border-[#c9a961]/20 overflow-hidden">
+
+                      {/* 헤더 */}
+                      <button
+                        onClick={() => setOpenCategories(prev => ({
+                          ...prev, [cat.categoryId]: !prev[cat.categoryId],
+                        }))}
+                        className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#faf8f3] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center justify-center w-6 h-6 shrink-0">{icon}</span>
+                          <div className="text-left">
+                            <span className="text-[12px] tracking-[0.2em] text-[#2a2620] font-medium">
+                              {/* 검색 시 카테고리명 하이라이트 */}
+                              {trimmedQuery && cat.categoryName?.toLowerCase().includes(trimmedQuery) ? (
+                                <HighlightText text={cat.categoryName} query={trimmedQuery} color={color} />
+                              ) : cat.categoryName}
+                            </span>
+                            <span className="ml-2 text-[9px] tracking-widest text-[#8b8278]">
+                              {cat.ingredients.length}종
+                            </span>
+                          </div>
+                          {selectedCount > 0 && (
+                            <span
+                              className="text-[9px] px-2 py-0.5 rounded-full text-white tracking-wider"
+                              style={{ background: color }}
                             >
-                              <div className="flex items-center justify-between mb-0.5">
-                                <span className="font-medium text-[12px] leading-tight line-clamp-1">
-                                  {ingredient.name}
-                                </span>
-                                {selected && (
-                                  <div className="w-2 h-2 rounded-full shrink-0 ml-1" style={{ background: color }} />
+                              {selectedCount}
+                            </span>
+                          )}
+                        </div>
+                        {isOpen
+                          ? <ChevronUp size={14} className="text-[#8b8278]" />
+                          : <ChevronDown size={14} className="text-[#8b8278]" />
+                        }
+                      </button>
+
+                      {/* 재료 그리드 */}
+                      {isOpen && (
+                        <div className="border-t border-[#c9a961]/10 px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {cat.ingredients.length === 0 ? (
+                            <p className="col-span-3 text-center text-[10px] text-[#8b8278]/50 py-4 italic">
+                              등록된 재료가 없습니다.
+                            </p>
+                          ) : cat.ingredients.map(ingredient => {
+                            const selected = String(ingredient.ingredientId) in selectedIngredients;
+                            return (
+                              <button
+                                key={ingredient.ingredientId}
+                                onClick={() => toggleIngredient(ingredient.ingredientId)}
+                                className={`text-left px-3 py-2.5 border text-[11px] tracking-wider transition-all ${
+                                  selected
+                                    ? 'border-[#c9a961] bg-[#c9a961]/8 text-[#2a2620]'
+                                    : 'border-[#c9a961]/15 bg-[#faf8f3] text-[#8b8278] hover:border-[#c9a961]/40 hover:text-[#2a2620]'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-medium text-[12px] leading-tight line-clamp-1">
+                                    {trimmedQuery ? (
+                                      <HighlightText text={ingredient.name} query={trimmedQuery} color={color} />
+                                    ) : ingredient.name}
+                                  </span>
+                                  {selected && (
+                                    <div className="w-2 h-2 rounded-full shrink-0 ml-1" style={{ background: color }} />
+                                  )}
+                                </div>
+                                {ingredient.description && (
+                                  <div className="text-[9px] text-[#8b8278] truncate leading-tight">
+                                    {trimmedQuery ? (
+                                      <HighlightText text={ingredient.description} query={trimmedQuery} color={color} />
+                                    ) : ingredient.description}
+                                  </div>
                                 )}
-                              </div>
-                              {ingredient.description && (
-                                <div className="text-[9px] text-[#8b8278] truncate leading-tight">
-                                  {ingredient.description}
-                                </div>
-                              )}
-                              {ingredient.isNatural != null && (
-                                <div
-                                  className="text-[8px] mt-0.5"
-                                  style={{ color: ingredient.isNatural ? '#55a66a' : '#a0a0a0' }}
-                                >
-                                  {ingredient.isNatural ? '천연' : '합성'}
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                                {ingredient.isNatural != null && (
+                                  <div
+                                    className="text-[8px] mt-0.5"
+                                    style={{ color: ingredient.isNatural ? '#55a66a' : '#a0a0a0' }}
+                                  >
+                                    {ingredient.isNatural ? '천연' : '합성'}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {/* ── 오른쪽 패널 ── */}
@@ -631,7 +881,7 @@ const ScentBlend = () => {
                         <div key={ingredientId} className="space-y-1.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-sm shrink-0">{getCategoryIcon(category.categoryName)}</span>
+                              <span className="flex items-center justify-center w-5 h-5 shrink-0">{getCategoryIcon(category.categoryName)}</span>
                               <span className="text-[11px] tracking-wider text-[#2a2620] truncate">
                                 {ingredient.name}
                               </span>
@@ -743,9 +993,8 @@ const ScentBlend = () => {
                     <Loader2 size={16} className="animate-spin text-[#c9a961]" />
                   </div>
                 ) : myBottles.length === 0 ? (
-                  /* 내 병이 없으면 기본병 고정 안내 */
                   <div className="border border-[#c9a961]/30 bg-[#faf8f3] px-4 py-3 flex items-center gap-3">
-                    <span className="text-xl">🧴</span>
+                    <span className="flex items-center justify-center w-6 h-6 shrink-0">{BOTTLE_SVG_DEFAULT}</span>
                     <div>
                       <div className="text-[12px] tracking-wider text-[#2a2620]">기본 병</div>
                       <div className="text-[9px] text-[#8b8278] mt-0.5">
@@ -760,9 +1009,7 @@ const ScentBlend = () => {
                     </div>
                   </div>
                 ) : (
-                  /* 내 병이 있으면 선택 가능 */
                   <div className="space-y-2">
-                    {/* 기본병 옵션 */}
                     <button
                       onClick={() => setSelectedBottle(null)}
                       className={`w-full text-left px-4 py-3 border transition-all flex items-center gap-3 ${
@@ -771,7 +1018,7 @@ const ScentBlend = () => {
                           : 'border-[#c9a961]/15 hover:border-[#c9a961]/40'
                       }`}
                     >
-                      <span className="text-lg">🧴</span>
+                      <span className="flex items-center justify-center w-6 h-6 shrink-0">{BOTTLE_SVG_DEFAULT}</span>
                       <div className="flex-1 min-w-0">
                         <div className="text-[12px] tracking-wider text-[#2a2620]">기본 병</div>
                         <div className="text-[9px] text-[#8b8278]">AION 기본 제공 병</div>
@@ -781,7 +1028,6 @@ const ScentBlend = () => {
                       )}
                     </button>
 
-                    {/* 내가 만든 병 목록 */}
                     {myBottles.map(bottle => (
                       <button
                         key={bottle.designId}
@@ -792,7 +1038,7 @@ const ScentBlend = () => {
                             : 'border-[#c9a961]/15 hover:border-[#c9a961]/40'
                         }`}
                       >
-                        <span className="text-lg">✨</span>
+                        <span className="flex items-center justify-center w-6 h-6 shrink-0">{BOTTLE_SVG_CUSTOM}</span>
                         <div className="flex-1 min-w-0">
                           <div className="text-[12px] tracking-wider text-[#2a2620] truncate">
                             {bottle.name || '나만의 병'}
@@ -881,6 +1127,29 @@ const ScentBlend = () => {
         )}
       </div>
     </div>
+  );
+};
+
+// ── 검색어 하이라이트 컴포넌트 ───────────────────────────────────────────────
+const HighlightText = ({ text, query, color }) => {
+  if (!text || !query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span
+        style={{
+          background: `${color}33`,
+          color: color,
+          borderRadius: '2px',
+          padding: '0 1px',
+        }}
+      >
+        {text.slice(idx, idx + query.length)}
+      </span>
+      {text.slice(idx + query.length)}
+    </>
   );
 };
 

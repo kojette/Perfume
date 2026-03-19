@@ -2,6 +2,14 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRecommendations } from '../../../services/recommendationApi';
 
+// ── 이미지 import: 파일 6개를 src/assets/ 에 넣어주세요 ──
+import imgFemale       from '../../../assets/female.png';
+import imgMale         from '../../../assets/male.png';
+import imgDate         from '../../../assets/date.png';
+import imgSpringSummer from '../../../assets/springsummer.png';
+import imgCool         from '../../../assets/cool.png';
+import imgFallWinter   from '../../../assets/fallwinter.png';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 /* ─── 연령대 정의 ─── */
@@ -68,14 +76,24 @@ const AGE_GROUPS = [
   },
 ];
 
+/* ─── 퀵 필터 이미지 배경 ─── */
+const FILTER_IMAGES = {
+  '여성':      imgFemale,
+  '남성':      imgMale,
+  '데이트':    imgDate,
+  '봄/여름':   imgSpringSummer,
+  '청량한':    imgCool,
+  '가을/겨울': imgFallWinter,
+};
+
 /* ─── 퀵 필터 정의 ─── */
 const QUICK_FILTERS = [
-  { icon: '👔', label: '남성', en: 'Man', type: 'gender', value: 'MALE' },
-  { icon: '👗', label: '여성', en: 'Woman', type: 'gender', value: 'FEMALE' },
-  { icon: '💕', label: '데이트', en: 'Date', type: 'tags', value: ['데이트'] },
-  { icon: '🌿', label: '청량한', en: 'Fresh', type: 'tags', value: ['청량한'] },
-  { icon: '🌸', label: '봄/여름', en: 'Spring', type: 'tags', value: ['플로럴'] },
-  { icon: '🍂', label: '가을/겨울', en: 'Autumn', type: 'tags', value: ['우디'] },
+  { label: '남성', en: 'Man',    type: 'gender', value: 'MALE'    },
+  { label: '여성', en: 'Woman',  type: 'gender', value: 'FEMALE'  },
+  { label: '데이트', en: 'Date', type: 'tags',   value: ['데이트'] },
+  { label: '청량한', en: 'Fresh',type: 'tags',   value: ['청량한'] },
+  { label: '봄/여름', en: 'Spring', type: 'tags', value: ['플로럴'] },
+  { label: '가을/겨울', en: 'Autumn', type: 'tags', value: ['우디'] },
 ];
 
 /* ─── 서브 컴포넌트 ─── */
@@ -96,7 +114,6 @@ function PerfumeCard({ perfume, onClick }) {
       onClick={() => onClick?.(perfume)}
       className="group flex items-center gap-5 p-5 bg-white border border-[#e8e2d6] hover:border-[#c9a961]/60 hover:shadow-lg transition-all duration-300 cursor-pointer"
     >
-      {/* Image placeholder */}
       <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-[#f5f0e8] to-[#e8ddc8] flex items-center justify-center group-hover:scale-105 transition-transform duration-300 overflow-hidden">
         {perfume.imageUrl ? (
           <img src={perfume.imageUrl} alt={perfume.name} className="w-full h-full object-cover" />
@@ -138,13 +155,11 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
 
   return (
     <div className="relative overflow-hidden border border-[#e8e2d6] bg-white">
-      {/* Header */}
       <div
         className="relative cursor-pointer select-none"
         style={{ background: `linear-gradient(135deg, ${palette.from}, ${palette.to})` }}
         onClick={() => setExpanded(!expanded)}
       >
-        {/* Decorative bg text */}
         <div className="absolute right-4 top-1/2 -translate-y-1/2 font-serif text-[80px] leading-none pointer-events-none select-none"
           style={{ color: palette.accent, opacity: 0.07 }}>
           {group.symbol}
@@ -152,7 +167,6 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
 
         <div className="relative px-8 py-6 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            {/* Age badge */}
             <div className="flex flex-col items-center justify-center w-16 h-16 border-2 rounded-full flex-shrink-0"
               style={{ borderColor: palette.accent, background: 'white' }}>
               <span className="font-serif text-lg leading-none" style={{ color: palette.accent }}>{group.label}</span>
@@ -185,8 +199,7 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
         </div>
       </div>
 
-      {/* Content */}
-      <div className={`overflow-hidden transition-all duration-500 ${expanded || perfumes.length > 0 ? '' : ''}`}
+      <div className={`overflow-hidden transition-all duration-500`}
         style={{ maxHeight: expanded ? '2000px' : perfumes.length > 0 ? '280px' : '0' }}>
 
         {loading ? (
@@ -195,7 +208,6 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
           </div>
         ) : perfumes.length > 0 ? (
           <div>
-            {/* Poem quote */}
             <div className="px-8 py-5 border-b border-[#e8e2d6]/50"
               style={{ background: `linear-gradient(to right, ${palette.from}30, transparent)` }}>
               <p className="text-xs italic text-[#8b8278] leading-loose whitespace-pre-line tracking-wider">
@@ -228,22 +240,92 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
   );
 }
 
+/* ─── 퀵 필터 버튼 컴포넌트 ─── */
+function QuickFilterButton({ filter, isActive, onClick }) {
+  const imgSrc = FILTER_IMAGES[filter.label];
+
+  return (
+    <button
+      onClick={onClick}
+      className="relative overflow-hidden flex flex-col items-center justify-end gap-1 border transition-all duration-300 min-h-[110px]"
+      style={{
+        borderColor: isActive ? '#c9a961' : '#e8e2d6',
+        padding: 0,
+      }}
+    >
+      {/* 이미지 배경 — object-cover로 빈 곳 없이 꽉 채움 */}
+      {imgSrc && (
+        <img
+          src={imgSrc}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          style={{ opacity: isActive ? 0.55 : 0.35, transition: 'opacity 0.25s' }}
+        />
+      )}
+
+      {/* 텍스트 가독성을 위한 하단 그라디언트 오버레이 */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: isActive
+            ? 'linear-gradient(to top, rgba(26,21,16,0.72) 0%, rgba(26,21,16,0.18) 55%, transparent 100%)'
+            : 'linear-gradient(to top, rgba(26,21,16,0.55) 0%, rgba(26,21,16,0.08) 55%, transparent 100%)',
+          transition: 'background 0.25s',
+        }}
+      />
+
+      {/* 활성 시 골드 테두리 내부 강조 */}
+      {isActive && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ boxShadow: 'inset 0 0 0 2px #c9a961' }}
+        />
+      )}
+
+      {/* 텍스트 레이어 */}
+      <div className="relative z-10 flex flex-col items-center gap-0.5 pb-3 pt-2">
+        <span
+          className="text-[12px] font-medium tracking-wider"
+          style={{ color: isActive ? '#c9a961' : 'rgba(255,255,255,0.92)' }}
+        >
+          {filter.label}
+        </span>
+        <span
+          className="text-[9px] tracking-widest"
+          style={{ color: isActive ? 'rgba(201,169,97,0.8)' : 'rgba(255,255,255,0.55)' }}
+        >
+          {filter.en}
+        </span>
+      </div>
+    </button>
+  );
+}
+
 /* ─── 메인 컴포넌트 ─── */
 export default function Recommend() {
   const navigate = useNavigate();
+
+  // 관리자 여부 (실제 프로젝트에 맞게 교체)
+  const isAdmin = sessionStorage.getItem('role') === 'ADMIN';
+
+  // 히어로 편집 상태
+  const [heroEditing, setHeroEditing]   = useState(false);
+  const [heroSubtitle, setHeroSubtitle] = useState('AION Parfums');
+  const [heroTitle,    setHeroTitle]    = useState('RECOMMEND');
+  const [heroDesc,     setHeroDesc]     = useState('당신을 위한 신화의 향');
+
   const [perfumeData, setPerfumeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'age'
+  const [activeTab, setActiveTab] = useState('all');
 
-  // 필터
   const [searchTerm, setSearchTerm] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedGender, setSelectedGender] = useState('');
   const [sortBy, setSortBy] = useState('latest');
 
-  // 연령별 데이터
   const [ageData, setAgeData] = useState({});
   const [ageLoading, setAgeLoading] = useState(false);
 
@@ -251,9 +333,7 @@ export default function Recommend() {
     navigate('/collections', { state: { targetPerfumeId: perfume.id } });
   };
 
-  useEffect(() => {
-    fetchPerfumes();
-  }, [sortBy]);
+  useEffect(() => { fetchPerfumes(); }, [sortBy]);
 
   useEffect(() => {
     const t = setTimeout(() => { fetchPerfumes(); }, 500);
@@ -302,7 +382,6 @@ export default function Recommend() {
     }
   };
 
-  /* 연령별: 전용 API 엔드포인트 사용 */
   const fetchAgeGroupData = async () => {
     setAgeLoading(true);
     const result = {};
@@ -313,19 +392,12 @@ export default function Recommend() {
           if (!res.ok) throw new Error();
           const data = await res.json();
           result[group.id] = (data || []).map(p => ({
-            id: p.id,
-            name: p.name,
-            nameEn: p.nameEn || '',
-            price: p.salePrice || p.price,
-            originalPrice: p.originalPrice,
-            discountRate: p.discountRate || 0,
-            tags: p.tags || [],
-            rating: p.rating || 0,
-            brand: p.brandName || '',
-            imageUrl: p.imageUrl,
+            id: p.id, name: p.name, nameEn: p.nameEn || '',
+            price: p.salePrice || p.price, originalPrice: p.originalPrice,
+            discountRate: p.discountRate || 0, tags: p.tags || [],
+            rating: p.rating || 0, brand: p.brandName || '', imageUrl: p.imageUrl,
           }));
         } catch {
-          // fallback: 기존 getRecommendations API + 태그 필터
           try {
             const params = { tags: group.tags, sortBy: 'rating', page: 0, size: 8 };
             const fallbackRes = await getRecommendations(params);
@@ -346,29 +418,16 @@ export default function Recommend() {
   };
 
   const handleQuickFilter = (filter) => {
-
     if (filter.type === 'gender') {
-      setSelectedGender(prev =>
-        prev === filter.value ? '' : filter.value
-      );
-
+      setSelectedGender(prev => prev === filter.value ? '' : filter.value);
       return;
     }
-
     if (filter.type === 'tags') {
-
-      const tag = filter.value;
-
-      setSelectedTags(prev => {
-
-        if (prev.includes(tag)) {
-          return prev.filter(t => t !== tag);
-        }
-
-        return [...prev, tag];
-      });
+      const tag = filter.value[0];
+      setSelectedTags(prev =>
+        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+      );
     }
-
   };
 
   const handleKeyDown = (e) => {
@@ -382,22 +441,13 @@ export default function Recommend() {
   };
 
   const isFilterActive = (filter) => {
-
-    if (filter.type === 'gender') {
-      return selectedGender === filter.value;
-    }
-
-    if (filter.type === 'tags') {
-      return selectedTags.includes(filter.value);
-    }
-
+    if (filter.type === 'gender') return selectedGender === filter.value;
+    if (filter.type === 'tags') return selectedTags.includes(filter.value[0]);
     return false;
-
   };
 
   const filteredPerfumes = useMemo(() => perfumeData, [perfumeData]);
 
-  /* ── RENDER ── */
   return (
     <main className="min-h-screen bg-[#faf8f3]">
       <style>{`
@@ -414,22 +464,85 @@ export default function Recommend() {
         .scrollbar-thin::-webkit-scrollbar-thumb { background: #c9a961; border-radius: 4px; }
       `}</style>
 
-      {/* ── HERO ── */}
-      <div className="relative bg-[#1a1510] py-20 overflow-hidden">
+      {/* ── HERO — mt-[-2px]로 배너 틈 제거 ── */}
+      <div className="relative bg-[#1a1510] py-20 overflow-hidden mt-[-2px]">
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #c9a961 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#1a1510]" />
-
-        {/* Big background text */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
           <span className="font-serif text-[20vw] text-[#c9a961]/3 leading-none">RECOMMEND</span>
         </div>
 
+        {/* 관리자 편집 버튼 */}
+        {isAdmin && (
+          <div className="absolute top-4 right-4 z-20 flex gap-2">
+            {heroEditing ? (
+              <>
+                <button
+                  onClick={() => setHeroEditing(false)}
+                  className="px-3 py-1.5 text-[10px] tracking-widest bg-[#c9a961] text-[#1a1510] hover:bg-[#e0c070] transition-colors"
+                >
+                  저장
+                </button>
+                <button
+                  onClick={() => setHeroEditing(false)}
+                  className="px-3 py-1.5 text-[10px] tracking-widest border border-white/20 text-white/50 hover:text-white transition-colors"
+                >
+                  취소
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setHeroEditing(true)}
+                className="px-3 py-1.5 text-[10px] tracking-widest border border-[#c9a961]/40 text-[#c9a961]/70 hover:border-[#c9a961] hover:text-[#c9a961] transition-colors flex items-center gap-1.5"
+              >
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                  <path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                </svg>
+                히어로 편집
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="relative text-center px-6 fade-up">
-          <p className="text-[10px] tracking-[0.8em] text-[#c9a961]/60 uppercase mb-4">AION Parfums</p>
-          <h1 className="font-serif text-5xl md:text-6xl tracking-[0.4em] text-white mb-4">RECOMMEND</h1>
-          <GoldDivider />
-          <p className="text-[#c9a961]/50 italic text-sm tracking-widest mt-4">당신을 위한 신화의 향</p>
+          {heroEditing ? (
+            /* ── 편집 모드 ── */
+            <div className="flex flex-col items-center gap-3 max-w-md mx-auto">
+              <input
+                value={heroSubtitle}
+                onChange={e => setHeroSubtitle(e.target.value)}
+                className="w-full text-center bg-white/10 border border-[#c9a961]/40 text-[#c9a961]/80 text-[10px] tracking-[0.8em] uppercase px-3 py-2 outline-none focus:border-[#c9a961] transition-colors placeholder-[#c9a961]/30"
+                placeholder="서브타이틀 (예: AION Parfums)"
+              />
+              <input
+                value={heroTitle}
+                onChange={e => setHeroTitle(e.target.value)}
+                className="w-full text-center bg-white/10 border border-[#c9a961]/40 text-white font-serif text-3xl tracking-[0.4em] px-3 py-2 outline-none focus:border-[#c9a961] transition-colors placeholder-white/30"
+                placeholder="메인 타이틀"
+              />
+              <div className="w-full flex items-center gap-3">
+                <div className="flex-1 h-[1px] bg-[#c9a961]/20" />
+                <span className="text-[#c9a961]/30 text-xs">◆</span>
+                <div className="flex-1 h-[1px] bg-[#c9a961]/20" />
+              </div>
+              <input
+                value={heroDesc}
+                onChange={e => setHeroDesc(e.target.value)}
+                className="w-full text-center bg-white/10 border border-[#c9a961]/40 text-[#c9a961]/60 italic text-sm tracking-widest px-3 py-2 outline-none focus:border-[#c9a961] transition-colors placeholder-[#c9a961]/20"
+                placeholder="설명 문구"
+              />
+              <p className="text-[9px] tracking-widest text-white/20 mt-1">* 저장 시 이 세션에만 반영됩니다. DB 연동은 별도 API 호출이 필요합니다.</p>
+            </div>
+          ) : (
+            /* ── 일반 모드 ── */
+            <>
+              <p className="text-[10px] tracking-[0.8em] text-[#c9a961]/60 uppercase mb-4">{heroSubtitle}</p>
+              <h1 className="font-serif text-5xl md:text-6xl tracking-[0.4em] text-white mb-4">{heroTitle}</h1>
+              <GoldDivider />
+              <p className="text-[#c9a961]/50 italic text-sm tracking-widest mt-4">{heroDesc}</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -440,9 +553,7 @@ export default function Recommend() {
           <button
             onClick={() => setActiveTab('all')}
             className={`flex-1 py-4 text-xs tracking-[0.4em] uppercase transition-all duration-300 ${
-              activeTab === 'all'
-                ? 'bg-[#1a1510] text-[#c9a961]'
-                : 'bg-white text-[#8b8278] hover:text-[#c9a961]'
+              activeTab === 'all' ? 'bg-[#1a1510] text-[#c9a961]' : 'bg-white text-[#8b8278] hover:text-[#c9a961]'
             }`}
           >
             전체 추천
@@ -451,9 +562,7 @@ export default function Recommend() {
           <button
             onClick={() => setActiveTab('age')}
             className={`flex-1 py-4 text-xs tracking-[0.4em] uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
-              activeTab === 'age'
-                ? 'bg-[#1a1510] text-[#c9a961]'
-                : 'bg-white text-[#8b8278] hover:text-[#c9a961]'
+              activeTab === 'age' ? 'bg-[#1a1510] text-[#c9a961]' : 'bg-white text-[#8b8278] hover:text-[#c9a961]'
             }`}
           >
             <span>연령별 추천</span>
@@ -464,24 +573,18 @@ export default function Recommend() {
         {/* ══════════ 전체 추천 탭 ══════════ */}
         {activeTab === 'all' && (
           <div className="space-y-8">
-            {/* Quick filters */}
+
+            {/* ── 퀵 필터 (SVG 배경 선화 버튼) ── */}
             <div className="fade-up delay-1">
               <p className="text-[10px] tracking-[0.5em] text-[#8b8278] uppercase mb-4">QUICK FILTER</p>
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                 {QUICK_FILTERS.map((f, i) => (
-                  <button
+                  <QuickFilterButton
                     key={i}
+                    filter={f}
+                    isActive={isFilterActive(f)}
                     onClick={() => handleQuickFilter(f)}
-                    className={`py-4 flex flex-col items-center gap-1.5 border transition-all duration-200 ${
-                      isFilterActive(f)
-                        ? 'border-[#c9a961] bg-[#c9a961]/5 text-[#c9a961]'
-                        : 'border-[#e8e2d6] bg-white text-[#6f6756] hover:border-[#c9a961]/50'
-                    }`}
-                  >
-                    <span className="text-2xl">{f.icon}</span>
-                    <span className="text-[11px] font-medium tracking-wider">{f.label}</span>
-                    <span className={`text-[9px] tracking-widest ${isFilterActive(f) ? 'text-[#c9a961]/70' : 'text-[#a39d8f]'}`}>{f.en}</span>
-                  </button>
+                  />
                 ))}
               </div>
             </div>
@@ -600,7 +703,6 @@ export default function Recommend() {
         {/* ══════════ 연령별 추천 탭 ══════════ */}
         {activeTab === 'age' && (
           <div className="space-y-4 fade-up">
-            {/* Intro */}
             <div className="border border-[#e8e2d6] bg-white p-8 text-center mb-8">
               <p className="text-[10px] tracking-[0.6em] text-[#c9a961] uppercase mb-3">AGE-BASED CURATION</p>
               <h2 className="font-serif text-2xl text-[#1a1510] tracking-wider mb-3">연령별 맞춤 향수</h2>
@@ -611,7 +713,6 @@ export default function Recommend() {
               </p>
             </div>
 
-            {/* Age group cards */}
             {AGE_GROUPS.map((group, idx) => (
               <div key={group.id} className="fade-up" style={{ animationDelay: `${idx * 0.08}s`, opacity: 0 }}>
                 <AgeGroupSection
@@ -623,7 +724,6 @@ export default function Recommend() {
               </div>
             ))}
 
-            {/* Bottom note */}
             <div className="pt-6 text-center">
               <GoldDivider />
               <p className="text-[10px] tracking-[0.3em] text-[#a39d8f] italic mt-4">

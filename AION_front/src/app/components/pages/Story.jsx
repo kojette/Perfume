@@ -705,7 +705,7 @@ export default function Story() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0e0c09] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0e0c09] flex items-center justify-center" style={{ marginTop: '-2px' }}>
         <div className="text-center">
           <div className="font-serif text-6xl text-[#c9a961]/30 mb-8 animate-shimmer">ΑΙΩΝ</div>
           <div className="w-1 h-16 bg-gradient-to-b from-[#c9a961] to-transparent mx-auto animate-pulse" />
@@ -715,7 +715,7 @@ export default function Story() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f3] font-sans">
+    <div className="min-h-screen bg-[#faf8f3] font-sans" style={{ marginTop: '-2px' }}>
       {/* HERO */}
       <HeroSection />
 
