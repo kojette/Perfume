@@ -257,13 +257,19 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 배경 이미지
+            // 배경 이미지 - isAsset이면 로컬 asset, 아니면 네트워크
             if (hasImages)
-              Image.network(
-                hero.images[_currentHeroIndex],
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: _dark),
-              )
+              hero.isAsset
+                  ? Image.asset(
+                      hero.images[_currentHeroIndex],
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(color: _dark),
+                    )
+                  : Image.network(
+                      hero.images[_currentHeroIndex],
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(color: _dark),
+                    )
             else
               Container(
                 decoration: BoxDecoration(

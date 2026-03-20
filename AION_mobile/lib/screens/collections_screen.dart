@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/api_config.dart';
 
 const _gold = Color(0xFFC9A961);
@@ -73,6 +74,7 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
     }
   }
 
+  // [FIX] 향수 목록 조회 후 Supabase에서 이미지 batch 주입
   Future<void> _fetchPerfumes({bool reset = false}) async {
     if (reset) {
       setState(() {
@@ -100,7 +102,6 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
           items = data;
           isLast = items.length < _pageSize;
         } else if (data is Map) {
-          // Spring Page 응답 구조
           if (data['content'] is List) {
             items = data['content'];
             isLast = data['last'] == true || items.length < _pageSize;
@@ -113,9 +114,13 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
           }
         }
 
+        // ✅ [FIX] Supabase Perfume_Images에서 thumbnail 이미지 batch 조회
+        final rawList = items.cast<Map<String, dynamic>>();
+        final enriched = await _injectImages(rawList);
+
         if (mounted) {
           setState(() {
-            _perfumes.addAll(items.cast<Map<String, dynamic>>());
+            _perfumes.addAll(enriched);
             _hasMore = !isLast;
             if (_hasMore) _page++;
           });
@@ -135,6 +140,44 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
         }
         _initialPerfumeId = null;
       }
+    }
+  }
+
+  /// Supabase Perfume_Images에서 thumbnail URL을 batch 조회하여 Map에 주입
+  Future<List<Map<String, dynamic>>> _injectImages(
+    List<Map<String, dynamic>> items,
+  ) async {
+    if (items.isEmpty) return items;
+    try {
+      final supabase = Supabase.instance.client;
+      final ids = items
+          .map((p) => (p['perfumeId'] ?? p['perfume_id']) as int?)
+          .whereType<int>()
+          .toList();
+
+      if (ids.isEmpty) return items;
+
+      final imgData = await supabase
+          .from('Perfume_Images')
+          .select('perfume_id, image_url')
+          .inFilter('perfume_id', ids)
+          .eq('is_thumbnail', true);
+
+      final imgMap = <int, String>{
+        for (final img in imgData as List)
+          if (img['perfume_id'] != null && img['image_url'] != null)
+            img['perfume_id'] as int: img['image_url'] as String,
+      };
+
+      return items.map((p) {
+        final pid = (p['perfumeId'] ?? p['perfume_id']) as int?;
+        final url = pid != null ? imgMap[pid] : null;
+        if (url == null) return p;
+        return {...p, 'imageUrl': url, 'thumbnail': url};
+      }).toList();
+    } catch (e) {
+      debugPrint('이미지 batch 조회 오류: $e');
+      return items;
     }
   }
 
@@ -278,7 +321,6 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
               ),
             ),
           ),
-          // 추가 로딩 인디케이터
           if (_isFetchingMore)
             const SliverToBoxAdapter(
               child: Padding(
@@ -291,7 +333,6 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
                 ),
               ),
             ),
-          // 마지막 도달 표시
           if (!_hasMore && _perfumes.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -311,7 +352,6 @@ class _CollectionsScreenState extends State<CollectionsScreen> {
     );
   }
 
-  // ... (나머지 위젯 메서드들은 동일)
   Widget _buildEmptyOverlay() {
     return Container(
       color: _darkDeep,

@@ -25,48 +25,68 @@ class ApiService {
 
   // ═══════════════════════════════════════════════════════════════
   // Hero 배너
+  // [FIX] hero_images를 FK join 대신 별도 쿼리로 분리
+  // → Supabase Foreign Key 미등록 시 join이 null 반환하는 문제 해결
   // ═══════════════════════════════════════════════════════════════
 
   static Future<HeroData?> getActiveHero() async {
-  try {
-    final supabase = Supabase.instance.client;
+    try {
+      final supabase = Supabase.instance.client;
 
-    final data = await supabase
-        .from('hero_history')
-        .select('title, subtitle, tagline, hero_images(image_url)')
-        .eq('is_active', true)
-        .limit(1);
+      // 프론트(Hero.jsx)와 동일한 방식
+      // hero_history PK = 'id' (hero_id 아님!)
+      // hero_images FK join은 Supabase에 등록되어 있어 작동함
+      final heroList = await supabase
+          .from('hero_history')
+          .select('id, title, subtitle, tagline, hero_images(image_url)')
+          .eq('is_active', true)
+          .limit(1);
 
-    if (data.isEmpty) return null;
+      if (heroList.isEmpty) return null;
+      final item = heroList[0];
 
-    final item = data[0];
+      // join 결과 파싱
+      final imagesList = item['hero_images'] as List? ?? [];
+      List<String> images = imagesList
+          .map((img) => img['image_url'] as String? ?? '')
+          .where((url) => url.isNotEmpty)
+          .toList();
 
-    final imagesList = item['hero_images'] as List?;
-    final images = imagesList?.map((img) => img['image_url'] as String).toList() ?? [];
+      // join 결과 비어있으면 hero id로 별도 쿼리 fallback
+      if (images.isEmpty) {
+        final heroId = item['id'];
+        if (heroId != null) {
+          try {
+            final imgList = await supabase
+                .from('hero_images')
+                .select('image_url')
+                .eq('hero_id', heroId);
+            images = (imgList as List)
+                .map((img) => img['image_url'] as String? ?? '')
+                .where((url) => url.isNotEmpty)
+                .toList();
+          } catch (imgErr) {
+            debugPrint('Hero 이미지 fallback 오류: $imgErr');
+          }
+        }
+      }
 
-    return HeroData(
-      title: item['title'] ?? 'AION',
-      subtitle: item['subtitle'] ?? '영원한 그들의 향을 담다',
-      tagline: item['tagline'] ?? 'ESSENCE OF DIVINE',
-      images: images,
-    );
-  } catch (e) {
-    debugPrint('Hero 조회 오류: $e');
-    return null;
+      return HeroData(
+        title: item['title'] ?? 'AION',
+        subtitle: item['subtitle'] ?? '영원한 그들의 향을 담다',
+        tagline: item['tagline'] ?? 'ESSENCE OF DIVINE',
+        images: images,
+      );
+    } catch (e) {
+      debugPrint('Hero 조회 오류: $e');
+      return null;
+    }
   }
-}
 
   // ═══════════════════════════════════════════════════════════════
-  // 향수 목록 및 검색
-  //
-  // 백엔드 /api/perfumes 는 Spring Page<Perfume> 반환:
-  // {
-  //   "content": [ { "perfumeId": 1, "name": "...", "brand": {...}, ... } ],
-  //   "totalElements": 100,
-  //   "totalPages": 5,
-  //   "size": 20,
-  //   "number": 0
-  // }
+  // 향수 목록 + Supabase 이미지 일괄 매핑
+  // [FIX] Spring API 응답에 imageUrl 없음 → Supabase Perfume_Images에서
+  //       is_thumbnail=true 레코드를 batch 조회 후 주입
   // ═══════════════════════════════════════════════════════════════
 
   static Future<List<Perfume>> fetchPerfumes({
@@ -74,38 +94,36 @@ class ApiService {
     int size = 20,
   }) async {
     try {
-      // 쿼리 파라미터 없이 단순 호출 (백엔드가 파라미터 거부함)
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/perfumes'),
       );
 
       if (response.statusCode == 200) {
-        // ⭐ 한글 깨짐 방지: UTF-8 디코딩
         final decoded = utf8.decode(response.bodyBytes);
         final data = jsonDecode(decoded);
 
         List items = [];
-
         if (data is List) {
-          // 케이스 1: 바로 배열
           items = data;
         } else if (data is Map) {
           if (data.containsKey('content') && data['content'] is List) {
-            // 케이스 2: Spring Page { "content": [...] }
             items = data['content'];
           } else if (data.containsKey('data') && data['data'] is List) {
-            // 케이스 3: 래핑된 { "data": [...] }
             items = data['data'];
           } else if (data.containsKey('data') &&
               data['data'] is Map &&
               data['data']['content'] is List) {
-            // 케이스 4: 이중 래핑
             items = data['data']['content'];
           }
         }
 
-        return items
-            .map((e) => Perfume.fromJson(e as Map<String, dynamic>))
+        // 이미지 URL 주입
+        final enriched = await _enrichWithImages(
+          items.cast<Map<String, dynamic>>(),
+        );
+
+        return enriched
+            .map((e) => Perfume.fromJson(e))
             .toList();
       }
 
@@ -114,6 +132,169 @@ class ApiService {
     } catch (e) {
       debugPrint('향수 목록 조회 오류: $e');
       return [];
+    }
+  }
+
+  /// Supabase Perfume_Images 테이블에서 thumbnail 이미지를 batch 조회하여
+  /// 향수 Map 리스트에 imageUrl / thumbnail 필드를 주입합니다.
+  static Future<List<Map<String, dynamic>>> _enrichWithImages(
+    List<Map<String, dynamic>> perfumes,
+  ) async {
+    if (perfumes.isEmpty) return perfumes;
+
+    try {
+      final supabase = Supabase.instance.client;
+      final ids = perfumes
+          .map((p) => (p['perfumeId'] ?? p['perfume_id']) as int?)
+          .whereType<int>()
+          .toList();
+
+      if (ids.isEmpty) return perfumes;
+
+      final imgData = await supabase
+          .from('Perfume_Images')
+          .select('perfume_id, image_url')
+          .inFilter('perfume_id', ids)
+          .eq('is_thumbnail', true);
+
+      // perfume_id → image_url 맵 생성
+      final imgMap = <int, String>{
+        for (final img in imgData as List)
+          if (img['perfume_id'] != null && img['image_url'] != null)
+            img['perfume_id'] as int: img['image_url'] as String,
+      };
+
+      return perfumes.map((p) {
+        final pid = (p['perfumeId'] ?? p['perfume_id']) as int?;
+        final url = pid != null ? imgMap[pid] : null;
+        return {
+          ...p,
+          if (url != null) 'imageUrl': url,
+          if (url != null) 'thumbnail': url,
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('이미지 batch 조회 오류: $e');
+      return perfumes; // 실패 시 원본 반환 (이미지 없이 표시)
+    }
+  }
+
+  /// 추천 페이지용: 필터/정렬 파라미터를 포함한 향수 조회
+  /// Spring API + Supabase 이미지 자동 주입
+  static Future<List<Map<String, dynamic>>> fetchPerfumesRaw({
+    String? search,
+    List<String>? tags,
+    String? gender,
+    String sortBy = 'latest',
+    int page = 0,
+    int size = 50,
+  }) async {
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Supabase에서 직접 조회 (프론트와 동일한 방식)
+      // filter 단계와 order 단계를 분리하여 타입 충돌 방지
+      var filterQuery = supabase
+          .from('Perfumes')
+          .select('''
+            perfume_id, name, name_en, description,
+            price, sale_price, sale_rate, brand_id,
+            gender, concentration,
+            Brands(brand_name),
+            Perfume_Images(image_url, is_thumbnail),
+            Preference_Tags:Perfume_Tags(tag_name:Preference_Tags(tag_name))
+          ''')
+          .eq('is_active', true);
+
+      if (gender != null && gender.isNotEmpty) {
+        filterQuery = filterQuery.eq('gender', gender);
+      }
+
+      // order()는 PostgrestTransformBuilder를 반환하므로 별도 변수로 받음
+      final String orderCol = (sortBy == 'price-low' || sortBy == 'price-high')
+          ? 'price'
+          : 'name';
+      final bool ascending = sortBy != 'price-high';
+
+      final data = await filterQuery
+          .order(orderCol, ascending: ascending)
+          .range(page * size, (page + 1) * size - 1);
+      List<Map<String, dynamic>> items = (data as List).cast<Map<String, dynamic>>();
+
+      // 검색어 필터 (클라이언트 사이드)
+      if (search != null && search.isNotEmpty) {
+        final s = search.toLowerCase();
+        items = items.where((p) {
+          final name = (p['name'] ?? '').toString().toLowerCase();
+          final nameEn = (p['name_en'] ?? '').toString().toLowerCase();
+          final brand = (p['Brands']?['brand_name'] ?? '').toString().toLowerCase();
+          return name.contains(s) || nameEn.contains(s) || brand.contains(s);
+        }).toList();
+      }
+
+      // 태그 필터 (클라이언트 사이드)
+      if (tags != null && tags.isNotEmpty) {
+        items = items.where((p) {
+          final pTags = (p['Preference_Tags'] as List? ?? [])
+              .map((t) => (t['tag_name'] ?? '').toString().toLowerCase())
+              .toList();
+          return tags.any((sel) => pTags.any((t) => t.contains(sel.toLowerCase())));
+        }).toList();
+      }
+
+      // 정규화
+      return items.map((p) {
+        final imgList = p['Perfume_Images'] as List? ?? [];
+        final thumbUrl = imgList
+            .where((i) => i['is_thumbnail'] == true)
+            .map((i) => i['image_url'] as String?)
+            .firstWhere((u) => u != null, orElse: () => null);
+        final tagList = (p['Preference_Tags'] as List? ?? [])
+            .map((t) => (t['tag_name'] ?? '').toString())
+            .where((t) => t.isNotEmpty)
+            .toList();
+        final salePrice = p['sale_price'];
+        final price = p['price'] ?? 0;
+        final saleRate = p['sale_rate'] ?? 0;
+        return {
+          'id': p['perfume_id'],
+          'perfumeId': p['perfume_id'],
+          'name': p['name'] ?? '',
+          'nameEn': p['name_en'] ?? '',
+          'brandName': p['Brands']?['brand_name'] ?? '',
+          'description': p['description'] ?? '',
+          'price': salePrice ?? price,
+          'originalPrice': price,
+          'salePrice': salePrice,
+          'saleRate': saleRate,
+          'discountRate': saleRate,
+          'imageUrl': thumbUrl,
+          'thumbnail': thumbUrl,
+          'tags': tagList,
+          'gender': p['gender'],
+          'concentration': p['concentration'],
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('Supabase 향수 조회 오류, Spring fallback: $e');
+      // fallback: Spring API
+      final list = await fetchPerfumes(page: page, size: size);
+      return list.map((p) => {
+        'id': p.id,
+        'perfumeId': p.id,
+        'name': p.name,
+        'nameEn': p.nameEn ?? '',
+        'brandName': p.brandName ?? '',
+        'price': p.displayPrice,
+        'originalPrice': p.price,
+        'salePrice': p.salePrice,
+        'saleRate': p.saleRate,
+        'discountRate': p.saleRate,
+        'imageUrl': p.imageUrl,
+        'thumbnail': p.imageUrl,
+        'tags': p.tags ?? [],
+        'gender': p.gender,
+      }).toList();
     }
   }
 
@@ -126,7 +307,37 @@ class ApiService {
       if (response.statusCode == 200) {
         final decoded = utf8.decode(response.bodyBytes);
         final data = jsonDecode(decoded);
-        return Perfume.fromJson(data as Map<String, dynamic>);
+        final perfume = Perfume.fromJson(data as Map<String, dynamic>);
+
+        // 이미지 없으면 Supabase에서 보완
+        if (perfume.imageUrl == null) {
+          try {
+            final supabase = Supabase.instance.client;
+            final imgs = await supabase
+                .from('Perfume_Images')
+                .select('image_url')
+                .eq('perfume_id', perfumeId)
+                .eq('is_thumbnail', true)
+                .limit(1);
+            if ((imgs as List).isNotEmpty) {
+              final url = imgs[0]['image_url'] as String?;
+              if (url != null) {
+                return Perfume(
+                  id: perfume.id, name: perfume.name, nameEn: perfume.nameEn,
+                  brandName: perfume.brandName, imageUrl: url,
+                  tags: perfume.tags, category: perfume.category,
+                  price: perfume.price, salePrice: perfume.salePrice,
+                  saleRate: perfume.saleRate, volumeMl: perfume.volumeMl,
+                  concentration: perfume.concentration, gender: perfume.gender,
+                  season: perfume.season, occasion: perfume.occasion,
+                  avgRating: perfume.avgRating, reviewCount: perfume.reviewCount,
+                  description: perfume.description, isActive: perfume.isActive,
+                );
+              }
+            }
+          } catch (_) {}
+        }
+        return perfume;
       }
       return null;
     } catch (e) {
@@ -164,13 +375,15 @@ class ApiService {
           }
         }
 
-        return items.map((e) {
-          // { perfume: {...} } 래핑 or 직접 구조 모두 처리
+        final rawList = items.map((e) {
           final perfumeData = (e is Map && e.containsKey('perfume'))
               ? e['perfume'] as Map<String, dynamic>
               : e as Map<String, dynamic>;
-          return Perfume.fromJson(perfumeData);
+          return perfumeData;
         }).toList();
+
+        final enriched = await _enrichWithImages(rawList.cast<Map<String, dynamic>>());
+        return enriched.map((e) => Perfume.fromJson(e)).toList();
       }
       return [];
     } catch (e) {
@@ -183,12 +396,10 @@ class ApiService {
     try {
       final token = await _getToken();
       if (token.isEmpty) return false;
-
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/wishlist/$perfumeId'),
         headers: _authHeaders(token),
       );
-
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       debugPrint('위시리스트 추가 오류: $e');
@@ -200,12 +411,10 @@ class ApiService {
     try {
       final token = await _getToken();
       if (token.isEmpty) return false;
-
       final response = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/api/wishlist/$perfumeId'),
         headers: _authHeaders(token),
       );
-
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       debugPrint('위시리스트 삭제 오류: $e');
@@ -217,12 +426,10 @@ class ApiService {
     try {
       final token = await _getToken();
       if (token.isEmpty) return false;
-
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/wishlist/check/$perfumeId'),
         headers: _authHeaders(token),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['inWishlist'] ?? false;
@@ -302,12 +509,10 @@ class ApiService {
     try {
       final token = await _getToken();
       if (token.isEmpty) return null;
-
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/members/profile'),
         headers: _authHeaders(token),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['data'];
@@ -346,7 +551,6 @@ class ApiService {
           'profileImage',
           profileImageFile.path,
         ));
-
         final streamedResponse = await request.send();
         return streamedResponse.statusCode == 200;
       } else {
@@ -373,13 +577,11 @@ class ApiService {
     try {
       final token = await _getToken();
       if (token.isEmpty) return false;
-
       final response = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/api/members/delete'),
         headers: _authHeaders(token),
         body: jsonEncode({'reason': reason}),
       );
-
       return response.statusCode == 200;
     } catch (e) {
       debugPrint('회원 탈퇴 오류: $e');

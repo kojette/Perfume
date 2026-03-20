@@ -49,13 +49,13 @@ export function EventBanner() {
   return (
     <>
       <div
-        className="w-full relative min-h-[44px] flex items-center"
+        className="w-full relative h-[44px] flex items-center overflow-hidden"
         style={{ backgroundColor: bannerColors.bg, color: bannerColors.text }}
       >
         {!loading && banners[currentIdx] && (
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-center gap-3 w-full">
+          <div className="max-w-7xl mx-auto px-6 flex items-center justify-center gap-3 w-full">
             <span className="text-lg">{banners[currentIdx].icon}</span>
-            <span className="text-sm tracking-[0.2em] font-medium">
+            <span className="text-sm tracking-[0.2em] font-medium transition-opacity duration-500">
               {banners[currentIdx].text}
             </span>
           </div>

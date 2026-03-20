@@ -46,9 +46,7 @@ flutter:
 
   # 이미지 에셋 (기존 설정 유지)
   assets:
-    - assets/11.png
-    - assets/12.jpg
-    - assets/13.jpg
+    - assets/
 
   # 폰트 (필요시 추가)
   # fonts:
