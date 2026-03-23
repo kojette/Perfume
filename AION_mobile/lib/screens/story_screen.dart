@@ -36,7 +36,7 @@ const _mockHistory = [
   },
   {
     'storyId': 4,
-    'yearLabel': '2024',
+    'yearLabel': '2026',
     'title': '영원한 현재',
     'subtitle': 'Into the Eternal Now',
     'content':

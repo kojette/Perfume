@@ -110,7 +110,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground">
           <p className="italic">
-            © 2025 OLYMPUS PARFUMS. All rights reserved.
+            © 2026 OLYMPUS PARFUMS. All rights reserved.
           </p>
           <div className="flex gap-8">
             <Link to="/privacy" className="hover:text-[#c9a961] italic">

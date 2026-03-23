@@ -17,6 +17,7 @@ import 'screens/find_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/profile_edit_screen.dart';
 import 'screens/wishlist_screen.dart';
+import 'screens/mypage_screen.dart';
 
 import 'screens/signature_screen.dart';
 import 'screens/collections_screen.dart';
@@ -38,15 +39,8 @@ final Map<String, WidgetBuilder> routes = {
   '/reset-password':     (context) => const ResetPasswordScreen(),
   '/profile/edit':       (context) => const ProfileEditScreen(),
   '/wishlist':           (context) => const WishlistScreen(),
+  '/mypage':             (context) => const MyPageScreen(),
 
   '/signature': (context) => const SignatureScreen(),
   '/collections': (context) => const CollectionsScreen(),
 };
-
-/// 동적 파라미터가 필요한 라우트는 여기서 처리
-/// 예: /orders/:id  →  Navigator.push 로 직접 사용
-///
-/// 사용 방법:
-///   Navigator.push(context, MaterialPageRoute(
-///     builder: (_) => OrderReceiptScreen(orderId: id),
-///   ));

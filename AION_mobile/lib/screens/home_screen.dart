@@ -3,6 +3,7 @@ import 'dart:async';
 import '../services/api_service_extended.dart';
 import '../models/hero_data.dart';
 import '../models/perfume.dart';
+import '../widgets/event_banner_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,8 +42,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final heroData = await ApiService.getActiveHero();
       final perfumes = await ApiService.fetchPerfumes(size: 8);
       if (mounted) {
+        final resolvedHero = (heroData != null && heroData.images.isNotEmpty)
+            ? heroData
+            : HeroData.defaultHero;
         setState(() {
-          _heroData = heroData ?? HeroData.defaultHero;
+          _heroData = resolvedHero;
           _featuredPerfumes = perfumes;
         });
         if (_heroData!.images.isNotEmpty) {
@@ -66,7 +70,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: _bg,
-      // ─ 드로어 (사이드 메뉴) ─
       drawer: _buildDrawer(),
       body: RefreshIndicator(
         onRefresh: _loadData,
@@ -74,10 +77,9 @@ class _HomeScreenState extends State<HomeScreen> {
         child: CustomScrollView(
           slivers: [
             _buildSliverAppBar(),
+            SliverToBoxAdapter(child: EventBannerWidget()),
             _buildHeroSection(),
-            // 퀵 메뉴
             SliverToBoxAdapter(child: _buildQuickMenu()),
-            // Featured Products
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 40),
@@ -90,11 +92,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            // About
             SliverToBoxAdapter(child: _buildAboutSection()),
-            // 뉴스레터
             SliverToBoxAdapter(child: _buildNewsletterSection()),
-            // 푸터 링크
             SliverToBoxAdapter(child: _buildFooter()),
           ],
         ),
@@ -102,7 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── SliverAppBar ───────────────────────────────────────────
   Widget _buildSliverAppBar() {
     return SliverAppBar(
       backgroundColor: Colors.white,
@@ -131,12 +129,20 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () => Navigator.pushNamed(context, '/search'),
         ),
         IconButton(
+          icon: const Icon(Icons.notifications_outlined, color: _dark, size: 22),
+          onPressed: () {},
+        ),
+        IconButton(
           icon: const Icon(Icons.favorite_border, color: _dark, size: 22),
           onPressed: () => Navigator.pushNamed(context, '/wishlist'),
         ),
         IconButton(
           icon: const Icon(Icons.shopping_bag_outlined, color: _dark, size: 22),
           onPressed: () => Navigator.pushNamed(context, '/cart'),
+        ),
+        IconButton(
+          icon: const Icon(Icons.person_outline, color: _dark, size: 22),
+          onPressed: () => Navigator.pushNamed(context, '/mypage'),
         ),
       ],
       bottom: PreferredSize(
@@ -146,7 +152,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── 드로어 ─────────────────────────────────────────────────
   Widget _buildDrawer() {
     return Drawer(
       backgroundColor: const Color(0xFF0E0C09),
@@ -154,7 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 헤더
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
               child: Column(
@@ -168,7 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            // 메뉴 항목들
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -176,9 +179,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     _drawerItem(Icons.local_florist_outlined, '향수 추천', '/recommend'),
                     _drawerItem(Icons.menu_book_outlined, '컬렉션', null, onTap: () {
                       Navigator.pop(context);
-                      // MainScreen의 LIBRARY 탭으로 이동
-                      // main_screen index=1 이므로 부모 탭 전환이 필요하나
-                      // 여기서는 간단히 named route 사용
                     }),
                     _drawerItem(Icons.water_drop_outlined, '나만의 향 조합', '/custom'),
                     _drawerItem(Icons.store_outlined, '매장 안내', '/store'),
@@ -210,11 +210,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            // 하단
             Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
-                '© 2024 AION Perfume',
+                '© 2026 AION Perfume',
                 style: TextStyle(fontSize: 10, color: _gold.withOpacity(0.25), letterSpacing: 1),
               ),
             ),
@@ -246,7 +245,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── Hero ───────────────────────────────────────────────────
   Widget _buildHeroSection() {
     final hero = _heroData ?? HeroData.defaultHero;
     final hasImages = hero.images.isNotEmpty;
@@ -257,7 +255,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 배경 이미지 - isAsset이면 로컬 asset, 아니면 네트워크
             if (hasImages)
               hero.isAsset
                   ? Image.asset(
@@ -279,9 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-            // 다크 오버레이
             Container(color: Colors.black.withOpacity(0.38)),
-            // 텍스트
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -305,7 +300,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  // CTA 버튼
                   GestureDetector(
                     onTap: () => Navigator.pushNamed(context, '/recommend'),
                     child: Container(
@@ -323,7 +317,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            // 인디케이터
             if (hasImages && hero.images.length > 1)
               Positioned(
                 bottom: 20, left: 0, right: 0,
@@ -347,14 +340,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── 퀵 메뉴 ────────────────────────────────────────────────
   Widget _buildQuickMenu() {
     final items = [
-      {'icon': Icons.menu_book_outlined, 'label': 'LIBRARY', 'route': '/collections', 'tabIndex': 1},
-      {'icon': Icons.auto_fix_high_outlined, 'label': 'SIGNATURE', 'route': '/signature', 'tabIndex': 2},
-      {'icon': Icons.history_edu_outlined, 'label': 'STORY', 'route': '/story', 'tabIndex': 3},
-      {'icon': Icons.water_drop_outlined, 'label': 'CUSTOM', 'route': '/custom', 'tabIndex': null},
-      {'icon': Icons.store_outlined, 'label': 'STORE', 'route': '/store', 'tabIndex': null},
+      {'icon': Icons.menu_book_outlined, 'label': 'LIBRARY', 'route': '/collections'},
+      {'icon': Icons.auto_fix_high_outlined, 'label': 'SIGNATURE', 'route': '/signature'},
+      {'icon': Icons.history_edu_outlined, 'label': 'STORY', 'route': '/story'},
+      {'icon': Icons.water_drop_outlined, 'label': 'CUSTOM', 'route': '/custom'},
+      {'icon': Icons.store_outlined, 'label': 'STORE', 'route': '/store'},
     ];
 
     return Container(
@@ -370,11 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return GestureDetector(
                 onTap: () {
                   final route = item['route'] as String?;
-                  if (route != null) {
-                    Navigator.pushNamed(context, route);
-                  }
-                  // tabIndex가 있는 경우 부모 위젯에서 처리해야 하므로
-                  // 여기서는 단순 표시만
+                  if (route != null) Navigator.pushNamed(context, route);
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -405,7 +393,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── Featured Grid ───────────────────────────────────────────
   Widget _buildFeaturedGrid() {
     if (_featuredPerfumes.isEmpty) {
       return const Padding(
@@ -430,13 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPerfumeCard(Perfume perfume) {
     return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          '/collections',
-          arguments: perfume.id,
-        );
-      },
+      onTap: () => Navigator.pushNamed(context, '/collections', arguments: perfume.id),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -473,16 +454,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Spacer(),
                     Row(children: [
                       if (perfume.isOnSale) ...[
-                        Text(
-                          '₩${_numFmt(perfume.price)}',
-                          style: const TextStyle(color: _grey, fontSize: 9, decoration: TextDecoration.lineThrough),
-                        ),
+                        Text('₩${_numFmt(perfume.price)}',
+                            style: const TextStyle(color: _grey, fontSize: 9, decoration: TextDecoration.lineThrough)),
                         const SizedBox(width: 4),
                       ],
-                      Text(
-                        '₩${_numFmt(perfume.displayPrice)}',
-                        style: TextStyle(color: perfume.isOnSale ? Colors.red : _gold, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
+                      Text('₩${_numFmt(perfume.displayPrice)}',
+                          style: TextStyle(color: perfume.isOnSale ? Colors.red : _gold, fontSize: 12, fontWeight: FontWeight.w600)),
                     ]),
                   ],
                 ),
@@ -494,7 +471,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── About ──────────────────────────────────────────────────
   Widget _buildAboutSection() {
     return Container(
       padding: const EdgeInsets.all(36),
@@ -509,10 +485,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
           _buildOrnament(color: _gold),
           const SizedBox(height: 20),
-          const Text(
-            '영원의 신들이 머물던 향기',
-            style: TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 2, fontWeight: FontWeight.w300),
-          ),
+          const Text('영원의 신들이 머물던 향기',
+              style: TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 2, fontWeight: FontWeight.w300)),
           const SizedBox(height: 14),
           const Text(
             'AION은 그리스 신화 속 신들의 영원한 향기를 현대에 재현합니다.\n각 향수는 신들의 이야기를 담고 있으며,\n당신만의 신화를 만들어갑니다.',
@@ -524,7 +498,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── Newsletter ─────────────────────────────────────────────
   Widget _buildNewsletterSection() {
     final controller = TextEditingController();
     return Container(
@@ -572,7 +545,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── Footer ─────────────────────────────────────────────────
   Widget _buildFooter() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
@@ -599,7 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            '© 2024 AION Perfume. All rights reserved.',
+            '© 2026 AION Perfume. All rights reserved.',
             style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.25), letterSpacing: 0.5),
           ),
         ],
@@ -614,7 +586,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ─── 공통 유틸 ───────────────────────────────────────────────
   Widget _buildSectionTitle(String title) {
     return Column(children: [
       Text(title, style: const TextStyle(color: _dark, fontSize: 11, letterSpacing: 4)),

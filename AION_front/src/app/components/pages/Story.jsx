@@ -33,7 +33,7 @@ const MOCK_DATA = {
     },
     {
       storyId: 4,
-      yearLabel: '2024',
+      yearLabel: '2026',
       title: '영원한 현재',
       subtitle: 'Into the Eternal Now',
       content: '177년의 역사를 담아 AION은 새로운 신화를 씁니다. 전통 증류법과 현대 분자 조향 기술을 결합하여 과거와 미래를 잇는 향수를 창조합니다.',

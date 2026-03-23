@@ -33,7 +33,7 @@ class PrivacyScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Container(width: 40, height: 1, color: _gold.withOpacity(0.4)),
                   const SizedBox(height: 4),
-                  Text('최종 수정일: 2024년 1월 1일',
+                  Text('최종 수정일: 2026년 1월 1일',
                       style: TextStyle(fontSize: 10, color: _grey)),
                 ],
               ),
@@ -58,7 +58,7 @@ class PrivacyScreen extends StatelessWidget {
             const SizedBox(height: 40),
             Center(
               child: Text(
-                '© 2024 AION Perfume. All rights reserved.',
+                '© 2026 AION Perfume. All rights reserved.',
                 style: TextStyle(fontSize: 10, color: _grey.withOpacity(0.6), letterSpacing: 1),
               ),
             ),
