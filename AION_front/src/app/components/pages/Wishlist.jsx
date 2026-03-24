@@ -21,7 +21,7 @@ const Wishlist = () => {
                 return;
             }
 
-            const response = await fetch('http://localhost:8080/api/wishlist', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/wishlist`, {
                 method: 'GET',
                 headers : {
                     'Authorization' : `Bearer ${session.access_token}`,
@@ -48,7 +48,7 @@ const Wishlist = () => {
 
         try {
             const {data: {session}} = await supabase.auth.getSession();
-            const response = await fetch(`http://localhost:8080/api/wishlist/${wishlistId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/wishlist/${wishlistId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization' : `Bearer ${session.access_token}`,
@@ -75,7 +75,7 @@ const Wishlist = () => {
                 return;
             }
 
-            const response = await fetch('http://localhost:8080/api/cart/add', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/cart/add`, {
                 method : 'POST',
                 headers : {
                     'Authorization' : `Bearer ${session.access_token}`,

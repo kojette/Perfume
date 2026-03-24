@@ -30,7 +30,7 @@ const Login = () => {
 
         // 2. 백엔드 검문소 (탈퇴 여부 및 로그인 기록 체크)
         try {
-            const response = await fetch('http://localhost:8080/api/auth/login-record', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/auth/login-record`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ const Login = () => {
 
         // 백엔드에서 사용자 정보 가져오기
         try {
-            const profileResponse = await fetch('http://localhost:8080/api/members/profile', {
+            const profileResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/members/profile`, {
                 method: 'GET',
                 headers: {
                     'Authorization' : `Bearer ${accessToken}`,

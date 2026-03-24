@@ -4,7 +4,7 @@ import { Plus, Edit2, Trash2, Pin, AlertCircle, Calendar } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
 // 백엔드 API base URL - 환경에 맞게 설정
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const AnnouncementManagement = () => {
   const [announcements, setAnnouncements] = useState([]);

@@ -24,7 +24,7 @@ const SearchResult = () => {
     const fetchSearchResults = async (searchKeyword) => {
         try {
             setLoading(true);
-            const response = await fetch(`http://localhost:8080/api/search/functions?keyword=${searchKeyword}`);
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/search/functions?keyword=${searchKeyword}`);
 
             if (response.ok) {
                 const json = await response.json();

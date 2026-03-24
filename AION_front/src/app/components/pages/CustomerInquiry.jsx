@@ -28,7 +28,7 @@ const CustomerInquiry = () => {
       const { data: {session}} = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch('http://localhost:8080/api/inquiries/my', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/inquiries/my`, {
         method: 'GET',
         headers: {
           'Authorization' : `Bearer ${session.access_token}`,
@@ -76,7 +76,7 @@ const CustomerInquiry = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8080/api/inquiries', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/inquiries`, {
         method: 'POST',
         headers: {
           'Authorization' : `Bearer ${session.access_token}`,
@@ -110,7 +110,7 @@ const CustomerInquiry = () => {
     try {
       const {data: {session}} = await supabase.auth.getSession();
 
-      const response = await fetch(`http://localhost:8080/api/inquiries/${inquiryId}/read`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/inquiries/${inquiryId}/read`, {
         method : 'PATCH',
         headers : {
           'Authorization' : `Bearer ${session.access_token}`
@@ -131,7 +131,7 @@ const CustomerInquiry = () => {
 
     try {
       const {data: {session}} = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8080/api/inquiries/${inquiryId}/cancel`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/inquiries/${inquiryId}/cancel`, {
         method: 'PATCH',
         headers: {
           'Authorization' : `Bearer ${session.access_token}`
@@ -156,7 +156,7 @@ const CustomerInquiry = () => {
     try {
       const {data: {session}} = await supabase.auth.getSession();
       
-      const response = await fetch(`http://localhost:8080/api/inquiries/${inquiryId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/inquiries/${inquiryId}`, {
         method: 'DELETE',
         headers: {
           'Authorization' : `Bearer ${session.access_token}`

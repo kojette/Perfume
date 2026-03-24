@@ -90,7 +90,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
     setLoading(prev => ({ ...prev, [event.id]: true}));
 
     try {
-      const response = await fetch(`http://localhost:8080/api/events/${event.id}/participate`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/events/${event.id}/participate`, {
         method: 'POST',
         headers: {
           'Authorization' : `Bearer ${accessToken}`,

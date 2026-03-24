@@ -77,7 +77,7 @@ const CouponPointManagement = () => {
         isStackable: couponData.is_stackable
       };
 
-      const response = await fetch('http://localhost:8080/api/admin/coupons', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/admin/coupons`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

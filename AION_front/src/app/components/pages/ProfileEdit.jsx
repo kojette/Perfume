@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ornament } from '../Ornament';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const ProfileEdit = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -88,9 +90,6 @@ const ProfileEdit = () => {
     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
     setFormData(prev => ({ ...prev, zipcode: value }));
   };
-
-  // API_BASE_URL 설정
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
   const handleSave = async () => {
     try {

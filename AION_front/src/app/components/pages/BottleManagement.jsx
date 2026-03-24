@@ -1,19 +1,8 @@
-/**
- * BottleManagement.jsx
- * 위치: src/components/pages/BottleManagement.jsx
- *
- * 관리자용 공병 템플릿 관리 페이지.
- * 모든 데이터는 백엔드 API (http://localhost:8080/api/custom/bottles) 를 통해 처리.
- *
- * App.jsx 라우팅: /admin/bottles → AdminRoute 로 보호
- */
-
 import React, { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-// BottleSVG의 shape 키와 동일해야 함
 const SHAPE_OPTIONS = [
   { value: 'round',     label: '라운드' },
   { value: 'cylinder',  label: '실린더' },
@@ -37,8 +26,6 @@ const BottleManagement = () => {
 
   useEffect(() => { fetchBottles(); }, []);
 
-  // ── 전체 공병 목록 조회 (관리자, 비활성 포함) ────────────────────────
-  // GET /api/custom/bottles/all
   const fetchBottles = async () => {
     setLoading(true);
     try {
@@ -56,8 +43,6 @@ const BottleManagement = () => {
     }
   };
 
-  // ── 공병 추가 ────────────────────────────────────────────────────────
-  // POST /api/custom/bottles  Body: { name, shape, basePrice }
   const handleAdd = async () => {
     if (!form.name.trim()) { alert('공병 이름을 입력하세요.'); return; }
     try {

@@ -1,20 +1,8 @@
-/**
- * CustomizationEditor.jsx
- * 위치: src/components/pages/CustomizationEditor.jsx
- *
- * 향수 공병 디자인 에디터 모달.
- * 공병 목록: GET /api/custom/bottles  (백엔드)
- * 저장:      POST /api/custom/designs (백엔드)
- * 수정:      PUT  /api/custom/designs/{id} (백엔드)
- * Supabase 직접 접근 없음.
- */
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Upload, Pen, Save, RotateCcw, Eraser, Plus } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-// ─── 기본 내장 공병 10종 (백엔드 없이도 표시되는 기본값) ──────────────────────
 const DEFAULT_BOTTLES = [
   { id: 'classic-round',  name: '클래식 라운드',  shape: 'round',     basePrice: 15000 },
   { id: 'tall-cylinder',  name: '슬림 실린더',    shape: 'cylinder',  basePrice: 18000 },

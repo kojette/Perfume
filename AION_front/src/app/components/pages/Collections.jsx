@@ -12,7 +12,7 @@ import { supabase } from '../../supabaseClient';
 import { Upload, Settings, X, Save, Check } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 // ─────────────────────────────────────
 // 상수

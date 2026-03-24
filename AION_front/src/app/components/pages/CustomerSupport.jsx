@@ -4,6 +4,8 @@ import { Search, Bell, CheckCircle, Clock, User, MessageSquare, RefreshCw, Send,
 import { Ornament } from '../Ornament';
 import { supabase } from '../../supabaseClient';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 // 문의 유형 정의
 const INQUIRY_TYPES = [
   { value: 'product', label: '상품문의', icon: '🛍️' },
@@ -60,7 +62,7 @@ const CustomerSupport = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8080/api/inquiries/admin/all', {
+      const response = await fetch(`${API_BASE}/api/inquiries/admin/all`, {
         method: 'GET',
         headers: {
           'Authorization' : `Bearer ${session.access_token}`,
@@ -107,7 +109,7 @@ const CustomerSupport = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch(`http://localhost:8080/api/inquiries/admin/${inquiryId}/answer`, {
+      const response = await fetch(`${API_BASE}/api/inquiries/admin/${inquiryId}/answer`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -170,7 +172,7 @@ const CustomerSupport = () => {
     }
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8080/api/inquiries/admin/users/${customerId}/warning/add`, {
+      const response = await fetch(`${API_BASE}/api/inquiries/admin/users/${customerId}/warning/add`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -210,7 +212,7 @@ const CustomerSupport = () => {
     }
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8080/api/inquiries/admin/users/${customerId}/warning/reduce`, {
+      const response = await fetch(`${API_BASE}/api/inquiries/admin/users/${customerId}/warning/reduce`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -247,7 +249,7 @@ const CustomerSupport = () => {
     if (!window.confirm('블랙리스트를 해제하시겠습니까?')) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`http://localhost:8080/api/inquiries/admin/users/${customerId}/blacklist/remove`, {
+      const response = await fetch(`${API_BASE}/api/inquiries/admin/users/${customerId}/blacklist/remove`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

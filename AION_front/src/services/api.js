@@ -1,7 +1,10 @@
 // src/services/api.js
 // API 기본 설정 및 공통 함수
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const _BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// VITE_API_BASE_URL은 'http://localhost:8080' 형태로 설정 (뒤에 /api 붙이지 않아도 됨)
+// Login.jsx 등 직접 fetch하는 파일들도 동일한 환경변수를 쓰므로 여기서 /api를 붙여줌
+const API_BASE_URL = _BASE.endsWith('/api') ? _BASE : `${_BASE}/api`;
 
 /**
  * API 요청 헬퍼 함수
