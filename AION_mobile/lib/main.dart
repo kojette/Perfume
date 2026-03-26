@@ -1,22 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/start_screen.dart';
 import 'routes.dart';
 
-// ──────────────────────────────────────────────────────────────
-//  Supabase 키를 여기서 직접 입력하세요
-//  (원래 supabase_config.dart 에 있던 값을 옮겨 붙여넣기)
-// ──────────────────────────────────────────────────────────────
-const _supabaseUrl     = 'https://wyjukvjpccxscbmlyabc.supabase.co';
-const _supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5anVrdmpwY2N4c2NibWx5YWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNjQzMDMsImV4cCI6MjA4Mzc0MDMwM30._3ho4KSQr7zaoR_-FGpekZDXmh9HH-yNNNvlN0JnLvs';
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
 
   await Supabase.initialize(
-    url: _supabaseUrl,
-    anonKey: _supabaseAnonKey,
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
     authOptions: const FlutterAuthClientOptions(
       authFlowType: AuthFlowType.pkce,
     ),
