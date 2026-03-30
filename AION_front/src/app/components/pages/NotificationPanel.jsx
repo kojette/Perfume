@@ -349,7 +349,7 @@ const NotificationPanel = ({ isOpen, onClose }) => {
         </div>
       </div>
 
-      {/* 결과 모달 */}
+      
       {showResultModal && resultData && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
           <div 

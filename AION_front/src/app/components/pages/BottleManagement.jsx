@@ -71,8 +71,6 @@ const BottleManagement = () => {
     }
   };
 
-  // ── 공병 활성/비활성 토글 ─────────────────────────────────────────────
-  // PATCH /api/custom/bottles/{bottleId}/toggle
   const toggleActive = async (bottleId) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/custom/bottles/${bottleId}/toggle`, {
@@ -86,8 +84,6 @@ const BottleManagement = () => {
     }
   };
 
-  // ── 공병 삭제 ────────────────────────────────────────────────────────
-  // DELETE /api/custom/bottles/{bottleId}
   const handleDelete = async (bottleId) => {
     if (!window.confirm('이 공병을 삭제하시겠습니까?')) return;
     try {
@@ -106,7 +102,6 @@ const BottleManagement = () => {
     <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-6">
       <div className="max-w-4xl mx-auto">
 
-        {/* 헤더 */}
         <div className="text-center mb-12">
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-3 italic">ADMIN</div>
           <h2 className="font-serif text-2xl tracking-[0.3em] text-[#1a1a1a]">공병 템플릿 관리</h2>
@@ -122,7 +117,6 @@ const BottleManagement = () => {
           </button>
         </div>
 
-        {/* 추가 폼 */}
         {formOpen && (
           <div className="bg-white border border-[#c9a961]/20 p-6 mb-6 space-y-4">
             <div className="text-[11px] tracking-widest text-[#8b8278] mb-4">새 공병 정보 입력</div>
@@ -158,7 +152,6 @@ const BottleManagement = () => {
           </div>
         )}
 
-        {/* 목록 */}
         {loading ? (
           <div className="text-center text-[#8b8278] italic py-10">로딩 중...</div>
         ) : (

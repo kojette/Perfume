@@ -9,9 +9,7 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-// ─────────────────────────────────────────────────────────────
-// 유틸
-// ─────────────────────────────────────────────────────────────
+
 const FONT_SIZE_CLASS = {
   small:  'text-sm md:text-base',
   medium: 'text-lg md:text-xl',
@@ -47,9 +45,7 @@ const uploadImageToSupabase = async (file) => {
   return data.publicUrl;
 };
 
-// ─────────────────────────────────────────────────────────────
-// 미디어 업로더
-// ─────────────────────────────────────────────────────────────
+
 function MediaUploader({ onAdd }) {
   const [mode, setMode] = useState('drop');
   const [urlInput, setUrlInput] = useState('');
@@ -124,9 +120,7 @@ function MediaUploader({ onAdd }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// 시그니처 목록 패널 (관리자용)
-// ─────────────────────────────────────────────────────────────
+
 function SignatureListPanel({ onClose, onEdit, onRefresh }) {
   const [list, setList] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -136,7 +130,7 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
     try {
       const authHeader = await getAuthHeader();
       if (!authHeader) return;
-      // ✅ /api/signature 로 변경
+
       const res = await fetch(`${API_BASE}/api/signature`, { headers: authHeader });
       const json = await res.json();
       setList(json.success ? (json.data || []) : []);
@@ -150,7 +144,7 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
     const authHeader = await getAuthHeader();
     if (!authHeader) return;
     try {
-      // ✅ /api/signature/{id}/active 로 변경
+
       await fetch(`${API_BASE}/api/signature/${id}/active?activate=${!current}`, {
         method: 'PATCH', headers: authHeader,
       });
@@ -164,7 +158,7 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
     const authHeader = await getAuthHeader();
     if (!authHeader) return;
     try {
-      // ✅ /api/signature/{id} 로 변경
+
       const res = await fetch(`${API_BASE}/api/signature/${id}`, { method: 'DELETE', headers: authHeader });
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
@@ -217,9 +211,7 @@ function SignatureListPanel({ onClose, onEdit, onRefresh }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// 시그니처 에디터
-// ─────────────────────────────────────────────────────────────
+
 function SignatureEditor({ collectionId, onClose, onSaved }) {
   const isNew = !collectionId;
   const [activeTab, setActiveTab] = useState('basic');
@@ -284,7 +276,7 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
     } catch (err) { console.error('마스터 데이터 로드 실패:', err); }
   };
 
-  // ✅ /api/signature/{id} 로 변경
+
   const loadSignature = async () => {
     setLoadingData(true);
     try {
@@ -351,7 +343,7 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
     return list.map((p, i) => ({ ...p, display_order: i }));
   });
 
-  // ✅ /api/signature 및 /api/signature/{id} 로 변경
+
   const handleSave = async () => {
     if (!form.title.trim()) { alert('제목을 입력하세요'); return; }
     if (mediaList.length === 0) { alert('배경 이미지를 최소 1개 추가하세요'); return; }
@@ -668,9 +660,7 @@ function SignatureEditor({ collectionId, onClose, onSaved }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// 메인 Signature 컴포넌트
-// ─────────────────────────────────────────────────────────────
+
 export default function Signature() {
   const isAdmin = checkIsAdmin();
   const navigate = useNavigate();
@@ -683,7 +673,7 @@ export default function Signature() {
   const [editingId, setEditingId] = useState(null);
   const [listPanelOpen, setListPanelOpen] = useState(false);
 
-  // ✅ /api/signature/active 로 변경 (관리자도 동일 엔드포인트 사용)
+
   const fetchSignature = useCallback(async () => {
     setLoading(true);
     try {
@@ -693,14 +683,14 @@ export default function Signature() {
         const authHeader = await getAuthHeader();
         if (!authHeader) { setSignature(null); return; }
 
-        // 활성 시그니처 먼저 시도
+
         const resActive = await fetch(`${API_BASE}/api/signature/active`, { headers: authHeader });
         if (resActive.ok) {
           const jsonActive = await resActive.json();
           if (jsonActive.success && jsonActive.data) data = jsonActive.data;
         }
 
-        // 없으면 목록 첫 번째 로드
+
         if (!data) {
           const resList = await fetch(`${API_BASE}/api/signature`, { headers: authHeader });
           if (resList.ok) {
@@ -730,7 +720,7 @@ export default function Signature() {
           }
         }
       } else {
-        // 유저: 활성 시그니처만
+
         const res = await fetch(`${API_BASE}/api/signature/active`);
         if (res.ok) {
           const json = await res.json();

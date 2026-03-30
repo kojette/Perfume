@@ -14,7 +14,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-        // 1. Supabase 인증 (아이디/비번 확인)
+
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
             password: password
@@ -28,7 +28,7 @@ const Login = () => {
 
         const accessToken = data.session.access_token;
 
-        // 2. 백엔드 검문소 (탈퇴 여부 및 로그인 기록 체크)
+
         try {
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/auth/login-record`, {
                 method: 'POST',
@@ -45,14 +45,14 @@ const Login = () => {
             if (!response.ok) {
                 const errorData = await response.json();
                 
-                // 탈퇴한 계정인 경우
+
                 if (errorData.message && errorData.message.includes("탈퇴")) {
                     alert("이미 탈퇴 처리된 계정입니다. 고객센터에 문의해주세요.");
                 } else {
                     alert(errorData.message || "로그인 처리 중 오류가 발생했습니다.");
                 }
 
-                // [중요] Supabase 세션 파괴 및 함수 종료
+
                 await supabase.auth.signOut();
                 sessionStorage.clear();
                 setLoading(false);
@@ -60,15 +60,14 @@ const Login = () => {
             }
         } catch (backendError) {
             console.error('백엔드 체크 통신 에러:', backendError);
-            // 백엔드 서버가 점검 중이거나 에러일 때 로그인을 허용할지 차단할지 결정해야 합니다.
-            // 일단은 차단하는 것이 보안상 안전합니다.
+
             await supabase.auth.signOut();
             alert("서버와 통신할 수 없습니다. 잠시 후 다시 시도해주세요.");
             setLoading(false);
             return;
         }
 
-        // 백엔드에서 사용자 정보 가져오기
+
         try {
             const profileResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/members/profile`, {
                 method: 'GET',
@@ -123,9 +122,9 @@ const Login = () => {
 
     return (
         <div className="min-h-screen bg-[#faf8f3] pt-16 pb-20 px-6 flex flex-col items-center">
-            {/* 로그인 박스 */}
+            
             <div className="max-w-md w-full bg-white border border-[#c9a961]/20 p-10 shadow-sm relative">
-                {/* 상단 장식 및 타이틀 */}
+                
                 <div className="text-center mb-10">
                     <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">AUTHENTICATION</div>
                     <Ornament className="mb-6" />
@@ -133,7 +132,7 @@ const Login = () => {
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-8">
-                    {/* 이메일 입력창 */}
+                    
                     <div className="space-y-2">
                         <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] font-pretendard">EMAIL ADDRESS</label>
                         <input
@@ -145,7 +144,7 @@ const Login = () => {
                             required />
                     </div>
 
-                    {/* 비밀번호 입력창 */}
+                    
                     <div className = "space-y-2">
                         <label className ="block font-pretendard text-[10px] tracking-[0.2em] text-[#8b8278]">PASSWORD</label>
                         <input
@@ -157,7 +156,7 @@ const Login = () => {
                             required />
                     </div>
 
-                    {/* 로그인 버튼 */}
+                    
                     <button 
                         type="submit"
                         className="w-full py-4 bg-[#2a2620] text-white hover:bg-[#c9a961] transition-all duration-500 tracking-[0.3em] text-xs mt-4">
@@ -165,7 +164,7 @@ const Login = () => {
                     </button>
                 </form>
 
-                {/* 하단 링크 (회원가입/비번찾기) */}
+                
                 <div className="mt-10 flex flex-col items-center gap-4 border-t border-[#c9a961]/10 pt-8">
                     <button 
                         onClick = {() => navigate('/signup')}

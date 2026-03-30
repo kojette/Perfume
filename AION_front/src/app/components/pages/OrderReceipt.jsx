@@ -49,7 +49,7 @@ const OrderReceipt = () => {
                 const json = await response.json();
                 const orderData = json.data;
 
-                // Supabase에서 상품 이미지 조회 (커스텀 상품은 perfumeId가 null이므로 제외)
+
                 const perfumeIds = (orderData.orderItems?.map(item => item.perfumeId) || []).filter(id => id != null);
                 if (perfumeIds.length > 0) {
                     const { data: images } = await supabase
@@ -81,17 +81,17 @@ const OrderReceipt = () => {
     if (!order)
         return <div className="text-center pt-40">주문 정보를 찾을 수 없습니다.</div>;
 
-    // 백엔드 응답 필드명에 맞게 매핑
+
     const pointsEarned = order.pointsEarned ?? Math.floor((order.finalAmount || 0) * 0.001);
     const pointsUsed = order.pointsUsed ?? 0;
-    const originalAmount = order.totalAmount ?? order.finalAmount ?? 0;  // totalAmount가 원가
+    const originalAmount = order.totalAmount ?? order.finalAmount ?? 0;
     const discountAmount = order.discountAmount ?? 0;
 
     return (
         <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-6 flex flex-col items-center">
             <div className="max-w-2xl w-full bg-white border border-[#c9a961]/30 p-12 shadow-sm relative">
 
-                {/* 상단 헤더 */}
+                
                 <div className="text-center mb-12">
                     <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">ORDER CONFIRMED</div>
                     <h2 className="text-3xl font-display tracking-[0.3em] text-[#1a1a1a] mb-2 uppercase italic">Receipt</h2>
@@ -99,7 +99,7 @@ const OrderReceipt = () => {
                     <Ornament className="mt-8" />
                 </div>
 
-                {/* 배송 정보 */}
+                
                 <div className="mb-12 bg-[#fcfbf9] p-6 border-l-2 border-[#c9a961]">
                     <h3 className="text-[10px] tracking-[0.3em] text-[#8b8278] mb-4 uppercase font-bold">Shipping Info</h3>
                     <div className="space-y-2">
@@ -120,7 +120,7 @@ const OrderReceipt = () => {
                     </div>
                 </div>
 
-                {/* 주문 상품 리스트 */}
+                
                 <div className="space-y-6 mb-10">
                     <h3 className="text-[10px] tracking-[0.3em] text-[#8b8278] mb-2 uppercase font-bold">Items</h3>
                     {(order.orderItems || []).map((item, idx) => (
@@ -141,7 +141,7 @@ const OrderReceipt = () => {
                                     <p className="text-[10px] text-[#8b8278] tracking-widest uppercase italic">
                                         {isScentBlend(item) ? '나만의 향 조합' : `${item.volumeMl || 50}ML`} / {item.quantity} Unit(s)
                                     </p>
-                                    {/* 향조합 아코디언 */}
+                                    
                                     {isScentBlend(item) && (
                                         <div className="mt-2">
                                             <button
@@ -190,7 +190,7 @@ const OrderReceipt = () => {
                     ))}
                 </div>
 
-                {/* 결제 금액 상세 */}
+                
                 <div className="border-t border-[#eee] pt-6 mb-2 space-y-3">
                     <div className="flex justify-between text-[11px] tracking-widest text-[#8b8278]">
                         <span>SUBTOTAL</span>
@@ -210,7 +210,7 @@ const OrderReceipt = () => {
                     )}
                 </div>
 
-                {/* 최종 결제 금액 */}
+                
                 <div className="border-t-2 border-[#1a1a1a] pt-6 mb-6">
                     <div className="flex justify-between items-center">
                         <span className="font-serif italic text-[#c9a961] tracking-tighter text-xl">Total Amount</span>
@@ -220,7 +220,7 @@ const OrderReceipt = () => {
                     </div>
                 </div>
 
-                {/* 포인트 요약 */}
+                
                 <div className="bg-[#fcfbf9] border border-[#c9a961]/20 p-5 mb-10 space-y-2">
                     <h3 className="text-[10px] tracking-[0.3em] text-[#8b8278] mb-3 uppercase font-bold">Points Summary</h3>
                     {pointsUsed > 0 && (
@@ -235,7 +235,7 @@ const OrderReceipt = () => {
                     </div>
                 </div>
 
-                {/* 하단 버튼 */}
+                
                 <button
                     onClick={() => navigate('/')}
                     className="w-full py-5 bg-[#1a1a1a] text-white text-[10px] tracking-[0.4em] hover:bg-[#c9a961] transition-all duration-500 cursor-pointer uppercase"

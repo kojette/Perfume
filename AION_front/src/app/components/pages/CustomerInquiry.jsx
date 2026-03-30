@@ -4,7 +4,6 @@ import { Ornament } from '../Ornament';
 import { MessageSquare, Send, Clock, CheckCircle, AlertCircle, X, Trash2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
-// 문의 유형 (FAQ 제외)
 const INQUIRY_TYPES = [
   { value: 'product', label: '상품문의', icon: '🛍️' },
   { value: 'delivery', label: '배송문의', icon: '🚚'},
@@ -16,13 +15,12 @@ const INQUIRY_TYPES = [
 
 const CustomerInquiry = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('new'); // new, myInquiries
+  const [activeTab, setActiveTab] = useState('new');
   const [formData, setFormData] = useState({type: '', title: '', content: ''});
   const [myInquiries, setMyInquiries] = useState([]);
   const [notifications, setNotifications] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // 내 문의 내역 불러오기
   const fetchMyInquiries = useCallback(async () => {
     try {
       const { data: {session}} = await supabase.auth.getSession();
@@ -59,7 +57,6 @@ const CustomerInquiry = () => {
     window.scrollTo(0,0);
   }, [activeTab]);
 
-  // 새 문의사항 작성
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -105,7 +102,6 @@ const CustomerInquiry = () => {
     }
   };
 
-  // 읽음 처리
   const markAsRead = async (inquiryId) => {
     try {
       const {data: {session}} = await supabase.auth.getSession();
@@ -125,7 +121,6 @@ const CustomerInquiry = () => {
     }
   }
 
-  // 문의 취소
   const handleCancelInquiry = async (inquiryId) => {
     if(!window.confirm('정말 이 문의를 취소하시겠습니까?')) return;
 
@@ -149,13 +144,12 @@ const CustomerInquiry = () => {
     }
   };
 
-  // 문의 삭제
   const handleDeleteInquiry = async (inquiryId) => {
     if (!window.confirm('문의 내역을 삭제하시겠습니까?')) return;
 
     try {
       const {data: {session}} = await supabase.auth.getSession();
-      
+
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/inquiries/${inquiryId}`, {
         method: 'DELETE',
         headers: {
@@ -187,13 +181,10 @@ const CustomerInquiry = () => {
     }
   };
 
-
-
   return (
     <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-6">
       <div className="max-w-5xl mx-auto">
-        
-        {/* Header */}
+
         <div className="text-center mb-12">
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">
             CUSTOMER SERVICE
@@ -205,7 +196,6 @@ const CustomerInquiry = () => {
           <p className="text-sm text-[#8b8278] italic">무엇을 도와드릴까요?</p>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-8 border-b border-[#c9a961]/20">
           <button
             onClick={() => setActiveTab('new')}
@@ -240,12 +230,11 @@ const CustomerInquiry = () => {
           </button>
         </div>
 
-        {/* Content */}
         {activeTab === 'new' ? (
-          // 새 문의 작성 폼
+
           <div className="max-w-2xl mx-auto bg-white border border-[#c9a961]/20 p-10 shadow-sm">
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* 문의 유형 선택 */}
+
               <div className="space-y-3">
                 <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] mb-4">
                   문의 유형 선택
@@ -270,7 +259,6 @@ const CustomerInquiry = () => {
                   ))}
                 </div>
 
-                {/* 자주묻는질문 별도 버튼 */}
                 <div className="mt-4 pt-4 border-t border-[#c9a961]/10">
                   <button
                     type="button"
@@ -295,7 +283,6 @@ const CustomerInquiry = () => {
                 </div>
               </div>
 
-              {/* 제목 */}
               <div className="space-y-2">
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278]">
                   제목
@@ -310,7 +297,6 @@ const CustomerInquiry = () => {
                 />
               </div>
 
-              {/* 내용 */}
               <div className="space-y-2">
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278]">
                   문의 내용
@@ -325,7 +311,6 @@ const CustomerInquiry = () => {
                 />
               </div>
 
-              {/* 제출 버튼 */}
               <button
                 type="submit"
                 disabled={loading}
@@ -337,7 +322,7 @@ const CustomerInquiry = () => {
             </form>
           </div>
         ) : (
-          // 내 문의 내역
+
           <div className="space-y-4">
             {myInquiries.filter(inquiry => inquiry.status !== 'cancelled').length === 0 ? (
               <div className="bg-white p-16 text-center border border-[#c9a961]/10 rounded-lg">
@@ -386,7 +371,6 @@ const CustomerInquiry = () => {
                       <p className="text-sm text-[#555] leading-relaxed">{inquiry.content}</p>
                     </div>
 
-                    {/* 답변 표시 */}
                     {inquiry.status === 'completed' && inquiry.answer && (
                       <div className="mt-4 pt-4 border-t border-[#c9a961]/10">
                         <div className="flex items-center gap-2 mb-3">
@@ -421,8 +405,6 @@ const CustomerInquiry = () => {
                       </div>
                     )}
 
-                    
-                    {/* 답변 대기/처리중일 때 취소 버튼 */}
                     {(inquiry.status === 'pending'|| inquiry.status === 'processing') && (
                       <div className="mt-4 pt-4 border-t border-[#c9a961]/10 flex justify-end">
                         <button

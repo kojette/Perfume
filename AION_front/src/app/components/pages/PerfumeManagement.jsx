@@ -20,7 +20,7 @@ const PerfumeManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [filterBrand, setFilterBrand] = useState('all');
-  const [showDiscontinued, setShowDiscontinued] = useState(false); // ✅ 단종 토글
+  const [showDiscontinued, setShowDiscontinued] = useState(false);
   
   const initialFormState = {
     perfume_id: null,
@@ -101,7 +101,7 @@ const PerfumeManagement = () => {
     setBrands(data);
   };
 
-  // ✅ scent_category 제거 (DB에 없는 컬럼 — 400 에러 원인)
+
   const fetchScents = async () => {
     const { data, error } = await supabase.from('Scents').select('scent_id, scent_name').order('scent_name', { ascending: true });
     if (error) throw error;
@@ -229,7 +229,7 @@ const PerfumeManagement = () => {
     }
   };
 
-  // ✅ 삭제: ON DELETE SET NULL 적용됐으므로 이제 실제 삭제 가능
+
   const handleDelete = async (id) => {
     if (!window.confirm('데이터를 영구 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
     try {
@@ -270,7 +270,7 @@ const PerfumeManagement = () => {
     }
   };
 
-  // ✅ 단종 토글로 일반/단종 상품 전환
+
   const filteredPerfumes = useMemo(() => {
     return perfumes.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.brand.toLowerCase().includes(searchTerm.toLowerCase());
@@ -324,7 +324,7 @@ const PerfumeManagement = () => {
           <h1 className="font-display text-3xl tracking-[0.3em] text-[#2a2620] mb-4">인벤토리 관리</h1>
         </div>
 
-        {/* 상단 컨트롤바 */}
+        
         <div className="flex flex-col md:flex-row gap-4 mb-8 justify-between items-center bg-white p-4 rounded-xl border border-[#c9a961]/10">
           <div className="flex gap-3 w-full md:w-auto flex-wrap">
             <div className="relative flex-1 md:w-64">
@@ -342,7 +342,7 @@ const PerfumeManagement = () => {
               {brandOptions.map(b => <option key={b.brand_id} value={b.brand_id}>{b.brand_name}</option>)}
             </select>
 
-            {/* ✅ 단종 상품 토글 */}
+            
             <button
               onClick={() => setShowDiscontinued(prev => !prev)}
               className={`px-3 py-2 rounded-lg text-[11px] font-bold transition-all border ${
@@ -367,7 +367,7 @@ const PerfumeManagement = () => {
           </div>
         </div>
 
-        {/* 리스트 테이블 */}
+        
         <div className="bg-white border border-[#c9a961]/20 rounded-xl overflow-hidden shadow-sm">
           <table className="w-full text-left">
             <thead className="bg-[#fcfaf7] border-b border-[#c9a961]/20">
@@ -452,7 +452,7 @@ const PerfumeManagement = () => {
         </div>
       </div>
 
-      {/* 모달 창 */}
+      
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-6">
           <div className="bg-white rounded-2xl w-full max-w-3xl p-8 shadow-2xl overflow-y-auto max-h-[90vh] border border-[#c9a961]/20">

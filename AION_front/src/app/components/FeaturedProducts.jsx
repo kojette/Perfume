@@ -12,7 +12,6 @@ export function FeaturedProducts() {
 
   useEffect(() => {
     const fetchPerfumes = async () => {
-      // 1. DB 스키마에 정의된 정확한 관계와 컬럼명을 사용합니다.
       const { data, error } = await supabase
         .from("Perfumes")
         .select(`
@@ -34,9 +33,6 @@ export function FeaturedProducts() {
           )
         `)
         .eq("is_active", true)
-        //.order("created_at", { ascending: false })
-        //.in("perfume_id", [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]);
-        //.limit(4);
 
       if (error) {
         console.error("Perfume fetch error:", error);
@@ -46,17 +42,16 @@ export function FeaturedProducts() {
 
       const shuffled = [...data].sort(() => 0.5 - Math.random()).slice(0, 4);
 
-
       const mappedData = shuffled.map(p => ({
         id: p.perfume_id,
         name: p.name,
         nameEn: p.name_en,
-        greekName: p.Brands?.brand_name || "OLYMPUS", // 브랜드명(7번이 AION이면 AION으로 뜸)
+        greekName: p.Brands?.brand_name || "OLYMPUS",
         category: p.concentration || "EDP",
         price: `₩${(p.sale_price || p.price)?.toLocaleString()}`,
-        description: p.description || "신성한 신들의 향기", // 수식어 자리
+        description: p.description || "신성한 신들의 향기",
         image: p.Perfume_Images?.find(i => i.is_thumbnail)?.image_url || p.Perfume_Images?.[0]?.image_url,
-        rating: Math.floor(p.avg_rating) || 5 // 평점 없으면 기본 5점
+        rating: Math.floor(p.avg_rating) || 5
       }));
 
       setProducts(mappedData);
@@ -70,7 +65,6 @@ export function FeaturedProducts() {
 
   return (
     <section className="py-24 px-6 max-w-7xl mx-auto">
-      {/* ... (상단 헤더 부분은 기존과 동일) ... */}
       <div className="text-center mb-20">
         <div className="text-[#c9a961] text-xs tracking-[0.4em] mb-3 italic">
           DIVINE COLLECTION
@@ -104,7 +98,6 @@ export function FeaturedProducts() {
                 </button>
               </div>
             </div>
-
 
             <div className="text-center space-y-3">
               <div className="text-[#c9a961] text-xs tracking-[0.3em] italic">

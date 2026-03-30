@@ -9,10 +9,9 @@ const CouponPointManagement = () => {
   const [pointRules, setPointRules] = useState([]);
   const [showCouponForm, setShowCouponForm] = useState(false);
   const [showPointForm, setShowPointForm] = useState(false);
-  
-  // [추가] 로딩 상태 관리 (중복 클릭 방지)
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [couponData, setCouponData] = useState({
     code: '',
     discount_type: 'PERCENTAGE',
@@ -42,7 +41,7 @@ const CouponPointManagement = () => {
       .from('Coupons')
       .select('*')
       .order('created_at', { ascending: false });
-    
+
     if (error) console.error('쿠폰 로드 에러:', error);
     else setCoupons(data);
   };
@@ -52,7 +51,7 @@ const CouponPointManagement = () => {
       .from('PointRules')
       .select('*')
       .order('created_at', { ascending: false });
-    
+
     if (error) console.error('포인트 규칙 로드 에러:', error);
     else setPointRules(data);
   };
@@ -60,7 +59,7 @@ const CouponPointManagement = () => {
   const handleSaveCoupon = async () => {
     if (!couponData.code) return alert('쿠폰 코드를 입력해주세요.');
     if (couponData.discount_value <= 0) return alert('유효한 할인 값을 입력해주세요.');
-    
+
     setIsSubmitting(true);
     try {
       const token = sessionStorage.getItem('accessToken');
@@ -102,7 +101,6 @@ const CouponPointManagement = () => {
     }
   };
 
-  // [수정] 포인트 규칙 저장 - 벨리데이션 추가
   const handleSavePointRule = async () => {
     if (!pointData.rule_name) return alert('규칙 이름을 입력해주세요.');
     if (pointData.point_rate > 100) return alert('적립 비율은 100%를 초과할 수 없습니다.');
@@ -112,7 +110,7 @@ const CouponPointManagement = () => {
       const { error } = await supabase
         .from('PointRules')
         .insert([pointData]);
-      
+
       if (error) throw error;
       alert('포인트 규칙이 생성되었습니다.');
       resetPointForm();
@@ -170,7 +168,7 @@ const CouponPointManagement = () => {
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">ADMIN PANEL</div>
           <Ornament className="mb-6" />
           <h1 className="font-display text-3xl tracking-[0.3em] text-[#2a2620] mb-8">쿠폰 & 포인트 관리</h1>
-          
+
           <div className="flex justify-center gap-4 mb-8">
             <button
               onClick={() => setActiveTab('coupons')}
@@ -293,7 +291,7 @@ const CouponPointManagement = () => {
                   <div className="flex gap-3 pt-4">
                     <button
                       onClick={handleSaveCoupon}
-                      disabled={isSubmitting} // [추가] 로딩 중 비활성화
+                      disabled={isSubmitting}
                       className="flex-1 py-3 bg-[#c9a961] text-white text-xs tracking-[0.3em] hover:bg-[#b89851] transition-all flex justify-center items-center"
                     >
                       {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : '생성 완료'}

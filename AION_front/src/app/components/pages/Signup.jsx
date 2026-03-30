@@ -25,17 +25,17 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // 이름 확인
+
         if(!formData.name.trim()){
             return alert("이름을 입력해주세요.");
         }
 
-        // 이메일 확인
+
         if(!formData.email.trim()){
             return alert("이메일 주소를 입력해주세요.");
         }
 
-        //비밀번호 확인
+
         if(!formData.password){
             return alert("비밀번호를 입력해주세요.");
         }
@@ -43,27 +43,27 @@ const Signup = () => {
             return alert("비밀번호는 8자 이상이어야 합니다.");
         }
         
-        // 비밀번호 일치 확인
+
         if (!isPasswordMatch) {
             return alert("비밀번호가 일치하지 않습니다.");
         }
 
-        // 전화번호 확인
+
         if(!formData.phone.trim()){
             return alert("전화번호를 입력해주세요.");
         }
 
-        // 성별 확인
+
         if(!formData.gender){
             return alert("성별을 선택해주세요.");
         }
 
-        // 생년월일 확인
+
         if(!formData.birthYear||!formData.birthMonth||!formData.birthDay){
             return alert("생년월일을 입력해주세요.");
         }
 
-        // 약관 동의 확인
+
         if (!formData.agreeAll) {
             return alert("필수 약관에 동의해주세요.");
         }
@@ -71,37 +71,37 @@ const Signup = () => {
         setLoading(true);
 
         try {
-            // 생년월일 포맷팅
+
             const birthDate = formData.birthYear && formData.birthMonth && formData.birthDay
                 ? `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`
                 : null;
 
-            // 1. 기존 가입 여부 및 재가입 제한 기간(30일) 체크
+
             const { data: lastRecord, error: checkError } = await supabase
                 .from('Users')
                 .select('email, withdraw_date')
                 .eq('email', formData.email)
-                .order('withdraw_date', { ascending: false }) // 가장 최근 탈퇴일 기준
+                .order('withdraw_date', { ascending: false })
                 .maybeSingle();
 
             if (lastRecord) {
-                // A. 만약 withdraw_date가 null이라면 -> 현재 활동 중인 회원임
+
                 if (lastRecord.withdraw_date == null) {
                     setLoading(false);
                     return alert("이미 사용 중인 계정입니다. 로그인 페이지를 이용해주세요.");
                 }
 
-                // B. withdraw_date가 있다면 -> 탈퇴한 회원임. 30일 체크 시작
+
                 const withdrawnAt = new Date(lastRecord.withdraw_date);
                 const now = new Date();
                 
-                // 날짜 차이 계산 (현재 시간 - 탈퇴 시간)
+
                 const diffTime = now - withdrawnAt;
                 const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
                 if (diffDays < 30) {
                     setLoading(false);
-                    // 남은 일수 계산 (예: 29.1일 남았으면 30일로 표시)
+
                     const remainingDays = Math.ceil(30 - diffDays);
                     return alert(`탈퇴 후 30일 이내에는 재가입이 불가능합니다. ${remainingDays}일 후에 다시 시도해주세요.`);
                 }
@@ -192,7 +192,7 @@ const Signup = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* 이름 & 이메일 */}
+                    
                     <div className="grid grid-cols-2 gap-4">
                         <input 
                             type="text" 
@@ -212,7 +212,7 @@ const Signup = () => {
                         />
                     </div>
 
-                    {/* 비밀번호 & 재확인 */}
+                    
                     <div className="space-y-2">
                         <input 
                             type="password" 
@@ -238,7 +238,7 @@ const Signup = () => {
                         )}
                     </div>
 
-                    {/* 전화번호 */}
+                    
                     <div className="space-y-2">
                         <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] italic">PHONE NUMBER</label>
                         <input 
@@ -250,7 +250,7 @@ const Signup = () => {
                         />
                     </div>
 
-                    {/* 성별 */}
+                    
                     <div className="space-y-2">
                         <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] italic">GENDER</label>
                         <div className="relative">
@@ -269,7 +269,7 @@ const Signup = () => {
                         </div>
                     </div>
 
-                    {/* 생년월일 */}
+                    
                     <div className="space-y-2">
                         <label className="block text-[10px] tracking-[0.2em] text-[#8b8278] italic">BIRTH DATE</label>
                         <div className="grid grid-cols-3 gap-2">
@@ -305,7 +305,7 @@ const Signup = () => {
                         </div>
                     </div>
 
-                    {/* 약관 동의 */}
+                    
                     <div className="bg-[#faf8f3] p-4 space-y-2 mt-4">
                         <label className="flex items-center gap-2 text-[10px] font-bold text-[#2a2620]">
                             <input 

@@ -2,9 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-/* ─────────────────────────────────────────────
-   MOCK DATA  (API 없을 때 fallback)
-───────────────────────────────────────────── */
+
 const MOCK_DATA = {
   HISTORY: [
     {
@@ -115,9 +113,7 @@ const MOCK_DATA = {
   ],
 };
 
-/* ─────────────────────────────────────────────
-   GREEK ORNAMENT COMPONENTS
-───────────────────────────────────────────── */
+
 
 function GreekBorder({ className = '' }) {
   return (
@@ -155,9 +151,7 @@ function OrnateCircle({ number, size = 'lg' }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   PARTICLE BACKGROUND
-───────────────────────────────────────────── */
+
 function ParticleField() {
   const particles = Array.from({ length: 30 }, (_, i) => ({
     id: i,
@@ -252,23 +246,19 @@ function ParticleField() {
   );
 }
 
-/* ─────────────────────────────────────────────
-   SECTION NAV
-───────────────────────────────────────────── */
+
 const NAV_SECTIONS = [
   { key: 'HISTORY', label: 'HISTORY', ko: '브랜드 연혁', symbol: 'Ι' },
   { key: 'PROCESS', label: 'PROCESS', ko: '제조 과정', symbol: 'ΙΙ' },
   { key: 'PHILOSOPHY', label: 'PHILOSOPHY', ko: '브랜드 철학', symbol: 'ΙΙΙ' },
 ];
 
-/* ─────────────────────────────────────────────
-   HISTORY SECTION
-───────────────────────────────────────────── */
+
 function HistoryItem({ item, idx }) {
   const isLeft = idx % 2 === 0;
   return (
     <div className="relative flex flex-col md:flex-row items-center gap-0 mb-20">
-      {/* Left content / image */}
+      
       <div className={`w-full md:w-[45%] ${isLeft ? 'md:pr-16 md:text-right' : 'md:order-3 md:pl-16'}`}>
         {isLeft ? (
           <div className="space-y-3 py-8">
@@ -288,7 +278,7 @@ function HistoryItem({ item, idx }) {
         )}
       </div>
 
-      {/* Center Year Badge */}
+      
       <div className="md:absolute md:left-1/2 md:-translate-x-1/2 z-10 flex-shrink-0 flex flex-col items-center">
         <div className="hidden md:block w-[1px] h-8 bg-gradient-to-b from-transparent to-[#c9a961]" />
         <div className="border border-[#c9a961] bg-[#0e0c09] px-5 py-2 text-center">
@@ -297,7 +287,7 @@ function HistoryItem({ item, idx }) {
         <div className="hidden md:block w-[1px] h-8 bg-gradient-to-t from-transparent to-[#c9a961]" />
       </div>
 
-      {/* Right content / image */}
+      
       <div className={`w-full md:w-[45%] ${isLeft ? 'md:order-3 md:pl-16' : 'md:pr-16 md:text-right'}`}>
         {isLeft ? (
           <div className="w-full aspect-[4/3] overflow-hidden">
@@ -343,19 +333,17 @@ function HistoryPlaceholder({ idx }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   PROCESS SECTION
-───────────────────────────────────────────── */
+
 function ProcessCard({ item, idx }) {
   return (
     <div className="group relative">
-      {/* Big number bg */}
+      
       <div className="absolute -top-4 -left-2 font-serif text-[100px] leading-none text-[#c9a961]/5 select-none pointer-events-none">
         {String(idx + 1).padStart(2, '0')}
       </div>
 
       <div className="relative border border-[#c9a961]/20 bg-[#faf8f3] group-hover:border-[#c9a961]/60 transition-all duration-500 overflow-hidden">
-        {/* Image or placeholder */}
+        
         <div className="aspect-video overflow-hidden">
           {item.imageUrl ? (
             <img src={item.imageUrl} alt={item.title}
@@ -365,7 +353,7 @@ function ProcessCard({ item, idx }) {
           )}
         </div>
 
-        {/* Content */}
+        
         <div className="p-6">
           <div className="flex items-start gap-4 mb-4">
             <OrnateCircle number={idx + 1} size="sm" />
@@ -378,7 +366,7 @@ function ProcessCard({ item, idx }) {
           <p className="text-xs text-[#6f6756] leading-loose">{item.content}</p>
         </div>
 
-        {/* Hover glow */}
+        
         <div className="absolute inset-0 bg-gradient-to-t from-[#c9a961]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       </div>
     </div>
@@ -409,9 +397,7 @@ function ProcessPlaceholder({ idx }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   PHILOSOPHY SECTION
-───────────────────────────────────────────── */
+
 function PhilosophyCard({ item, idx }) {
   const isReverse = idx % 2 !== 0;
   const gods = ['아프로디테', '아테나', '디오니소스'];
@@ -419,7 +405,7 @@ function PhilosophyCard({ item, idx }) {
 
   return (
     <div className={`flex flex-col ${isReverse ? 'md:flex-row-reverse' : 'md:flex-row'} gap-0 items-stretch min-h-[500px]`}>
-      {/* Visual Panel */}
+      
       <div className="w-full md:w-1/2 relative overflow-hidden">
         {item.imageUrl ? (
           <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
@@ -428,9 +414,9 @@ function PhilosophyCard({ item, idx }) {
         )}
       </div>
 
-      {/* Text Panel */}
+      
       <div className={`w-full md:w-1/2 bg-[#faf8f3] flex flex-col justify-center px-12 py-16 relative`}>
-        {/* Decorative corner */}
+        
         <div className="absolute top-0 left-0 w-16 h-16 border-t border-l border-[#c9a961]/30" />
         <div className="absolute bottom-0 right-0 w-16 h-16 border-b border-r border-[#c9a961]/30" />
 
@@ -448,7 +434,7 @@ function PhilosophyCard({ item, idx }) {
             ))}
           </div>
 
-          {/* Roman numeral */}
+          
           <div className="flex items-center gap-4 pt-4">
             <div className="font-serif text-5xl text-[#c9a961]/20">{['I', 'II', 'III'][idx]}</div>
             <div className="h-[1px] flex-1 bg-gradient-to-r from-[#c9a961]/30 to-transparent" />
@@ -471,13 +457,13 @@ function PhilosophyVisual({ idx, godName, symbol }) {
       style={{ background: `linear-gradient(160deg, ${p.from}, ${p.via}, ${p.to})`, minHeight: 400 }}>
       <div className="absolute inset-0 greek-pattern opacity-15" />
 
-      {/* Rotating outer ring */}
+      
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-64 h-64 border border-[#c9a961]/10 rounded-full animate-rotateSlow" />
         <div className="absolute w-48 h-48 border border-[#c9a961]/15 rounded-full" style={{ animation: 'rotateSlow 15s linear infinite reverse' }} />
       </div>
 
-      {/* Center content */}
+      
       <div className="relative text-center z-10">
         <div className="font-serif text-[120px] leading-none text-[#c9a961]/15 select-none">{symbol}</div>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -492,7 +478,7 @@ function PhilosophyVisual({ idx, godName, symbol }) {
         </div>
       </div>
 
-      {/* Radial lines */}
+      
       <svg className="absolute inset-0 w-full h-full opacity-5" viewBox="0 0 400 400">
         {[...Array(12)].map((_, i) => {
           const angle = (i * 30 * Math.PI) / 180;
@@ -509,9 +495,7 @@ function PhilosophyVisual({ idx, godName, symbol }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   SECTION HEADER
-───────────────────────────────────────────── */
+
 function SectionHeader({ sectionKey, label, ko, description, romanNum }) {
   return (
     <div className="text-center mb-20 section-reveal">
@@ -536,40 +520,38 @@ function SectionHeader({ sectionKey, label, ko, description, romanNum }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   HERO SECTION
-───────────────────────────────────────────── */
+
 function HeroSection() {
   return (
     <div className="relative h-[100vh] bg-[#0e0c09] flex items-center justify-center overflow-hidden">
-      {/* Background texture */}
+      
       <div className="absolute inset-0 greek-pattern opacity-20" />
 
-      {/* Radial gradient */}
+      
       <div className="absolute inset-0"
         style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(201,169,97,0.08) 0%, transparent 70%)' }} />
 
-      {/* Bottom fade */}
+      
       <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0e0c09] to-transparent" />
 
-      {/* Particles */}
+      
       <ParticleField />
 
-      {/* Large background letters */}
+      
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
         <div className="font-serif text-[25vw] text-[#c9a961]/3 tracking-widest leading-none">ΑΙΩΝ</div>
       </div>
 
-      {/* Decorative circles */}
+      
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-[600px] h-[600px] border border-[#c9a961]/5 rounded-full" />
         <div className="absolute w-[400px] h-[400px] border border-[#c9a961]/8 rounded-full" />
         <div className="absolute w-[250px] h-[250px] border border-[#c9a961]/10 rounded-full" />
       </div>
 
-      {/* Main content */}
+      
       <div className="relative text-center px-6 z-10">
-        {/* Top ornament */}
+        
         <div className="flex items-center justify-center gap-4 mb-10 opacity-0 animate-fadeSlideUp">
           <div className="h-[1px] w-16 bg-gradient-to-r from-transparent to-[#c9a961]/60" />
           <div className="flex gap-2 items-center">
@@ -580,7 +562,7 @@ function HeroSection() {
           <div className="h-[1px] w-16 bg-gradient-to-l from-transparent to-[#c9a961]/60" />
         </div>
 
-        {/* Main title */}
+        
         <div className="opacity-0 animate-fadeSlideUp delay-200">
           <p className="text-[#c9a961] text-xs tracking-[1em] mb-5 uppercase font-light">AION의 이야기</p>
           <h1 className="font-serif text-7xl md:text-9xl tracking-[0.5em] text-white leading-none mb-2">
@@ -591,7 +573,7 @@ function HeroSection() {
           </div>
         </div>
 
-        {/* Tagline */}
+        
         <div className="mt-10 opacity-0 animate-fadeSlideUp delay-400">
           <p className="text-[#c9a961]/50 italic text-base md:text-lg tracking-[0.3em]">
             신화에서 탄생한 영원한 향기
@@ -601,7 +583,7 @@ function HeroSection() {
           </p>
         </div>
 
-        {/* Scroll indicator */}
+        
         <div className="absolute bottom-[-100px] left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 opacity-0 animate-fadeSlideUp delay-800">
           <span className="text-[#c9a961]/40 text-[9px] tracking-[0.5em] uppercase">SCROLL</span>
           <div className="w-[1px] h-12 bg-gradient-to-b from-[#c9a961]/40 to-transparent" />
@@ -611,9 +593,7 @@ function HeroSection() {
   );
 }
 
-/* ─────────────────────────────────────────────
-   QUOTE BANNER  (섹션 사이 인터루드)
-───────────────────────────────────────────── */
+
 function QuoteBanner({ quote, source }) {
   return (
     <div className="relative py-24 bg-[#0e0c09] overflow-hidden my-0">
@@ -631,9 +611,7 @@ function QuoteBanner({ quote, source }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   MAIN COMPONENT
-───────────────────────────────────────────── */
+
 const SECTION_META = {
   HISTORY: { label: 'HISTORY', ko: '브랜드 연혁', description: '1847년부터 이어온 신들의 향기', roman: 'I' },
   PROCESS: { label: 'PROCESS', ko: '향수 제조 과정', description: '장인의 손끝에서 탄생하는 연금술', roman: 'II' },
@@ -651,7 +629,7 @@ export default function Story() {
     fetchStories();
   }, []);
 
-  // Intersection observer for section-reveal animations
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -665,7 +643,7 @@ export default function Story() {
     return () => observer.disconnect();
   }, [loading]);
 
-  // Active section tracker
+
   useEffect(() => {
     const handleScroll = () => {
       for (const key of ['HISTORY', 'PROCESS', 'PHILOSOPHY']) {
@@ -686,7 +664,7 @@ export default function Story() {
       if (!res.ok) throw new Error();
       const json = await res.json();
       const data = json.data || {};
-      // Fallback to mock if sections are empty
+
       const merged = {};
       ['HISTORY', 'PROCESS', 'PHILOSOPHY'].forEach(k => {
         merged[k] = data[k]?.length > 0 ? data[k] : MOCK_DATA[k];
@@ -716,10 +694,10 @@ export default function Story() {
 
   return (
     <div className="min-h-screen bg-[#faf8f3] font-sans" style={{ marginTop: '-2px' }}>
-      {/* HERO */}
+      
       <HeroSection />
 
-      {/* STICKY NAV */}
+      
       <div className="sticky top-0 z-40 bg-[#0e0c09]/98 backdrop-blur-sm border-b border-[#c9a961]/15">
         <div className="max-w-5xl mx-auto px-6">
           <div className="flex items-center justify-center gap-0 overflow-x-auto">
@@ -742,7 +720,7 @@ export default function Story() {
         </div>
       </div>
 
-      {/* ── HISTORY ── */}
+      
       <div ref={el => (sectionRefs.current['HISTORY'] = el)} className="pt-28 pb-0 bg-[#faf8f3]">
         <div className="max-w-6xl mx-auto px-6">
           <SectionHeader
@@ -752,7 +730,7 @@ export default function Story() {
             description="1847년부터 이어온 신들의 향기"
             romanNum="Ι"
           />
-          {/* Timeline line */}
+          
           <div className="relative">
             <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-[#c9a961]/30 to-transparent" />
             {(storyData.HISTORY || []).map((item, idx) => (
@@ -764,13 +742,13 @@ export default function Story() {
         </div>
       </div>
 
-      {/* INTERLUDE 1 */}
+      
       <QuoteBanner
         quote="향기는 가장 강렬한 형태의 기억이다. 그것은 수천 년을 거슬러 올라가 신들의 세계에 닿는다."
         source="EDMOND DUVAL — AION 창립자, 1847"
       />
 
-      {/* ── PROCESS ── */}
+      
       <div ref={el => (sectionRefs.current['PROCESS'] = el)} className="py-28 bg-[#f5f0e8]">
         <div className="max-w-7xl mx-auto px-6">
           <SectionHeader
@@ -790,13 +768,13 @@ export default function Story() {
         </div>
       </div>
 
-      {/* INTERLUDE 2 */}
+      
       <QuoteBanner
         quote="헤파이스토스가 신들의 무기를 빚었듯, 우리는 영혼의 무기인 향수를 빚는다. 완벽함에는 지름길이 없다."
         source="AION MAISON — 제조 철학"
       />
 
-      {/* ── PHILOSOPHY ── */}
+      
       <div ref={el => (sectionRefs.current['PHILOSOPHY'] = el)} className="py-28 bg-[#faf8f3]">
         <div className="max-w-6xl mx-auto px-6">
           <SectionHeader
@@ -816,7 +794,7 @@ export default function Story() {
         </div>
       </div>
 
-      {/* ── CLOSING ── */}
+      
       <div className="relative bg-[#0e0c09] py-32 overflow-hidden">
         <div className="absolute inset-0 greek-pattern opacity-10" />
         <div className="absolute inset-0"
@@ -836,7 +814,7 @@ export default function Story() {
         </div>
       </div>
 
-      {/* Admin button */}
+      
       {isAdmin && (
         <button
           onClick={() => window.location.href = '/admin/story'}

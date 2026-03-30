@@ -27,13 +27,10 @@ const FindPassword = () => {
       setLoading(true);
       setMessage("");
 
-      // ★ Supabase가 직접 비밀번호 재설정 메일 발송
-      // redirectTo: 메일 링크 클릭 시 이동할 페이지
       const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
-      // 👇 디버깅: 응답 확인
       console.log('=== Supabase 비밀번호 재설정 응답 ===');
       console.log('data:', data);
       console.log('error:', error);
@@ -42,19 +39,17 @@ const FindPassword = () => {
       console.log('=====================================');
 
       if (error) {
-        // 에러 상세 정보 출력
+
         console.error('비밀번호 재설정 오류 상세:', {
           message: error.message,
           status: error.status,
           name: error.name
         });
-        
-        // 실제 에러 메시지 표시 (디버깅용)
+
         alert(`오류 발생: ${error.message}`);
         return;
       }
 
-      // 성공 메시지
       setMessage("비밀번호 재설정 링크가 이메일로 전송되었습니다. 이메일을 확인해주세요.");
       console.log('✅ 메일 발송 성공!');
 

@@ -11,7 +11,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
   const [historyList, setHistoryList] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  // 변경 기록 불러오기
   useEffect(() => {
     const fetchHistory = async () => {
       const { data, error } = await supabase
@@ -63,16 +62,13 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
     onSave(saveData);
   };
 
-  // 기록 선택하여 적용
   const handleApplyHistory = async (historyId) => {
     try {
-      // 1. 모든 Hero 비활성화
       await supabase
         .from("hero_history")
         .update({ is_active: false })
         .neq("id", "00000000-0000-0000-0000-000000000000");
 
-      // 2. 선택한 Hero 활성화
       const { error } = await supabase
         .from("hero_history")
         .update({ is_active: true })
@@ -91,7 +87,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center overflow-y-auto py-8">
       <div className="w-full max-w-4xl bg-[#1f1c17] text-[#e8dcc8] p-8 relative border border-[#c9a961]/30 my-8">
-        {/* 헤더 */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="tracking-[0.3em] text-[#c9a961]">
             HERO BANNER EDITOR
@@ -101,7 +96,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
           </button>
         </div>
 
-        {/* 탭 전환 */}
         <div className="flex gap-4 mb-6 border-b border-[#c9a961]/20">
           <button
             onClick={() => setShowHistory(false)}
@@ -125,10 +119,8 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
           </button>
         </div>
 
-        {/* 새로 만들기 탭 */}
         {!showHistory && (
           <>
-            {/* 이미지 업로드 */}
             <div
               className="border-2 border-dashed border-[#c9a961]/40 rounded-lg p-6 text-center mb-6 cursor-pointer hover:bg-white/5"
               onDragOver={(e) => e.preventDefault()}
@@ -155,7 +147,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
               />
             </div>
 
-            {/* 미리보기 */}
             {images.length > 0 && (
               <div className="grid grid-cols-3 gap-4 mb-6">
                 {images.map((img, idx) => (
@@ -176,7 +167,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
               </div>
             )}
 
-            {/* 텍스트 수정 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="text-xs tracking-widest text-[#c9a961]">
@@ -213,7 +203,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
               />
             </div>
 
-            {/* 저장 제목 */}
             <div className="mb-6">
               <label className="text-xs tracking-widest text-[#c9a961]">
                 저장 제목 (관리용)
@@ -226,7 +215,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
               />
             </div>
 
-            {/* 버튼 */}
             <div className="flex justify-end gap-4">
               <button
                 onClick={onClose}
@@ -244,7 +232,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
           </>
         )}
 
-        {/* 변경 기록 탭 */}
         {showHistory && (
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             {historyList.length === 0 ? (
@@ -301,7 +288,6 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
                     </div>
                   </div>
 
-                  {/* 이미지 미리보기 */}
                   {history.hero_images?.length > 0 && (
                     <div className="grid grid-cols-4 gap-2 mt-3">
                       {history.hero_images.map((img, idx) => (

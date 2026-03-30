@@ -22,7 +22,7 @@ const CouponCard = ({ coupon }) => {
             </div>
           </div>
           <div className="text-xs text-[#555] space-y-1">
-            {/* 'PERCENTAGE' 조건 체크 */}
+            
             <p className="font-medium">
               혜택: <span className="text-[#c9a961] font-bold">
                 {isPercentage 
@@ -81,7 +81,7 @@ const Mypage = () => {
     else if (activeTab === 'orders') fetchOrders();
   }, [activeTab, userInfo]);
 
-  // 프로필 조회
+
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
@@ -114,7 +114,7 @@ const Mypage = () => {
     }
   };
 
-  // 쿠폰 조회
+
   const fetchCoupons = async () => {
     try {
       const token = sessionStorage.getItem('accessToken');
@@ -135,7 +135,7 @@ const Mypage = () => {
   const [couponInput, setCouponInput] = useState('');
   const [registerLoading, setRegisterLoading] = useState(false);
 
-  // 쿠폰 등록 함수
+
   const handleRegisterCoupon = async () => {
     if (!couponInput.trim()) {
       alert('쿠폰 코드를 입력해주세요.');
@@ -159,8 +159,8 @@ const Mypage = () => {
 
       if (response.ok && result.success) {
         alert('쿠폰이 성공적으로 등록되었습니다!');
-        setCouponInput(''); // 입력창 초기화
-        fetchCoupons();     // 목록 새로고침
+        setCouponInput('');
+        fetchCoupons();
       } else {
         alert(result.message || '유효하지 않은 쿠폰 코드입니다.');
       }
@@ -172,7 +172,7 @@ const Mypage = () => {
     }
   };
 
-  // 포인트 내역 조회 - /api/points/history 로 변경
+
   const fetchPoints = async () => {
     try {
       const token = sessionStorage.getItem('accessToken');
@@ -190,7 +190,7 @@ const Mypage = () => {
     }
   };
 
-  // 이벤트 참여 내역 (Supabase 직접 조회 유지)
+
   const fetchEventParticipations = async () => {
     const { data, error } = await supabase
       .from('EventParticipations')
@@ -200,7 +200,7 @@ const Mypage = () => {
     if (!error && data) setEventParticipations(data);
   };
 
-  // 주문 내역 조회
+
   const fetchOrders = async () => {
     try {
       const token = sessionStorage.getItem('accessToken');
@@ -336,7 +336,7 @@ const Mypage = () => {
             <div className="flex-1 h-[1px] bg-[#c9a961]/20"></div>
           </div>
 
-          {/* OVERVIEW */}
+          
           {activeTab === 'overview' && (
             <div className="space-y-10 animate-in fade-in duration-700">
               <div className="relative overflow-hidden bg-white border border-[#c9a961]/20 p-10 shadow-sm group">
@@ -372,7 +372,7 @@ const Mypage = () => {
                     <p className="text-[11px] text-[#8b8278] tracking-[0.1em] italic">Welcome back to your curated space.</p>
                   </div>
                   <div className="flex gap-12 border-l border-[#c9a961]/10 pl-12">
-                    {/* 포인트 섹션 */}
+                    
                     <div 
                       onClick={() => setActiveTab('points')}
                       className="text-center cursor-pointer transition-transform hover:-translate-y-1"
@@ -385,7 +385,7 @@ const Mypage = () => {
                       </p>
                     </div>
 
-                    {/* 쿠폰 섹션 */}
+                    
                     <div 
                       onClick={() => setActiveTab('coupons')}
                       className="text-center cursor-pointer transition-transform hover:-translate-y-1"
@@ -402,7 +402,7 @@ const Mypage = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-8">
-                {/* CONTACT DETAILS */}
+                
                 <div className="bg-white p-8 border border-[#c9a961]/10 shadow-sm hover:shadow-md transition-shadow">
                   <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#c9a961] mb-6 flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#c9a961]"></div>
@@ -423,7 +423,7 @@ const Mypage = () => {
                   </div>
                 </div>
 
-                {/* SHIPPING ADDRESS */}
+                
                 <div className="bg-white p-8 border border-[#c9a961]/10 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                   <div>
                     <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#c9a961] mb-6 flex items-center gap-2">
@@ -466,7 +466,7 @@ const Mypage = () => {
                   </button>
                 </div>
 
-                {/* ORDER HISTORY 카드 - 전체 너비 */}
+                
                 <div className="col-span-2 bg-white p-8 border border-[#c9a961]/10 shadow-sm flex flex-col justify-between">
                   <div>
                     <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#2a2620] mb-8 flex items-center gap-2 uppercase">
@@ -512,11 +512,11 @@ const Mypage = () => {
             </div>
           )}
 
-          {/* 쿠폰함 */}
+          
           {activeTab === 'coupons' && (
             <div className="space-y-10 animate-in fade-in duration-700">
               
-              {/* 1. 쿠폰 등록 섹션 (목록 유무와 상관없이 항상 노출) */}
+              
               <div className="bg-white border border-[#c9a961]/20 p-8 shadow-sm">
                 <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#2a2620] mb-6 flex items-center gap-2 uppercase">
                   <div className="w-1 h-3 bg-[#c9a961]"></div>
@@ -544,10 +544,10 @@ const Mypage = () => {
                 </p>
               </div>
 
-              {/* 2. 쿠폰 목록 섹션 */}
+              
               <div className="space-y-12">
                 {coupons.length === 0 ? (
-                  /* 쿠폰이 아예 없을 때 */
+                  
                   <div className="text-center py-20 bg-white border border-[#c9a961]/10 rounded-lg">
                     <Gift size={48} className="mx-auto mb-4 text-[#c9a961]/30" />
                     <p className="text-sm text-[#8b8278] italic">보유 중인 쿠폰이 없습니다</p>
@@ -556,9 +556,9 @@ const Mypage = () => {
                     </button>
                   </div>
                 ) : (
-                  /* 쿠폰이 하나라도 있을 때 */
+                  
                   <>
-                    {/* 사용 가능한 쿠폰 */}
+                    
                     <section>
                       <div className="flex items-center gap-3 mb-6">
                         <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#c9a961] uppercase">Available Coupons</h3>
@@ -575,7 +575,7 @@ const Mypage = () => {
                       </div>
                     </section>
 
-                    {/* 사용 완료 쿠폰 */}
+                    
                     <section>
                       <div className="flex items-center gap-3 mb-6">
                         <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#8b8278] uppercase">Used / Expired</h3>
@@ -597,7 +597,7 @@ const Mypage = () => {
             </div>
           )}
 
-          {/* 포인트 내역 */}
+          
           {activeTab === 'points' && (
             <div>
               <div className="bg-gradient-to-br from-[#c9a961] to-[#b89851] text-white p-8 rounded-lg mb-6 shadow-lg">
@@ -616,7 +616,7 @@ const Mypage = () => {
                     <p className="text-sm text-[#8b8278] italic">포인트 내역이 없습니다</p>
                   </div>
                 ) : (
-                  // PointHistoryResponse 필드: pointHistoryId, amount, reason, reasonDetail, balanceAfter, status, createdAt
+
                   points.map((point) => (
                     <div key={point.pointHistoryId} className="bg-white border border-[#c9a961]/20 rounded-lg p-5 hover:shadow-md transition-all">
                       <div className="flex items-start justify-between">
@@ -652,7 +652,7 @@ const Mypage = () => {
             </div>
           )}
 
-          {/* 이벤트 참여 내역 */}
+          
           {activeTab === 'events' && (
             <div className="space-y-4">
               {eventParticipations.length === 0 ? (
@@ -681,7 +681,7 @@ const Mypage = () => {
             </div>
           )}
 
-          {/* 주문 내역 */}
+          
           {activeTab === 'orders' && (
             <div className="space-y-4 animate-in fade-in duration-700">
               {orders.length === 0 ? (
@@ -710,7 +710,7 @@ const Mypage = () => {
                       <div>
                         <p className="text-[11px] text-[#8b8278] uppercase tracking-widest mb-1">Total Amount</p>
                         <p className="text-lg font-bold text-[#2a2620]">₩{order.finalAmount?.toLocaleString()}</p>
-                        {/* 포인트 사용/적립 요약 표시 */}
+                        
                         {(order.pointsUsed > 0 || order.pointsEarned > 0) && (
                           <div className="flex gap-3 mt-1">
                             {order.pointsUsed > 0 && (

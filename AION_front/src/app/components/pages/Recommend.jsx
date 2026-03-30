@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRecommendations } from '../../../services/recommendationApi';
 
-// ── 이미지 import: 파일 6개를 src/assets/ 에 넣어주세요 ──
+
 import imgFemale       from '../../../assets/female.png';
 import imgMale         from '../../../assets/male.png';
 import imgDate         from '../../../assets/date.png';
@@ -12,7 +12,7 @@ import imgFallWinter   from '../../../assets/fallwinter.png';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-/* ─── 연령대 정의 ─── */
+
 const AGE_GROUPS = [
   {
     id: '10s',
@@ -76,7 +76,7 @@ const AGE_GROUPS = [
   },
 ];
 
-/* ─── 퀵 필터 이미지 배경 ─── */
+
 const FILTER_IMAGES = {
   '여성':      imgFemale,
   '남성':      imgMale,
@@ -86,7 +86,7 @@ const FILTER_IMAGES = {
   '가을/겨울': imgFallWinter,
 };
 
-/* ─── 퀵 필터 정의 ─── */
+
 const QUICK_FILTERS = [
   { label: '남성', en: 'Man',    type: 'gender', value: 'MALE'    },
   { label: '여성', en: 'Woman',  type: 'gender', value: 'FEMALE'  },
@@ -96,7 +96,7 @@ const QUICK_FILTERS = [
   { label: '가을/겨울', en: 'Autumn', type: 'tags', value: ['우디'] },
 ];
 
-/* ─── 서브 컴포넌트 ─── */
+
 
 function GoldDivider() {
   return (
@@ -147,7 +147,7 @@ function PerfumeCard({ perfume, onClick }) {
   );
 }
 
-/* ─── 연령대 섹션 ─── */
+
 function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
   const [expanded, setExpanded] = useState(false);
   const { palette } = group;
@@ -240,7 +240,7 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
   );
 }
 
-/* ─── 퀵 필터 버튼 컴포넌트 ─── */
+
 function QuickFilterButton({ filter, isActive, onClick }) {
   const imgSrc = FILTER_IMAGES[filter.label];
 
@@ -253,7 +253,7 @@ function QuickFilterButton({ filter, isActive, onClick }) {
         padding: 0,
       }}
     >
-      {/* 이미지 배경 — object-cover로 빈 곳 없이 꽉 채움 */}
+      
       {imgSrc && (
         <img
           src={imgSrc}
@@ -264,7 +264,7 @@ function QuickFilterButton({ filter, isActive, onClick }) {
         />
       )}
 
-      {/* 텍스트 가독성을 위한 하단 그라디언트 오버레이 */}
+      
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -275,7 +275,7 @@ function QuickFilterButton({ filter, isActive, onClick }) {
         }}
       />
 
-      {/* 활성 시 골드 테두리 내부 강조 */}
+      
       {isActive && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -283,7 +283,7 @@ function QuickFilterButton({ filter, isActive, onClick }) {
         />
       )}
 
-      {/* 텍스트 레이어 */}
+      
       <div className="relative z-10 flex flex-col items-center gap-0.5 pb-3 pt-2">
         <span
           className="text-[12px] font-medium tracking-wider"
@@ -302,14 +302,14 @@ function QuickFilterButton({ filter, isActive, onClick }) {
   );
 }
 
-/* ─── 메인 컴포넌트 ─── */
+
 export default function Recommend() {
   const navigate = useNavigate();
 
-  // 관리자 여부 (실제 프로젝트에 맞게 교체)
+
   const isAdmin = sessionStorage.getItem('role') === 'ADMIN';
 
-  // 히어로 편집 상태
+
   const [heroEditing, setHeroEditing]   = useState(false);
   const [heroSubtitle, setHeroSubtitle] = useState('AION Parfums');
   const [heroTitle,    setHeroTitle]    = useState('RECOMMEND');
@@ -464,7 +464,7 @@ export default function Recommend() {
         .scrollbar-thin::-webkit-scrollbar-thumb { background: #c9a961; border-radius: 4px; }
       `}</style>
 
-      {/* ── HERO — mt-[-2px]로 배너 틈 제거 ── */}
+      
       <div className="relative bg-[#1a1510] py-20 overflow-hidden mt-[-2px]">
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #c9a961 1px, transparent 0)', backgroundSize: '32px 32px' }} />
@@ -473,7 +473,7 @@ export default function Recommend() {
           <span className="font-serif text-[20vw] text-[#c9a961]/3 leading-none">RECOMMEND</span>
         </div>
 
-        {/* 관리자 편집 버튼 */}
+        
         {isAdmin && (
           <div className="absolute top-4 right-4 z-20 flex gap-2">
             {heroEditing ? (
@@ -507,7 +507,7 @@ export default function Recommend() {
 
         <div className="relative text-center px-6 fade-up">
           {heroEditing ? (
-            /* ── 편집 모드 ── */
+            
             <div className="flex flex-col items-center gap-3 max-w-md mx-auto">
               <input
                 value={heroSubtitle}
@@ -535,7 +535,7 @@ export default function Recommend() {
               <p className="text-[9px] tracking-widest text-white/20 mt-1">* 저장 시 이 세션에만 반영됩니다. DB 연동은 별도 API 호출이 필요합니다.</p>
             </div>
           ) : (
-            /* ── 일반 모드 ── */
+            
             <>
               <p className="text-[10px] tracking-[0.8em] text-[#c9a961]/60 uppercase mb-4">{heroSubtitle}</p>
               <h1 className="font-serif text-5xl md:text-6xl tracking-[0.4em] text-white mb-4">{heroTitle}</h1>
@@ -548,7 +548,7 @@ export default function Recommend() {
 
       <div className="max-w-5xl mx-auto px-6 py-12">
 
-        {/* ── TAB SWITCHER ── */}
+        
         <div className="flex border border-[#e8e2d6] mb-10 fade-up delay-1">
           <button
             onClick={() => setActiveTab('all')}
@@ -570,11 +570,11 @@ export default function Recommend() {
           </button>
         </div>
 
-        {/* ══════════ 전체 추천 탭 ══════════ */}
+        
         {activeTab === 'all' && (
           <div className="space-y-8">
 
-            {/* ── 퀵 필터 (SVG 배경 선화 버튼) ── */}
+            
             <div className="fade-up delay-1">
               <p className="text-[10px] tracking-[0.5em] text-[#8b8278] uppercase mb-4">QUICK FILTER</p>
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
@@ -589,7 +589,7 @@ export default function Recommend() {
               </div>
             </div>
 
-            {/* Search + Sort */}
+            
             <div className="flex flex-col md:flex-row gap-3 fade-up delay-2">
               <div className="flex-1 relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#c9a961]/50 text-sm">✦</span>
@@ -612,7 +612,7 @@ export default function Recommend() {
               </select>
             </div>
 
-            {/* Tag input */}
+            
             <div className="fade-up delay-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] tracking-[0.5em] text-[#8b8278] uppercase">PREFERENCE TAGS</p>
@@ -638,7 +638,7 @@ export default function Recommend() {
               </div>
             </div>
 
-            {/* Active filter chips */}
+            
             {(selectedGender || selectedTags.length > 0) && (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] tracking-widest text-[#a39d8f]">필터:</span>
@@ -663,7 +663,7 @@ export default function Recommend() {
               </div>
             )}
 
-            {/* Results */}
+            
             <div>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-[10px] tracking-[0.5em] text-[#8b8278] uppercase">SCENTS FOR YOU</p>
@@ -700,7 +700,7 @@ export default function Recommend() {
           </div>
         )}
 
-        {/* ══════════ 연령별 추천 탭 ══════════ */}
+        
         {activeTab === 'age' && (
           <div className="space-y-4 fade-up">
             <div className="border border-[#e8e2d6] bg-white p-8 text-center mb-8">

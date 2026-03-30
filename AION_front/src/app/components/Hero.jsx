@@ -23,7 +23,6 @@ export function Hero({ navHeight = 0 }) {
   useEffect(() => {
     const fetchActiveHero = async () => {
       try {
-        // single() 대신 limit(1) 사용 → 결과 없어도 406 대신 빈 배열 반환
         const { data, error } = await supabase
           .from("hero_history")
           .select(`
@@ -113,7 +112,6 @@ export function Hero({ navHeight = 0 }) {
         zIndex: 1
       }}
     >
-      {/* 배경 이미지 */}
       <div className="absolute inset-0 z-0 bg-[#2a2620]">
         {images.map((img, index) => (
           <div
@@ -137,7 +135,6 @@ export function Hero({ navHeight = 0 }) {
       <CornerOrnament position="bottom-left" className="opacity-60" />
       <CornerOrnament position="bottom-right" className="opacity-60" />
 
-      {/* 콘텐츠 */}
       <div
         className="relative z-10 text-center px-4 max-w-5xl mx-auto"
         style={{ paddingTop: `${overlapHeight}px` }}
@@ -172,7 +169,6 @@ export function Hero({ navHeight = 0 }) {
         </button>
       </div>
 
-      {/* 스크롤 표시 */}
       <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-[#c9a961] animate-bounce">
         <div className="text-xs tracking-[0.3em]">SCROLL</div>
         <div className="w-[1px] h-12 bg-gradient-to-b from-[#c9a961] to-transparent" />

@@ -37,7 +37,6 @@ export function About() {
               </p>
             </div>
 
-            {/* Decorative divider */}
             <div className="flex items-center py-4">
               <div className="h-[1px] w-12 bg-gradient-to-r from-[#c9a961] to-transparent"></div>
               <div className="mx-3 text-[#c9a961] text-sm">✦</div>
@@ -58,14 +57,12 @@ export function About() {
                 alt="Floral arrangement"
                 className="w-full h-full object-cover"
               />
-              {/* Corner decorations */}
               <div className="absolute top-0 left-0 w-16 h-16 border-l-4 border-t-4 border-[#c9a961]"></div>
               <div className="absolute top-0 right-0 w-16 h-16 border-r-4 border-t-4 border-[#c9a961]"></div>
               <div className="absolute bottom-0 left-0 w-16 h-16 border-l-4 border-b-4 border-[#c9a961]"></div>
               <div className="absolute bottom-0 right-0 w-16 h-16 border-r-4 border-b-4 border-[#c9a961]"></div>
             </div>
 
-            {/* Floating ornament */}
             <div className="absolute -bottom-6 -right-6 bg-[#c9a961] text-white p-8 max-w-[200px]">
               <div className="text-4xl font-display">175</div>
               <div className="text-xs tracking-[0.3em] mt-2">YEARS OF<br/>EXCELLENCE</div>

@@ -6,7 +6,6 @@ import { supabase } from '../../supabaseClient';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-// 문의 유형 정의
 const INQUIRY_TYPES = [
   { value: 'product', label: '상품문의', icon: '🛍️' },
   { value: 'refund', label: '환불문의', icon: '💰' },
@@ -17,7 +16,6 @@ const INQUIRY_TYPES = [
   { value: 'newProduct', label: '신제품문의', icon: '✨' }
 ];
 
-// 문의 상태
 const STATUS = {
   pending: { label: '대기중', color: 'bg-amber-100 text-amber-800', icon: Clock },
   processing: { label: '처리중', color: 'bg-blue-100 text-blue-800', icon: RefreshCw },
@@ -25,7 +23,6 @@ const STATUS = {
   cancelled: { label: '취소됨', color: 'bg-gray-100 text-gray-400', icon: X }
 };
 
-// 고객 경고 레벨 (디자인용)
 const WARNING_LEVELS = {
   normal: { label: '정상', color: 'bg-green-50 border-green-200', badge: 'bg-green-100 text-green-800' },
   warning: { label: '경고', color: 'bg-yellow-50 border-yellow-300', badge: 'bg-yellow-100 text-yellow-800' },
@@ -43,14 +40,13 @@ const CustomerSupport = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [answerText, setAnswerText] = useState('');
   const [loading, setLoading] = useState(true);
-  
+
   const currentUser = sessionStorage.getItem('userName') || '관리자';
 
   useEffect(() => {
     fetchInquiries();
   }, []);
 
-  // 1. 백엔드에서 데이터 불러오기
   const fetchInquiries = async () => {
     try {
       setLoading(true);
@@ -72,7 +68,7 @@ const CustomerSupport = () => {
 
       if (response.ok) {
         const json = await response.json();
-        // 백엔드 데이터를 프론트 UI 구조에 맞게 변환
+
         const mappedData = json.data.map(item => ({
           ...item,
           id : item.inquiryId,
@@ -99,7 +95,6 @@ const CustomerSupport = () => {
     }
   };
 
-  // 2. 답변 전송 (백엔드 연동)
   const handleSubmitAnswer = async (inquiryId) => {
     if (!answerText.trim()) {
       alert('답변 내용을 입력해주세요.');
@@ -108,7 +103,7 @@ const CustomerSupport = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       const response = await fetch(`${API_BASE}/api/inquiries/admin/${inquiryId}/answer`, {
         method: 'PATCH',
         headers: {
@@ -121,15 +116,13 @@ const CustomerSupport = () => {
       if (response.ok) {
         alert('답변이 등록되었습니다.');
         setAnswerText('');
-        
-        // 새로고침 없이 즉시 반영
+
         setInquiries(prev => prev.map(inq => 
           inq.id === inquiryId 
           ? { ...inq, status: 'completed', answer: answerText, assignedTo: currentUser } 
           : inq
         ));
-        
-        // 현재 선택된 문의 상태도 업데이트
+
         setSelectedInquiry(prev => ({ 
           ...prev, 
           status: 'completed', 
@@ -145,16 +138,14 @@ const CustomerSupport = () => {
     }
   };
 
-  // 문의 선점 (UI만 동작)
   const handleClaimInquiry = (inquiryId) => {
     alert("문의 선점 기능은 추후 업데이트 될 예정입니다. (현재 바로 답변 가능)");
-    // UI상으로만 처리중으로 변경
+
     setInquiries(prev => prev.map(inq => 
         inq.id === inquiryId ? { ...inq, status: 'processing', assignedTo: currentUser } : inq
     ));
   };
 
-  // 경고 레벨 계산
   const getWarningLevel = (count) => {
     if (count <= 0) return 'normal';
     if (count === 1) return 'warning';
@@ -162,7 +153,6 @@ const CustomerSupport = () => {
     return 'blacklist';
   };
 
-  // 경고 추가
   const handleAddWarning = async () => {
     if (!selectedInquiry) return;
     const customerId = selectedInquiry.customerId || selectedInquiry.customer?.id;
@@ -198,7 +188,6 @@ const CustomerSupport = () => {
     }
   };
 
-  // 경고 감소
   const handleReduceWarning = async () => {
     if (!selectedInquiry) return;
     const customerId = selectedInquiry.customerId || selectedInquiry.customer?.id;
@@ -238,7 +227,6 @@ const CustomerSupport = () => {
     }
   };
 
-  // 블랙리스트 해제
   const handleRemoveBlacklist = async () => {
     if (!selectedInquiry) return;
     const customerId = selectedInquiry.customerId || selectedInquiry.customer?.id;
@@ -273,7 +261,6 @@ const CustomerSupport = () => {
     }
   };
 
-  // 필터링 로직
   const filteredInquiries = useMemo(() => {
     let result = [...inquiries];
 
@@ -303,8 +290,7 @@ const CustomerSupport = () => {
   return (
     <div className="min-h-screen bg-[#faf8f3] pt-40 pb-20 px-6">
       <div className="max-w-7xl mx-auto">
-        
-        {/* Header */}
+
         <div className="text-center mb-12">
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">CUSTOMER SUPPORT</div>
           <Ornament className="mb-6" />
@@ -312,7 +298,6 @@ const CustomerSupport = () => {
           <p className="text-sm text-[#8b8278] italic">Customer Inquiries Management</p>
         </div>
 
-        {/* Tabs & Filters */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex gap-2">
             <button onClick={() => setActiveTab('all')} className={`px-6 py-2.5 text-xs tracking-[0.2em] transition-all ${activeTab === 'all' ? 'bg-[#2a2620] text-white' : 'bg-white text-[#8b8278] border border-[#c9a961]/20'}`}>전체 문의</button>
@@ -336,10 +321,8 @@ const CustomerSupport = () => {
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-4 py-3 border border-[#c9a961]/20 rounded-lg bg-white text-xs outline-none focus:border-[#c9a961]"><option value="all">모든 상태</option>{Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
         </div>
 
-        {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
-          
-          {/* List */}
+
           <div className="lg:col-span-2 space-y-4 overflow-y-auto pr-2">
             {loading ? (
                <div className="bg-white p-12 text-center rounded-lg border border-[#c9a961]/10"><p className="text-sm text-[#8b8278]">로딩 중...</p></div>
@@ -375,7 +358,6 @@ const CustomerSupport = () => {
             )}
           </div>
 
-          {/* Detail Panel */}
           <div className="lg:col-span-1">
             {selectedInquiry ? (
               <div className="bg-white rounded-lg border border-[#c9a961]/20 p-6 sticky top-6 h-full overflow-y-auto">
@@ -385,7 +367,7 @@ const CustomerSupport = () => {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Customer Info */}
+
                   <div>
                     <div className="text-[9px] tracking-wider text-[#8b8278] mb-2">고객 정보</div>
                     <div className="flex items-center gap-3 mb-2">
@@ -398,15 +380,13 @@ const CustomerSupport = () => {
                     </div>
                   </div>
 
-                  {/* Inquiry Content */}
                   <div>
                     <div className="text-[9px] tracking-wider text-[#8b8278] mb-2">문의 내용</div>
                     <div className="bg-[#faf8f3] p-4 rounded-lg"><p className="text-sm text-[#2a2620] leading-relaxed">{selectedInquiry.content}</p></div>
                   </div>
 
-                  {/* Answer Section */}
                   <div className="space-y-4 pt-4 border-t border-[#c9a961]/10">
-                    {/* 1. 답변이 완료된 경우 */}
+
                     {selectedInquiry.answer ? (
                       <div className="bg-gray-50 border-l-4 border-green-500 p-4 rounded">
                         <div className="flex items-center justify-between mb-2">
@@ -418,7 +398,7 @@ const CustomerSupport = () => {
                     ) : selectedInquiry.status === 'cancelled' ? (
                       <div className="p-4 bg-gray-100 text-center text-gray-500 text-sm rounded">🚫 취소된 문의입니다.</div>
                     ) : (
-                      /* 2. 답변 대기중 (바로 입력 가능) */
+
                       <div>
                         <div className="text-[9px] tracking-wider text-[#8b8278] mb-2 flex justify-between items-center">
                             <span>답변 작성</span>
@@ -440,7 +420,6 @@ const CustomerSupport = () => {
                       </div>
                     )}
 
-                    {/* Placeholder Actions */}
                     {selectedInquiry.status !== 'cancelled' && (
                         <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-[#eee]">
                             <button onClick={() => handleAddWarning()} className="py-2 bg-orange-50 text-orange-700 border border-orange-200 text-[10px] hover:bg-orange-100 rounded">⚠️ 경고 추가</button>

@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Ornament } from '../Ornament';
 import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 
-// FAQ 데이터
 const FAQ_DATA = [
   {
     id: 1,
@@ -98,8 +97,7 @@ const FAQ = () => {
   return (
     <div className="min-h-screen bg-[#faf8f3] pt-12 pb-20 px-6">
       <div className="max-w-4xl mx-auto">
-        
-        {/* Header */}
+
         <div className="text-center mb-12">
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">
             FREQUENTLY ASKED QUESTIONS
@@ -113,7 +111,6 @@ const FAQ = () => {
           </p>
         </div>
 
-        {/* Category Filter */}
         <div className="flex flex-wrap gap-2 justify-center mb-10">
           {categories.map(category => (
             <button
@@ -130,7 +127,6 @@ const FAQ = () => {
           ))}
         </div>
 
-        {/* FAQ List */}
         <div className="space-y-3">
           {filteredFAQ.map((faq) => (
             <div
@@ -175,7 +171,6 @@ const FAQ = () => {
           ))}
         </div>
 
-        {/* 문의하기 CTA */}
         <div className="mt-12 p-8 bg-white border border-[#c9a961]/20 rounded-lg text-center">
           <MessageSquare className="w-10 h-10 mx-auto mb-4 text-[#c9a961]" />
           <h3 className="text-lg font-semibold text-[#2a2620] mb-2">

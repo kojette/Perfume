@@ -73,30 +73,23 @@ function AppLayout() {
 
         <main>
           <Routes>
-            {/* ── 홈 ── */}
             <Route path="/" element={<><FeaturedProducts /><About /><Newsletter /></>} />
 
-            {/* ── 향수 & 컬렉션 ── */}
             <Route path="/collections" element={<Collections />} />
             <Route path="/signature"   element={<Signature />} />
             <Route path="/recommend"   element={<Recommend />} />
 
-            {/* ── 커스터마이징 ── */}
             <Route path="/custom" element={<Customization />} />
 
-            {/* ── 스토리 ── */}
             <Route path="/story" element={<Story />} />
 
-            {/* ── 매장 ── */}
             <Route path="/store" element={<Store />} />
 
-            {/* ── 쇼핑 ── */}
             <Route path="/cart"       element={<Cart />} />
             <Route path="/wishlist"   element={<Wishlist />} />
             <Route path="/search"     element={<SearchResult />} />
             <Route path="/orders/:id" element={<OrderReceipt />} />
 
-            {/* ── 회원 ── */}
             <Route path="/login"          element={<Login />} />
             <Route path="/signup"         element={<Signup />} />
             <Route path="/mypage"         element={<Mypage />} />
@@ -104,11 +97,9 @@ function AppLayout() {
             <Route path="/profile/edit"   element={<ProfileEdit />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* ── 고객센터 ── */}
             <Route path="/customer/inquiry" element={<CustomerInquiry />} />
             <Route path="/faq"              element={<FAQ />} />
 
-            {/* ── 관리자 ── */}
             <Route path="/admin"               element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="/admin/support"       element={<AdminRoute><CustomerSupport /></AdminRoute>} />
             <Route path="/admin/perfumes"      element={<AdminRoute><PerfumeManagement /></AdminRoute>} />
@@ -118,7 +109,6 @@ function AppLayout() {
             <Route path="/admin/story"         element={<AdminRoute><StoryManagement /></AdminRoute>} />
             <Route path="/admin/bottles"       element={<AdminRoute><BottleManagement /></AdminRoute>} />
 
-            {/* ── 약관 ── */}
             <Route path="/terms"   element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
           </Routes>

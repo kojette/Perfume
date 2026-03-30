@@ -16,17 +16,14 @@ const DEFAULT_BOTTLES = [
   { id: 'rectangular',    name: '레트앵귤러',     shape: 'rectangle', basePrice: 14000 },
 ];
 
-// 가격 체계
 const PRICE_CONFIG = {
   printing:    5000,
   stickerPack: 3000,
   engraving:   8000,
 };
 
-// 기본 내장 스티커 (이모지)
 const BUILT_IN_STICKERS = ['🌸', '✨', '🌙', '⭐', '🌿', '💎', '🦋', '🌹', '🔮', '☽', '❀', '✦', '❖', '◈', '⊕'];
 
-// ─── 공병 SVG 렌더러 (forwardRef로 미리보기 합성 시 ref 접근 가능) ────────────
 const BottleSVG = React.forwardRef(function BottleSVG(
   { shape, fillColor = '#e8dcc8', strokeColor = '#c9a961', width = 200, height = 280 },
   ref
@@ -130,41 +127,33 @@ const BottleSVG = React.forwardRef(function BottleSVG(
   );
 });
 
-// ─── 메인 에디터 컴포넌트 ─────────────────────────────────────────────────────
 const CustomizationEditor = ({ onClose, onSave, initialData }) => {
   const [activeTab, setActiveTab] = useState('bottle');
 
-  // 공병
   const [selectedBottle, setSelectedBottle] = useState(DEFAULT_BOTTLES[0]);
-  const [adminBottles, setAdminBottles] = useState([]);  // 백엔드에서 로드
+  const [adminBottles, setAdminBottles] = useState([]);
   const [bottleColor, setBottleColor] = useState('#e8dcc8');
 
-  // 그림판
   const canvasRef = useRef(null);
-  const bottleSvgRef = useRef(null); // 미리보기 공병 SVG ref (합성 이미지 생성용)
+  const bottleSvgRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawMode, setDrawMode] = useState('pen');
   const [penColor, setPenColor] = useState('#c9a961');
   const [penSize, setPenSize] = useState(4);
   const [lastPos, setLastPos] = useState(null);
 
-  // 오브젝트 레이어 (이미지 + 스티커)
   const [objects, setObjects] = useState([]);
   const [selectedObjId, setSelectedObjId] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // 각인
   const [engravingText, setEngravingText] = useState('');
   const [engravingEnabled, setEngravingEnabled] = useState(false);
 
-  // 저장 정보
   const [designName, setDesignName] = useState('');
 
   const token = sessionStorage.getItem('accessToken');
 
-  // ── 관리자 추가 공병 목록 로드 (백엔드 API) ─────────────────────────
-  // GET /api/custom/bottles
   useEffect(() => {
     const loadAdminBottles = async () => {
       try {
@@ -173,8 +162,7 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
         });
         if (res.ok) {
           const json = await res.json();
-          // 백엔드 응답: { success: true, data: [...] }
-          // shape이 BottleSVG에 정의된 키와 일치해야 표시됨
+
           setAdminBottles(
             (json.data || []).map(b => ({
               id: `admin-${b.bottleId}`,
@@ -191,7 +179,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     loadAdminBottles();
   }, []);
 
-  // ── initialData 복원 (수정 모드) ─────────────────────────────────────
   useEffect(() => {
     if (!initialData) return;
     setDesignName(initialData.name || '');
@@ -199,18 +186,15 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     setEngravingText(initialData.engravingText || '');
     setEngravingEnabled(!!initialData.engravingText);
 
-    // 공병 선택 복원
     const allBottles = [...DEFAULT_BOTTLES, ...adminBottles];
     const found = allBottles.find(b => b.id === initialData.bottleKey);
     if (found) setSelectedBottle(found);
 
-    // 오브젝트 레이어 복원
     if (initialData.objectsJson) {
       try { setObjects(JSON.parse(initialData.objectsJson)); } catch {}
     }
   }, [initialData]);
 
-  // ── 그림판 ───────────────────────────────────────────────────────────
   const getCanvasPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -227,7 +211,7 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
   const draw = (e) => {
     if (!isDrawing || !lastPos) return;
     const pos = getCanvasPos(e);
-    // willReadFrequently: true → getImageData 반복 호출 시 경고 제거 및 성능 최적화
+
     const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
     ctx.globalCompositeOperation = drawMode === 'eraser' ? 'destination-out' : 'source-over';
     ctx.strokeStyle = penColor;
@@ -245,14 +229,13 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
   const endDraw = () => {
     setIsDrawing(false);
     setLastPos(null);
-    updateHasDrawing(); // 드로잉 종료 시 ref 갱신
+    updateHasDrawing();
   };
   const clearCanvas = () => {
     canvasRef.current.getContext('2d', { willReadFrequently: true }).clearRect(0, 0, 200, 280);
-    hasDrawingRef.current = false; // 전체 지우기 시 ref 초기화
+    hasDrawingRef.current = false;
   };
 
-  // ── 이미지 업로드 ─────────────────────────────────────────────────────
   const handleImageUpload = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
     const reader = new FileReader();
@@ -266,7 +249,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     reader.readAsDataURL(file);
   };
 
-  // ── 스티커 추가 ──────────────────────────────────────────────────────
   const addSticker = (emoji) => {
     setObjects(prev => [...prev, {
       id: Date.now(), type: 'sticker',
@@ -286,7 +268,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     reader.readAsDataURL(file);
   };
 
-  // ── 오브젝트 드래그 이동 ─────────────────────────────────────────────
   const onObjMouseDown = (e, objId) => {
     e.stopPropagation();
     setSelectedObjId(objId);
@@ -315,7 +296,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     };
   }, [onMouseMove, onMouseUp]);
 
-  // 오브젝트 크기 조절
   const resizeObject = (objId, delta) => {
     setObjects(prev => prev.map(o =>
       o.id === objId ? { ...o, w: Math.max(30, o.w + delta), h: Math.max(30, o.h + delta) } : o
@@ -327,10 +307,8 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     setSelectedObjId(null);
   };
 
-  // 그림판에 드로잉이 있는지 여부를 ref로 추적 (getImageData를 렌더마다 호출하지 않도록)
   const hasDrawingRef = useRef(false);
 
-  // draw 이벤트 끝날 때마다 드로잉 여부 갱신
   const updateHasDrawing = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -339,7 +317,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     hasDrawingRef.current = imgData.data.some((v, i) => i % 4 === 3 && v > 0);
   };
 
-  // ── 가격 계산 ─────────────────────────────────────────────────────────
   const calcPrices = () => {
     const bottlePrice = selectedBottle.basePrice;
     const hasImage = objects.some(o => o.type === 'image');
@@ -348,7 +325,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     const stickerPrice = stickerCount * PRICE_CONFIG.stickerPack;
     const engravingPrice = engravingEnabled && engravingText ? PRICE_CONFIG.engraving : 0;
 
-    // getImageData 대신 ref 값 사용 → 매 렌더마다 readback 없음
     const drawingPrice = hasDrawingRef.current ? PRICE_CONFIG.printing : 0;
 
     const total = bottlePrice + Math.max(printingPrice, drawingPrice) + stickerPrice + engravingPrice;
@@ -361,9 +337,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     };
   };
 
-  // ── 모든 레이어를 합성한 미리보기 이미지 생성 ────────────────────────
-  // SVG공병 → 배경 → 그림판드로잉 → 이미지/스티커오브젝트 → 각인텍스트 순으로
-  // 오프스크린 캔버스에 직접 그려서 진짜 보이는 그대로의 이미지를 만든다.
   const generatePreviewImage = () => new Promise((resolve) => {
     const W = 200, H = 280;
     const offscreen = document.createElement('canvas');
@@ -371,25 +344,22 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     offscreen.height = H;
     const ctx = offscreen.getContext('2d', { willReadFrequently: true });
 
-    // 1단계: 배경색 (공병 배경)
     ctx.fillStyle = '#f0ece4';
     ctx.fillRect(0, 0, W, H);
 
-    // 2단계: SVG 공병을 이미지로 변환해서 그리기
     const svgEl = bottleSvgRef.current;
     const svgData = svgEl
       ? new XMLSerializer().serializeToString(svgEl)
       : null;
 
     const drawRest = () => {
-      // 3단계: 그림판 캔버스 드로잉 합성
+
       try {
         if (canvasRef.current) {
           ctx.drawImage(canvasRef.current, 0, 0);
         }
       } catch {}
 
-      // 4단계: 이미지/스티커 오브젝트 합성
       const imagePromises = objects.map(obj => new Promise((res) => {
         if (obj.type === 'image') {
           const img = new Image();
@@ -400,7 +370,7 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
           img.onerror = () => res();
           img.src = obj.src;
         } else if (obj.type === 'sticker') {
-          // 이모지 스티커는 텍스트로 직접 그리기
+
           const fontSize = Math.min(obj.w, obj.h) * 0.75;
           ctx.font = `${fontSize}px serif`;
           ctx.textAlign = 'center';
@@ -413,7 +383,7 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
       }));
 
       Promise.all(imagePromises).then(() => {
-        // 5단계: 각인 텍스트 합성
+
         if (engravingEnabled && engravingText) {
           ctx.font = 'italic 11px Georgia, serif';
           ctx.fillStyle = '#a08040';
@@ -423,7 +393,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
           ctx.fillText(engravingText, W / 2, H - 40);
         }
 
-        // 최종 JPEG 0.5 품질로 추출 (300KB 초과 시 null)
         try {
           const raw = offscreen.toDataURL('image/jpeg', 0.5);
           resolve(raw.length < 400_000 ? raw : null);
@@ -449,15 +418,11 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     }
   });
 
-  // ── 저장 (백엔드 API 호출) ─────────────────────────────────────────────
-  // POST /api/custom/designs      (신규)
-  // PUT  /api/custom/designs/{id} (수정)
   const handleSave = async () => {
     if (!designName.trim()) { alert('디자인 이름을 입력해주세요.'); return; }
 
     const prices = calcPrices();
 
-    // 모든 레이어(공병SVG + 드로잉 + 오브젝트 + 각인)를 합성한 진짜 미리보기
     let previewUrl = null;
     try {
       previewUrl = await generatePreviewImage();
@@ -505,7 +470,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     }
   };
 
-  // ── 렌더링 ────────────────────────────────────────────────────────────
   const allBottles = [...DEFAULT_BOTTLES, ...adminBottles];
   const prices = calcPrices();
 
@@ -522,7 +486,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     <div className="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-[#faf8f3] w-full max-w-6xl max-h-[95vh] flex flex-col shadow-2xl border border-[#c9a961]/30 overflow-hidden">
 
-        {/* 헤더 */}
         <div className="flex items-center justify-between px-8 py-4 border-b border-[#c9a961]/20 bg-white">
           <div>
             <div className="text-[9px] tracking-[0.4em] text-[#c9a961] italic mb-1">DESIGN STUDIO</div>
@@ -533,7 +496,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
           </button>
         </div>
 
-        {/* 탭 바 */}
         <div className="flex border-b border-[#c9a961]/20 bg-white overflow-x-auto">
           {tabs.map(tab => (
             <button
@@ -550,19 +512,15 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
           ))}
         </div>
 
-        {/* 메인 영역 */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* ── 왼쪽: 공병 미리보기 (항상 표시) ── */}
           <div className="relative w-72 min-w-[280px] bg-[#f0ece4] flex flex-col items-center justify-center border-r border-[#c9a961]/20 select-none">
             <div className="relative" style={{ width: 200, height: 280 }}>
 
-              {/* 공병 SVG - ref 연결로 저장 시 합성 이미지에 포함 */}
               <div className="absolute inset-0 pointer-events-none">
                 <BottleSVG ref={bottleSvgRef} shape={selectedBottle.shape} fillColor={bottleColor} width={200} height={280} />
               </div>
 
-              {/* 그림 캔버스 */}
               <canvas
                 ref={canvasRef}
                 width={200}
@@ -582,7 +540,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
                 onTouchEnd={activeTab === 'draw' ? endDraw : undefined}
               />
 
-              {/* 오브젝트 레이어 */}
               {objects.map(obj => (
                 <div
                   key={obj.id}
@@ -603,7 +560,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
                     </div>
                   )}
 
-                  {/* 선택 시 컨트롤 */}
                   {selectedObjId === obj.id && (
                     <>
                       <button onClick={() => deleteObject(obj.id)}
@@ -625,7 +581,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
                 </div>
               ))}
 
-              {/* 각인 텍스트 미리보기 */}
               {engravingEnabled && engravingText && (
                 <div style={{
                   position: 'absolute', bottom: 40, left: 0, right: 0,
@@ -639,7 +594,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
               )}
             </div>
 
-            {/* 공병 이름 & 색상 */}
             <div className="mt-4 text-center">
               <div className="text-xs tracking-widest text-[#8b8278] italic">{selectedBottle.name}</div>
               <div className="text-[#c9a961] text-xs mt-1">₩{selectedBottle.basePrice.toLocaleString()}</div>
@@ -651,10 +605,8 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
             </div>
           </div>
 
-          {/* ── 오른쪽: 탭별 컨텐츠 ── */}
           <div className="flex-1 overflow-y-auto p-6">
 
-            {/* 공병 선택 탭 */}
             {activeTab === 'bottle' && (
               <div>
                 <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">공병 디자인 선택</h3>
@@ -678,7 +630,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
               </div>
             )}
 
-            {/* 그림판 탭 */}
             {activeTab === 'draw' && (
               <div>
                 <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">그림판</h3>
@@ -730,7 +681,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
               </div>
             )}
 
-            {/* 이미지 업로드 탭 */}
             {activeTab === 'upload' && (
               <div>
                 <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">이미지 업로드</h3>
@@ -765,7 +715,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
               </div>
             )}
 
-            {/* 스티커 탭 */}
             {activeTab === 'sticker' && (
               <div>
                 <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">스티커</h3>
@@ -799,7 +748,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
               </div>
             )}
 
-            {/* 각인 탭 */}
             {activeTab === 'engraving' && (
               <div>
                 <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">각인 (Engraving)</h3>
@@ -826,7 +774,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
               </div>
             )}
 
-            {/* 저장 탭 */}
             {activeTab === 'save' && (
               <div>
                 <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">저장 및 가격</h3>
@@ -839,7 +786,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
                       className="w-full max-w-sm border-b border-[#c9a961]/40 bg-transparent text-sm text-[#2a2620] pb-2 outline-none placeholder-[#8b8278]/50 focus:border-[#c9a961]" />
                   </div>
 
-                  {/* 가격 내역 */}
                   <div className="space-y-2 border-t border-[#c9a961]/10 pt-5">
                     <div className="text-[10px] tracking-widest text-[#8b8278] mb-3">가격 내역</div>
                     <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
@@ -883,7 +829,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
           </div>
         </div>
 
-        {/* 하단 가격 바 */}
         <div className="flex items-center justify-between px-8 py-3 bg-white border-t border-[#c9a961]/20 text-[11px] tracking-widest">
           <span className="text-[#8b8278]">현재 예상 금액</span>
           <span className="text-[#c9a961] font-bold">₩{prices.total.toLocaleString()}</span>

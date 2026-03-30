@@ -10,7 +10,7 @@ const Privacy = () => {
       
       <div className="max-w-4xl mx-auto">
         
-        {/* 상단 타이틀 영역 */}
+        
         <div className="text-center mb-16">
           <h2 className="text-3xl font-serif text-[#1a1a1a] tracking-[0.2em] mb-4">PRIVACY POLICY</h2>
           <p className="text-[#c9a961] text-sm tracking-[0.4em] uppercase">개인정보처리방침</p>
@@ -22,7 +22,7 @@ const Privacy = () => {
           </div>
         </div>
 
-        {/* 본문 영역 */}
+        
         <div className="bg-white border border-[#c9a961]/20 p-8 md:p-12 shadow-sm text-[#2a2620] leading-loose text-sm font-light space-y-12">
           
           <div className="text-center italic text-[#8b8278] border-b border-[#c9a961]/20 pb-6">
@@ -35,7 +35,7 @@ const Privacy = () => {
             </p>
           </section>
 
-          {/* 1. 개인정보의 수집 및 이용 목적 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">1. 수집하는 개인정보 항목 및 수집 방법</h3>
             <div className="space-y-6">
@@ -50,7 +50,7 @@ const Privacy = () => {
             </div>
           </section>
 
-          {/* 2. 이용 목적 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">2. 개인정보의 수집 및 이용 목적</h3>
             <div className="space-y-2 text-[#555]">
@@ -63,7 +63,7 @@ const Privacy = () => {
             </div>
           </section>
 
-          {/* 3. 보유 및 이용 기간 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">3. 개인정보의 보유 및 이용 기간</h3>
             <div className="space-y-4 text-[#555]">
@@ -77,7 +77,7 @@ const Privacy = () => {
             </div>
           </section>
 
-          {/* 4. 제3자 제공 및 위탁 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">4. 개인정보의 취급 위탁</h3>
             <p className="text-justify text-[#555] mb-4">
@@ -109,7 +109,7 @@ const Privacy = () => {
             </div>
           </section>
 
-          {/* 5. 권리와 행사방법 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">5. 이용자의 권리와 그 행사방법</h3>
             <p className="text-justify text-[#555]">
@@ -117,7 +117,7 @@ const Privacy = () => {
             </p>
           </section>
 
-          {/* 6. 쿠키 운영 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">6. 개인정보 자동수집 장치(쿠키 등)의 설치, 운영 및 거부</h3>
             <p className="text-justify text-[#555] mb-4">
@@ -129,7 +129,7 @@ const Privacy = () => {
             </ul>
           </section>
 
-          {/* 7. 보호책임자 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">7. 개인정보 보호책임자</h3>
             <p className="text-justify text-[#555] mb-2">

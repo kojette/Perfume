@@ -33,7 +33,6 @@ export function Header() {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim() !== '') {
-      console.log("검색어: " + searchQuery);
       setIsSearchOpen(false);
       setSearchQuery('');
       navigate(`/search?q=${searchQuery}`);
@@ -44,7 +43,6 @@ export function Header() {
     <>
       <header className="relative z-[100] w-full bg-[#faf8f3]/98 backdrop-blur-sm border-b border-[#c9a961]/20">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          {/* Top decorative line */}
           <div className="flex items-center justify-center mb-4">
             <div className="h-[1px] w-12 bg-gradient-to-r from-transparent via-[#c9a961] to-transparent"></div>
             <div className="mx-3 text-[#c9a961] text-xs">✦</div>
@@ -92,9 +90,7 @@ export function Header() {
               </a>
             </nav>
 
-            {/* 우측 아이콘 메뉴 영역 */}
             <div className="flex items-center gap-4">
-              {/* 검색(돋보기) 아이콘*/}
               <div className = "flex items-center">
                 {isSearchOpen && (
                   <form onSubmit = {handleSearch} className = "mr-2 animate-in fade-in slide-in-from-right-2 duration-200">
@@ -111,14 +107,12 @@ export function Header() {
                   </button>
               </div>
 
-              {/* 공지/이벤트 확성기 아이콘 */}
               <button 
                 onClick={() => setNotificationOpen(true)}
                 className="p-2 hover:text-[#c9a961] transition-colors relative cursor-pointer"
                 title="공지사항 & 이벤트"
               >
                 <Megaphone size={20} />
-                {/* 새 알림 표시 점 (옵션) */}
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               <button 
@@ -141,7 +135,6 @@ export function Header() {
             </div>
           </div>
 
-          {/* Mobile Menu */}
           {menuOpen && (
             <nav className="lg:hidden mt-6 pt-6 border-t border-[#c9a961]/20 flex flex-col gap-4 text-[13px] tracking-[0.2em] text-[#2a2620]">
               <a href="/collections" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
@@ -170,7 +163,6 @@ export function Header() {
         </div>
       </header>
 
-      {/* 공지/이벤트 패널 */}
       <NotificationPanel 
         isOpen={notificationOpen} 
         onClose={() => setNotificationOpen(false)} 

@@ -16,9 +16,9 @@ const ProfileEdit = () => {
     phone: '',
     gender: '',
     profileImage: '',
-    zipcode: '',       // 우편번호
-    address: '',       // 기본주소
-    addressDetail: '', // 상세주소
+    zipcode: '',
+    address: '',
+    addressDetail: '',
   });
 
   useEffect(() => {
@@ -85,7 +85,7 @@ const ProfileEdit = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // 우편번호만 숫자 허용 (5자리)
+
   const handleZipcodeChange = (e) => {
     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
     setFormData(prev => ({ ...prev, zipcode: value }));
@@ -206,7 +206,7 @@ const ProfileEdit = () => {
 
         <div className="space-y-6">
 
-          {/* 프로필 이미지 */}
+          
           <div className="flex flex-col items-center mb-10">
             <div className="relative">
               <div className="w-24 h-24 rounded-full border border-[#c9a961]/30 overflow-hidden bg-[#faf8f3] flex items-center justify-center">
@@ -226,7 +226,7 @@ const ProfileEdit = () => {
             <p className="text-[9px] text-[#c9a961] mt-3 tracking-[0.2em] uppercase font-bold">Change Photo</p>
           </div>
 
-          {/* 이메일 (Read Only) */}
+          
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">
               EMAIL ADDRESS (UNALTERABLE)
@@ -240,7 +240,7 @@ const ProfileEdit = () => {
             <p className="text-[9px] text-[#c9a961]/70 italic mt-1">* 이메일은 변경할 수 없습니다.</p>
           </div>
 
-          {/* 이름 */}
+          
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">NAME</label>
             <input
@@ -252,7 +252,7 @@ const ProfileEdit = () => {
             />
           </div>
 
-          {/* 닉네임 */}
+          
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">NICKNAME</label>
             <input
@@ -264,7 +264,7 @@ const ProfileEdit = () => {
             />
           </div>
 
-          {/* 전화번호 */}
+          
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">PHONE NUMBER</label>
             <input
@@ -276,7 +276,7 @@ const ProfileEdit = () => {
             />
           </div>
 
-          {/* 성별 */}
+          
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">GENDER</label>
             <div className="relative">
@@ -294,7 +294,7 @@ const ProfileEdit = () => {
             </div>
           </div>
 
-          {/* ── 배송지 섹션 ── */}
+          
           <div className="pt-4">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-px flex-1 bg-[#c9a961]/20"></div>
@@ -302,7 +302,7 @@ const ProfileEdit = () => {
               <div className="h-px flex-1 bg-[#c9a961]/20"></div>
             </div>
 
-            {/* 우편번호 */}
+            
             <div className="space-y-2 mb-4">
               <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">POSTAL CODE</label>
               <input
@@ -316,7 +316,7 @@ const ProfileEdit = () => {
               />
             </div>
 
-            {/* 기본주소 */}
+            
             <div className="space-y-2 mb-4">
               <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">ADDRESS</label>
               <input
@@ -328,7 +328,7 @@ const ProfileEdit = () => {
               />
             </div>
 
-            {/* 상세주소 */}
+            
             <div className="space-y-2">
               <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">ADDRESS DETAIL</label>
               <input
@@ -345,7 +345,7 @@ const ProfileEdit = () => {
             </p>
           </div>
 
-          {/* 버튼 */}
+          
           <div className="pt-6 space-y-3">
             <button
               onClick={handleSave}

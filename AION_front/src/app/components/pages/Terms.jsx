@@ -9,7 +9,7 @@ const Terms = () => {
     <div className="min-h-screen bg-[#faf8f3] pt-24 pb-20 px-6">
       <div className="max-w-4xl mx-auto">
         
-        {/* 상단 타이틀 영역 */}
+        
         <div className="text-center mb-16">
           <h2 className="text-3xl font-serif text-[#1a1a1a] tracking-[0.2em] mb-4">TERMS OF SERVICE</h2>
           <p className="text-[#c9a961] text-sm tracking-[0.4em] uppercase">이용약관</p>
@@ -23,12 +23,12 @@ const Terms = () => {
 
         <div className="bg-white border border-[#c9a961]/20 p-8 md:p-12 shadow-sm text-[#2a2620] leading-loose text-sm font-light space-y-12">
           
-          {/* 시행일 안내 */}
+          
           <div className="text-center italic text-[#8b8278] border-b border-[#c9a961]/20 pb-6">
             본 약관은 2026년 1월 1일부터 시행됩니다.
           </div>
 
-          {/* 제 1 장 총칙 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">제 1 장 총칙</h3>
             
@@ -52,7 +52,7 @@ const Terms = () => {
             </div>
           </section>
 
-          {/* 제 2 장 지적 재산 및 이용 제한 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">제 2 장 지적 재산 및 이용 제한</h3>
             
@@ -73,7 +73,7 @@ const Terms = () => {
             </div>
           </section>
 
-          {/* 제 3 장 쇼핑 및 결제 서비스*/}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">제 3 장 쇼핑 및 결제 서비스</h3>
             
@@ -89,7 +89,7 @@ const Terms = () => {
             </div>
           </section>
 
-          {/* 제 4 장 취소 및 환불 */}
+          
           <section>
             <h3 className="font-serif text-lg text-[#1a1a1a] mb-4">제 4 장 배송, 취소 및 환불</h3>
             
@@ -103,7 +103,7 @@ const Terms = () => {
             </div>
           </section>
 
-          {/* 하단 브랜드 서명 영역 */}
+          
           <div className="pt-8 border-t border-[#c9a961]/20 text-center mt-12">
             <h4 className="font-serif text-xl tracking-[0.2em] text-[#1a1a1a] mb-2">OLYMPUS PARFUMS</h4>
             <p className="text-[#8b8278] text-xs tracking-widest uppercase">Since 1847, 영원한 그들의 향을 담다.</p>

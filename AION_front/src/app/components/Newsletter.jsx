@@ -3,7 +3,6 @@ import { Ornament } from './Ornament';
 export function Newsletter() {
   return (
     <section className="py-24 px-6 bg-gradient-to-br from-[#2a2620] via-[#3a3530] to-[#2a2620] text-white relative overflow-hidden">
-      {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-10 left-10 text-[#c9a961] text-6xl">✦</div>
         <div className="absolute top-32 right-20 text-[#c9a961] text-4xl">❖</div>
@@ -24,7 +23,6 @@ export function Newsletter() {
           가장 먼저 경험하실 수 있습니다
         </p>
 
-        {/* Decorative divider */}
         <div className="flex items-center justify-center mb-10">
           <div className="h-[1px] w-20 bg-gradient-to-r from-transparent to-[#c9a961]"></div>
           <div className="mx-4 text-[#c9a961] text-sm">✦</div>

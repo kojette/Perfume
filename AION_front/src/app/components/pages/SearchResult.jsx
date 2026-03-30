@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-//import { supabase } from '../../supabaseClient';
+
 import { Ornament } from '../Ornament';
 
 const SearchResult = () => {
@@ -72,7 +72,7 @@ const SearchResult = () => {
           </form>
         </div>
 
-        {/* 검색 결과 카운트 영역 */}
+        
         {query && !loading && (
           <div className="border-b border-[#c9a961]/20 pb-4 mb-8">
             <p className="text-[#8b8278] text-xs tracking-widest">
@@ -81,14 +81,14 @@ const SearchResult = () => {
           </div>
         )}
 
-        {/* 로딩 중일 때 화면 */}
+        
         {loading && query && (
           <div className="text-center py-20 text-[#c9a961] text-xs tracking-widest animate-pulse">
             검색 중...
           </div>
         )}
 
-        {/* 결과가 없을 때 화면 */}
+        
         {!loading && query && results.length === 0 && (
           <div className="text-center py-32 border border-dashed border-[#c9a961]/30 bg-white">
             <p className="text-[#8b8278] text-sm tracking-widest mb-6 italic">
@@ -103,7 +103,7 @@ const SearchResult = () => {
           </div>
         )}
 
-        {/* 검색 결과가 있을 때 상품 리스트 (그리드) */}
+        
         {!loading && results.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
             {results.map((item) => (
@@ -113,14 +113,14 @@ const SearchResult = () => {
                 onClick={() => navigate(`/collections?perfumeId=${item.perfumeId}`)}
 
               >
-                {/* 상품 이미지 영역 */}
+                
                 <div 
                   className="aspect-[3/4] bg-white border border-[#eee] mb-4 bg-cover bg-center group-hover:border-[#c9a961]/50 transition-colors" 
                     style={{
                         backgroundImage: item.imageUrl ? `url(${item.imageUrl})` 
                             : `url(https://via.placeholder.com/300x400?text=${encodeURIComponent(item.name)})`}}
                 ></div>
-                {/* 상품 정보 영역 */}
+                
                 <h3 className="font-serif text-lg text-[#1a1a1a] mb-1 group-hover:text-[#c9a961] transition-colors">
                   {item.name}
                 </h3>

@@ -7,7 +7,6 @@ export function Footer() {
     <footer className="bg-[#faf8f3] border-t-2 border-[#c9a961]/20 py-16 px-6">
       <div className="max-w-7xl mx-auto">
 
-        {/* Top decorative line */}
         <div className="flex items-center justify-center mb-12">
           <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-[#c9a961] to-transparent"></div>
           <div className="mx-4 text-[#c9a961] text-lg">✦</div>
@@ -16,7 +15,6 @@ export function Footer() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
 
-          {/* Brand */}
           <div>
             <h3 className="font-display text-2xl tracking-[0.4em] mb-4 text-[#c9a961]">
               AION
@@ -30,7 +28,6 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Shopping */}
           <div>
             <h4 className="tracking-[0.2em] mb-6 text-sm border-b border-[#c9a961]/20 pb-3">
               신성한 쇼핑
@@ -38,14 +35,9 @@ export function Footer() {
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li><Link to="/collections" className="hover:text-[#c9a961] italic">전체 컬렉션</Link></li>
               <li><Link to="/signature" className="hover:text-[#c9a961] italic">신들의 시그니처</Link></li>
-              {/*
-              <li><Link to="/limited" className="hover:text-[#c9a961] italic">한정판 에디션</Link></li>
-              <li><Link to="/gift" className="hover:text-[#c9a961] italic">신성한 선물 세트</Link></li>
-                */}
             </ul>
           </div>
 
-          {/* Customer Service */}
           <div>
             <h4 className="tracking-[0.2em] mb-6 text-sm border-b border-[#c9a961]/20 pb-3">
               고객 지원
@@ -72,7 +64,6 @@ export function Footer() {
                 </Link>
               </li>
 
-              {/* 관리자 전용 */}
               {isAdmin && (
                 <li className="pt-2 mt-2 border-t border-[#c9a961]/10">
                   <Link
@@ -86,7 +77,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Locations */}
           <div>
             <h4 className="tracking-[0.2em] mb-6 text-sm border-b border-[#c9a961]/20 pb-3">
               신전 위치
@@ -104,10 +94,8 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Divider */}
         <div className="h-[1px] bg-gradient-to-r from-transparent via-[#c9a961]/30 to-transparent my-10"></div>
 
-        {/* Bottom */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground">
           <p className="italic">
             © 2026 OLYMPUS PARFUMS. All rights reserved.
@@ -122,7 +110,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Final ornament */}
         <div className="flex items-center justify-center mt-10">
           <div className="text-[#c9a961]/40 text-2xl">❖</div>
         </div>

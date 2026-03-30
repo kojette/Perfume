@@ -12,17 +12,14 @@ const Cart = () => {
     const [loading, setLoading] = useState(true);
     const [totalPrice, setTotalPrice] = useState(0);
 
-    // 쿠폰 관련 상태
     const [availableCoupons, setAvailableCoupons] = useState([]);
     const [selectedCoupon, setSelectedCoupon] = useState(null);
     const [couponDiscount, setCouponDiscount] = useState(0);
 
-    // 포인트 관련 상태
     const [myTotalPoints, setMyTotalPoints] = useState(0);
     const [pointsInput, setPointsInput] = useState('');
     const [pointsToUse, setPointsToUse] = useState(0);
 
-    // 배송지 상태 (프로필에서 불러옴)
     const [shippingInfo, setShippingInfo] = useState({
         zipcode: '',
         address: '',
@@ -32,19 +29,14 @@ const Cart = () => {
     });
     const [shippingLoaded, setShippingLoaded] = useState(false);
 
-    // 인라인 배송지 수정 상태
     const [isEditingShipping, setIsEditingShipping] = useState(false);
     const [tempShipping, setTempShipping] = useState({
         zipcode: '', address: '', addressDetail: '', name: '', phone: '',
     });
 
-    // 아이템 상세 펼치기 상태
     const [expandedItems, setExpandedItems] = useState({});
     const toggleExpand = (cartId) => setExpandedItems(prev => ({ ...prev, [cartId]: !prev[cartId] }));
 
-    // 향조합 아이템 이름에서 구성 정보 파싱
-    // ScentBlend에서 name을 "[향조합] 블렌드이름" 형식으로 저장하므로
-    // 실제 세부내역은 Cart API 응답에 없어 price 기반으로 표시
     const isScentBlend = (item) => item.isCustom && item.name?.startsWith('[향조합]');
     const getBlendDisplayName = (item) => item.name?.replace('[향조합] ', '') || item.name;
     const getBlendMeta = (item) => {
@@ -63,7 +55,6 @@ const Cart = () => {
         fetchShippingInfo();
     }, []);
 
-    // 프로필에서 배송지 정보 불러오기
     const fetchShippingInfo = async () => {
         try {
             const token = sessionStorage.getItem('accessToken');
@@ -96,7 +87,6 @@ const Cart = () => {
         }
     };
 
-    // 보유 포인트 조회
     const fetchMyPoints = async () => {
         try {
             const token = sessionStorage.getItem('accessToken');
@@ -114,7 +104,6 @@ const Cart = () => {
         }
     };
 
-    // 사용 가능한 쿠폰 조회
     const fetchAvailableCoupons = async () => {
         try {
             const token = sessionStorage.getItem('accessToken');
@@ -130,7 +119,6 @@ const Cart = () => {
         }
     };
 
-    // 장바구니 아이템 조회
     const fetchCartItems = async () => {
         try {
             const token = sessionStorage.getItem('accessToken');
@@ -186,7 +174,6 @@ const Cart = () => {
         }
     };
 
-    // 쿠폰 선택
     const handleCouponChange = (e) => {
         const userCouponId = e.target.value;
         if (!userCouponId) {
@@ -206,7 +193,6 @@ const Cart = () => {
         setCouponDiscount(discount);
     };
 
-    // 포인트 입력 처리
     const handlePointsInput = (e) => {
         const raw = e.target.value.replace(/[^0-9]/g, '');
         setPointsInput(raw);
@@ -228,7 +214,6 @@ const Cart = () => {
         setPointsToUse(0);
     };
 
-    // 수량 변경
     const updateQuantity = async (cartId, currentQuantity, change) => {
         const newQuantity = currentQuantity + change;
         if (newQuantity < 1) return;
@@ -265,7 +250,6 @@ const Cart = () => {
         }
     };
 
-    // 장바구니 상품 삭제
     const handleRemoveItem = async (cartId) => {
         if (!window.confirm('장바구니에서 이 상품을 삭제하시겠습니까?')) return;
 
@@ -298,9 +282,8 @@ const Cart = () => {
         }
     };
 
-    // 결제
     const handleCheckout = async () => {
-        // 배송지 검증
+
         if (!shippingInfo.address) {
             const goToProfile = window.confirm(
                 '등록된 배송지가 없습니다.\n프로필에서 배송지를 먼저 등록해주세요.\n\n프로필 페이지로 이동하시겠습니까?'
@@ -325,7 +308,7 @@ const Cart = () => {
                 body: JSON.stringify({
                     userCouponId: selectedCoupon?.userCouponId || null,
                     pointsToUse: pointsToUse,
-                    // 배송지 정보 포함
+
                     receiverName: shippingInfo.name,
                     receiverPhone: shippingInfo.phone,
                     shippingZipcode: shippingInfo.zipcode,
@@ -373,7 +356,6 @@ const Cart = () => {
                 ) : (
                     <div className="space-y-8">
 
-                        {/* 상품 리스트 */}
                         <div className="bg-white border border-[#c9a961]/20 p-8 shadow-sm">
                             <table className="w-full text-left border-collapse">
                                 <thead>
@@ -406,7 +388,6 @@ const Cart = () => {
                                                             {isScentBlend(item) ? '나만의 향 조합' : item.isCustom ? 'Custom Design' : 'Eau De Parfum'}
                                                         </p>
 
-                                                        {/* 향조합 세부내역 아코디언 */}
                                                         {isScentBlend(item) && (
                                                             <div className="mt-2">
                                                                 <button
@@ -425,7 +406,7 @@ const Cart = () => {
                                                                         <div className="mt-2 text-[10px] text-[#8b8278] bg-[#faf8f3] px-3 py-2.5 border-l-2 border-[#c9a961]/40 space-y-1.5">
                                                                             <div className="text-[9px] tracking-wider text-[#c9a961] mb-2 uppercase">Blend Details</div>
                                                                             {meta ? (<>
-                                                                                {/* 향료 */}
+
                                                                                 <div>
                                                                                     <span className="text-[#8b8278]/70">향료</span>
                                                                                     <div className="mt-0.5 flex flex-wrap gap-1">
@@ -435,12 +416,12 @@ const Cart = () => {
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="h-[1px] bg-[#c9a961]/10 my-1" />
-                                                                                {/* 농도 / 용량 / 병 */}
+
                                                                                 <div className="flex justify-between"><span className="text-[#8b8278]/70">농도</span><span className="text-[#2a2620]">{meta.concentration}</span></div>
                                                                                 <div className="flex justify-between"><span className="text-[#8b8278]/70">용량</span><span className="text-[#2a2620]">{meta.volume}</span></div>
                                                                                 <div className="flex justify-between"><span className="text-[#8b8278]/70">병</span><span className="text-[#2a2620]">{meta.bottle}</span></div>
                                                                                 <div className="h-[1px] bg-[#c9a961]/10 my-1" />
-                                                                                {/* 가격 내역 */}
+
                                                                                 <div className="flex justify-between"><span className="text-[#8b8278]/70">기본 가격</span><span className="text-[#2a2620]">₩{meta.prices?.base?.toLocaleString()}</span></div>
                                                                                 {meta.prices?.volume > 0 && <div className="flex justify-between"><span className="text-[#8b8278]/70">추가 용량</span><span className="text-[#2a2620]">+₩{meta.prices?.volume?.toLocaleString()}</span></div>}
                                                                                 {meta.prices?.bottle > 0 && <div className="flex justify-between"><span className="text-[#8b8278]/70">커스텀 병</span><span className="text-[#2a2620]">+₩{meta.prices?.bottle?.toLocaleString()}</span></div>}
@@ -481,7 +462,6 @@ const Cart = () => {
                             </table>
                         </div>
 
-                        {/* 배송지 정보 */}
                         <div className="bg-white border border-[#c9a961]/20 p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-[10px] tracking-[0.2em] font-bold text-[#2a2620] uppercase">Shipping Address</h3>
@@ -505,7 +485,6 @@ const Cart = () => {
                                 )}
                             </div>
 
-                            {/* 보기 모드 */}
                             {!isEditingShipping && (
                                 shippingLoaded && shippingInfo.address ? (
                                     <div className="bg-[#fcfbf9] border-l-2 border-[#c9a961] p-4 space-y-1">
@@ -531,7 +510,6 @@ const Cart = () => {
                                 )
                             )}
 
-                            {/* 편집 모드 */}
                             {isEditingShipping && (
                                 <div className="space-y-4 animate-in fade-in duration-200">
                                     <p className="text-[10px] text-[#c9a961] italic tracking-wide">
@@ -611,14 +589,11 @@ const Cart = () => {
                             )}
                         </div>
 
-                        {/* 쿠폰 + 포인트 + 결제 요약 */}
                         <div className="bg-white border border-[#c9a961]/20 p-8 shadow-sm">
                             <div className="flex flex-col md:flex-row gap-10">
 
-                                {/* 왼쪽: 쿠폰 + 포인트 */}
                                 <div className="flex-1 space-y-8">
 
-                                    {/* 쿠폰 선택 */}
                                     <div>
                                         <h3 className="text-[10px] tracking-[0.2em] font-bold text-[#2a2620] mb-3 uppercase">Select a Coupon</h3>
                                         <select
@@ -637,7 +612,6 @@ const Cart = () => {
                                         </select>
                                     </div>
 
-                                    {/* 포인트 사용 */}
                                     <div>
                                         <h3 className="text-[10px] tracking-[0.2em] font-bold text-[#2a2620] mb-1 uppercase">Use Points</h3>
                                         <p className="text-[10px] text-[#8b8278] mb-3">
@@ -675,7 +649,6 @@ const Cart = () => {
                                     </div>
                                 </div>
 
-                                {/* 오른쪽: 결제 요약 */}
                                 <div className="w-full md:w-64 space-y-3 border-t md:border-t-0 md:border-l border-[#c9a961]/10 pt-6 md:pt-0 md:pl-10">
                                     <div className="flex justify-between text-[11px] tracking-widest text-[#8b8278]">
                                         <span>SUBTOTAL</span>

@@ -3,7 +3,6 @@ import { Ornament } from '../Ornament';
 import { Plus, Edit2, Trash2, Pin, AlertCircle, Calendar } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
-// 백엔드 API base URL - 환경에 맞게 설정
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const AnnouncementManagement = () => {
@@ -24,7 +23,6 @@ const AnnouncementManagement = () => {
     fetchAnnouncements();
   }, []);
 
-  // 인증 토큰 가져오기
   const getToken = async () => {
     const { data } = await supabase.auth.getSession();
     return data?.session?.access_token
@@ -32,7 +30,6 @@ const AnnouncementManagement = () => {
       : null;
   };
 
-  // 공지사항 목록 불러오기
   const fetchAnnouncements = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/announcements`);
@@ -43,7 +40,6 @@ const AnnouncementManagement = () => {
     }
   };
 
-  // 공지사항 저장 (생성 / 수정)
   const handleSave = async () => {
     if (!formData.title || !formData.content) {
       alert('제목과 내용을 입력해주세요.');
@@ -86,7 +82,6 @@ const AnnouncementManagement = () => {
     }
   };
 
-  // 공지사항 삭제
   const handleDelete = async (id) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
@@ -109,7 +104,6 @@ const AnnouncementManagement = () => {
     }
   };
 
-  // 수정 시작
   const handleEdit = (announcement) => {
     setEditingId(announcement.id);
     setFormData({
@@ -124,7 +118,6 @@ const AnnouncementManagement = () => {
     setShowForm(true);
   };
 
-  // 폼 리셋
   const resetForm = () => {
     setFormData({
       title: '',
@@ -142,7 +135,7 @@ const AnnouncementManagement = () => {
   return (
     <div className="min-h-screen bg-[#faf8f3] pt-40 pb-20 px-6">
       <div className="max-w-6xl mx-auto">
-        {/* 헤더 */}
+
         <div className="text-center mb-12">
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">
             ADMIN PANEL
@@ -160,7 +153,6 @@ const AnnouncementManagement = () => {
           </button>
         </div>
 
-        {/* 작성 폼 */}
         {showForm && (
           <div className="bg-white p-8 rounded-lg border border-[#c9a961]/20 mb-8 shadow-sm">
             <h3 className="text-lg font-semibold text-[#2a2620] mb-6">
@@ -168,7 +160,7 @@ const AnnouncementManagement = () => {
             </h3>
 
             <div className="space-y-6">
-              {/* 제목 */}
+
               <div>
                 <label className="block text-xs text-[#8b8278] mb-2 tracking-wider">제목</label>
                 <input
@@ -180,7 +172,6 @@ const AnnouncementManagement = () => {
                 />
               </div>
 
-              {/* 내용 */}
               <div>
                 <label className="block text-xs text-[#8b8278] mb-2 tracking-wider">내용</label>
                 <textarea
@@ -191,7 +182,6 @@ const AnnouncementManagement = () => {
                 />
               </div>
 
-              {/* 노출 기간 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-[#8b8278] mb-2 tracking-wider">시작일</label>
@@ -213,7 +203,6 @@ const AnnouncementManagement = () => {
                 </div>
               </div>
 
-              {/* 옵션 */}
               <div className="flex gap-6">
                 <label className="flex items-center gap-2 text-sm text-[#555] cursor-pointer">
                   <input
@@ -235,7 +224,6 @@ const AnnouncementManagement = () => {
                 </label>
               </div>
 
-              {/* 버튼 */}
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={handleSave}
@@ -254,7 +242,6 @@ const AnnouncementManagement = () => {
           </div>
         )}
 
-        {/* 공지사항 목록 */}
         <div className="space-y-3">
           {announcements.map((announcement) => (
             <div

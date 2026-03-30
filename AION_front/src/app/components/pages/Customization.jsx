@@ -1,13 +1,3 @@
-/**
- * Customization.jsx
- * 위치: src/components/pages/Customization.jsx
- *
- * 내 커스텀 디자인 목록 + 향 조합 페이지
- * - "향수 공병 디자인" 탭: 기존 디자인 목록 + 인라인 에디터
- * - "나만의 향 조합" 탭: ScentBlend 컴포넌트
- * Supabase 직접 접근 없음.
- */
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ornament } from '../Ornament';
@@ -19,7 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080
 
 const Customization = () => {
   const navigate = useNavigate();
-  const [activeMode, setActiveMode] = useState('bottle'); // 'bottle' | 'scent'
+  const [activeMode, setActiveMode] = useState('bottle');
   const [designs, setDesigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -32,7 +22,6 @@ const Customization = () => {
     fetchMyDesigns();
   }, []);
 
-  // ── 내 디자인 목록 조회 ──────────────────────────────────────────────
   const fetchMyDesigns = async () => {
     setLoading(true);
     try {
@@ -51,7 +40,6 @@ const Customization = () => {
     }
   };
 
-  // ── 디자인 삭제 ──────────────────────────────────────────────────────
   const handleDelete = async (designId) => {
     if (!window.confirm('이 디자인을 삭제하시겠습니까?')) return;
     try {
@@ -69,7 +57,6 @@ const Customization = () => {
     }
   };
 
-  // ── 장바구니에 커스텀 디자인 담기 ────────────────────────────────────
   const handleAddToCart = async (design) => {
     if (!isLoggedIn) { navigate('/login'); return; }
     try {
@@ -113,13 +100,10 @@ const Customization = () => {
     await fetchMyDesigns();
   };
 
-  // ── 에디터가 열려 있는 경우 → 전체 화면에 에디터 렌더 (팝업X) ──────
-  // CustomizationEditor가 원래 fixed+modal이지만,
-  // 여기서는 페이지 레이아웃 안에 직접 담아서 보여준다.
   if (editorOpen) {
     return (
       <div className="min-h-screen bg-[#faf8f3]">
-        {/* 상단 뒤로가기 바 */}
+
         <div className="sticky top-0 z-10 bg-white border-b border-[#c9a961]/20 px-6 py-3 flex items-center gap-4 shadow-sm">
           <button
             onClick={() => setEditorOpen(false)}
@@ -132,7 +116,6 @@ const Customization = () => {
           </span>
         </div>
 
-        {/* 에디터를 인라인으로 렌더 (fixed 제거 버전) */}
         <InlineEditor
           onClose={() => setEditorOpen(false)}
           onSave={handleEditorSave}
@@ -146,7 +129,6 @@ const Customization = () => {
     <div className="min-h-screen bg-[#faf8f3] pt-12 pb-24 px-6">
       <div className="max-w-6xl mx-auto">
 
-        {/* 페이지 헤더 */}
         <div className="text-center mb-10">
           <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-4 italic">CREATE YOUR SIGNATURE</div>
           <Ornament className="mb-6" />
@@ -154,7 +136,6 @@ const Customization = () => {
           <p className="text-[#8b8278] text-sm tracking-widest italic">나만의 향수를 완성하세요</p>
         </div>
 
-        {/* ── 모드 전환 버튼 2개 ── */}
         <div className="flex justify-center mb-10">
           <div className="flex border border-[#c9a961]/40 overflow-hidden">
             <button
@@ -165,7 +146,7 @@ const Customization = () => {
                   : 'bg-white text-[#8b8278] hover:text-[#2a2620] hover:bg-[#faf8f3]'
               }`}
             >
-              {/* 병 아이콘 */}
+
               <svg width="14" height="20" viewBox="0 0 14 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="5" y="0" width="4" height="4" rx="1" fill="currentColor" opacity="0.7"/>
                 <rect x="3" y="3" width="8" height="3" rx="1" fill="currentColor" opacity="0.5"/>
@@ -184,7 +165,7 @@ const Customization = () => {
                   : 'bg-white text-[#8b8278] hover:text-[#2a2620] hover:bg-[#faf8f3]'
               }`}
             >
-              {/* 향 아이콘 */}
+
               <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M8 2 C5 5 3 8 3 11 C3 14.5 5.2 17 8 17 C10.8 17 13 14.5 13 11 C13 8 11 5 8 2Z" fill="currentColor" opacity="0.85"/>
                 <path d="M8 2 C6 4 5 6 5 8 C5 10 6.2 11.5 8 11.5" stroke="currentColor" strokeWidth="0.8" opacity="0.4" fill="none"/>
@@ -195,10 +176,9 @@ const Customization = () => {
           </div>
         </div>
 
-        {/* ── 향수 공병 디자인 탭 ── */}
         {activeMode === 'bottle' && (
           <>
-            {/* 새 디자인 추가 버튼 */}
+
             <div className="flex justify-center mb-10">
               <button
                 onClick={openNewEditor}
@@ -209,7 +189,6 @@ const Customization = () => {
               </button>
             </div>
 
-            {/* 로딩 */}
             {loading ? (
               <div className="text-center py-20 italic tracking-widest text-[#8b8278]">LOADING...</div>
             ) : designs.length === 0 ? (
@@ -280,7 +259,6 @@ const Customization = () => {
           </>
         )}
 
-        {/* ── 나만의 향 조합 탭 ── */}
         {activeMode === 'scent' && (
           <ScentBlend />
         )}
@@ -290,10 +268,6 @@ const Customization = () => {
   );
 };
 
-// ── 인라인 에디터 래퍼 ──────────────────────────────────────────────────────
-// CustomizationEditor는 원래 fixed modal로 설계되어 있으므로
-// 여기서는 fixed/backdrop 없이 일반 div 안에서 에디터 콘텐츠만 렌더한다.
-// CustomizationEditor 자체를 건드리지 않고, override CSS로 fixed를 해제한다.
 const InlineEditor = ({ onClose, onSave, initialData }) => {
   return (
     <div className="customization-inline-wrapper">

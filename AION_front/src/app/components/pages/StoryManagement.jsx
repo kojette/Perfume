@@ -38,7 +38,7 @@ export default function StoryManagement() {
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState(null); // null=create, object=edit
+  const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [filterSection, setFilterSection] = useState('ALL');
@@ -152,7 +152,7 @@ export default function StoryManagement() {
   return (
     <div className="min-h-screen bg-[#faf8f3] p-8">
       <div className="max-w-6xl mx-auto">
-        {/* 헤더 */}
+        
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-display text-3xl tracking-[0.3em] text-[#c9a961] mb-1">STORY 관리</h1>
@@ -166,7 +166,7 @@ export default function StoryManagement() {
           </button>
         </div>
 
-        {/* 필터 탭 */}
+        
         <div className="flex gap-2 mb-8 border-b border-[#c9a961]/20">
           <button
             onClick={() => setFilterSection('ALL')}
@@ -217,7 +217,7 @@ export default function StoryManagement() {
                         className={`flex items-center gap-4 p-4 bg-white border rounded-sm transition-all ${
                           story.isPublished ? 'border-[#c9a961]/20' : 'border-gray-200 opacity-60'
                         }`}>
-                        {/* 썸네일 */}
+                        
                         <div className="w-14 h-14 flex-shrink-0 bg-[#f0ece4] overflow-hidden">
                           {story.imageUrl ? (
                             <img src={story.imageUrl} alt={story.title} className="w-full h-full object-cover" />
@@ -226,7 +226,7 @@ export default function StoryManagement() {
                           )}
                         </div>
 
-                        {/* 정보 */}
+                        
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             {story.yearLabel && (
@@ -244,12 +244,12 @@ export default function StoryManagement() {
                           )}
                         </div>
 
-                        {/* 정렬 순서 */}
+                        
                         <div className="text-xs text-[#8b8278] w-12 text-center flex-shrink-0">
                           순서 {story.sortOrder}
                         </div>
 
-                        {/* 버튼들 */}
+                        
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <button
                             onClick={() => togglePublish(story)}
@@ -294,11 +294,11 @@ export default function StoryManagement() {
         )}
       </div>
 
-      {/* 생성/수정 모달 */}
+      
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4">
-            {/* 모달 헤더 */}
+            
             <div className="flex items-center justify-between p-6 border-b border-[#c9a961]/20">
               <h2 className="font-display text-xl tracking-[0.2em] text-[#c9a961]">
                 {editTarget ? 'STORY 수정' : 'STORY 추가'}
@@ -308,9 +308,9 @@ export default function StoryManagement() {
               </button>
             </div>
 
-            {/* 모달 폼 */}
+            
             <div className="p-6 space-y-5">
-              {/* 섹션 타입 */}
+              
               <div>
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278] mb-2 uppercase">섹션 *</label>
                 <select
@@ -324,7 +324,7 @@ export default function StoryManagement() {
                 </select>
               </div>
 
-              {/* 연도 (히스토리일 때만) */}
+              
               {form.sectionType === 'HISTORY' && (
                 <div>
                   <label className="block text-xs tracking-[0.2em] text-[#8b8278] mb-2 uppercase">연도 (예: 1847)</label>
@@ -337,7 +337,7 @@ export default function StoryManagement() {
                 </div>
               )}
 
-              {/* 제목 */}
+              
               <div>
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278] mb-2 uppercase">제목 *</label>
                 <input
@@ -348,7 +348,7 @@ export default function StoryManagement() {
                 />
               </div>
 
-              {/* 부제목 */}
+              
               <div>
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278] mb-2 uppercase">부제목</label>
                 <input
@@ -359,7 +359,7 @@ export default function StoryManagement() {
                 />
               </div>
 
-              {/* 내용 */}
+              
               <div>
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278] mb-2 uppercase">내용</label>
                 <textarea
@@ -371,7 +371,7 @@ export default function StoryManagement() {
                 />
               </div>
 
-              {/* 이미지 URL */}
+              
               <div>
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278] mb-2 uppercase">이미지 URL</label>
                 <input
@@ -387,7 +387,7 @@ export default function StoryManagement() {
                 )}
               </div>
 
-              {/* 이미지 위치 */}
+              
               <div>
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278] mb-2 uppercase">이미지 위치</label>
                 <select
@@ -401,7 +401,7 @@ export default function StoryManagement() {
                 </select>
               </div>
 
-              {/* 정렬 순서 */}
+              
               <div>
                 <label className="block text-xs tracking-[0.2em] text-[#8b8278] mb-2 uppercase">정렬 순서</label>
                 <input
@@ -412,7 +412,7 @@ export default function StoryManagement() {
                 />
               </div>
 
-              {/* 공개 여부 */}
+              
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
@@ -425,7 +425,7 @@ export default function StoryManagement() {
               </div>
             </div>
 
-            {/* 모달 푸터 */}
+            
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#c9a961]/20">
               <button
                 onClick={() => setModalOpen(false)}
