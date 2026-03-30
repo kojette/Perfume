@@ -37,7 +37,6 @@ public class PasswordResetToken {
         createdAt = LocalDateTime.now();
     }
     
-    // 편의 생성자
     public PasswordResetToken(Long userId, String token, LocalDateTime expiresAt) {
         this.userId = userId;
         this.token = token;

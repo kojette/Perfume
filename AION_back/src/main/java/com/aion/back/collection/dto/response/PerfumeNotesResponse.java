@@ -5,10 +5,6 @@ import lombok.Getter;
 
 import java.util.List;
 
-/**
- * 향수 노트 응답 DTO
- * top / middle / base 노트 이름 목록을 반환
- */
 @Getter
 @Builder
 public class PerfumeNotesResponse {

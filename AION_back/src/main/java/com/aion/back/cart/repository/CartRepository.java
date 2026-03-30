@@ -12,6 +12,5 @@ public interface CartRepository extends JpaRepository<Cart, Long>{
 
     Optional<Cart> findByMemberAndPerfume(Member member, Perfume perfume);
 
-    // 커스텀 디자인 중복 체크용
     Optional<Cart> findByMemberAndCustomDesignId(Member member, Long customDesignId);
 }

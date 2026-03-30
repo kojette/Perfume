@@ -49,8 +49,6 @@ public class CollectionService {
         }
     }
 
-    // ── 노트 조회 (공개) ──────────────────────────────────────
-
     @Transactional(readOnly = true)
     public PerfumeNotesResponse getPerfumeNotes(Long perfumeId) {
         List<PerfumeNote> noteRows = perfumeNoteRepository.findByPerfumeId(perfumeId);
@@ -74,8 +72,6 @@ public class CollectionService {
         }
         return PerfumeNotesResponse.builder().perfumeId(perfumeId).top(top).middle(middle).base(base).build();
     }
-
-    // ── Collections CRUD ──────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<CollectionSummaryResponse> getList(String type) {
@@ -189,8 +185,6 @@ public class CollectionService {
         } catch (Exception e) { throw new RuntimeException("활성 컬렉션 조회 오류: " + e.getMessage(), e); }
         throw new RuntimeException("활성화된 컬렉션이 없습니다.");
     }
-
-    // ── 내부 헬퍼 ─────────────────────────────────────────────
 
     private CollectionEntity findCollectionById(UUID id) {
         try (Connection conn = dataSource.getConnection();

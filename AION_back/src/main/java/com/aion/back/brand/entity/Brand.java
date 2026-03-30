@@ -36,11 +36,6 @@ public class Brand {
     @Column(name = "logo_url", length = 500)
     private String logoUrl;
 
-    /*
-    @Column(name = "website_url", length = 500)
-    private String websiteUrl;
-    */
-
     @Column(name = "commission_rate")
     private BigDecimal commissionRate;
 

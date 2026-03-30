@@ -11,7 +11,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class LoginRecordRequest {
     private String email;
-    private String loginMethod;  // EMAIL, KAKAO, GOOGLE 등
+    private String loginMethod;  
     private String ipAddress;
     private String userAgent;
 }

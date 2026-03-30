@@ -147,7 +147,6 @@ public class CartController {
                 ? ((Number) request.get("quantity")).intValue() : 1;
         String imageUrl = (String) request.get("imageUrl");
 
-        // custom_design_id 는 Custom_Designs FK 제약이 있어 향조합 ID를 넣을 수 없음 → null 고정
         Cart newCart = new Cart();
         newCart.setMember(member);
         newCart.setQuantity(quantity);

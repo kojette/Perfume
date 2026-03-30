@@ -42,7 +42,7 @@ public class CollectionSaveRequest {
 
     @Getter @Setter
     public static class PerfumeItem {
-        private Long perfumeId;   // bigint → Long
+        private Long perfumeId;   
         private Integer displayOrder;
         private Boolean isFeatured;
     }

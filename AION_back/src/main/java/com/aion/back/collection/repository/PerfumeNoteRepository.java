@@ -9,6 +9,5 @@ import java.util.List;
 @Repository
 public interface PerfumeNoteRepository extends JpaRepository<PerfumeNote, Long> {
 
-    /** 특정 향수의 모든 노트 조회 */
     List<PerfumeNote> findByPerfumeId(Long perfumeId);
 }

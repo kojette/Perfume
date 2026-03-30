@@ -17,13 +17,11 @@ public class AnnouncementController {
 
     private final AnnouncementService announcementService;
 
-    // 목록 조회 (전체 공개)
     @GetMapping
     public ApiResponse<List<AnnouncementResponse>> getAll() {
         return ApiResponse.success("공지사항 목록 조회 성공", announcementService.getAll());
     }
 
-    // 생성 (관리자)
     @PostMapping
     public ApiResponse<AnnouncementResponse> create(
             @RequestHeader("Authorization") String token,
@@ -31,7 +29,6 @@ public class AnnouncementController {
         return ApiResponse.success("공지사항이 작성되었습니다.", announcementService.create(token, request));
     }
 
-    // 수정 (관리자)
     @PutMapping("/{id}")
     public ApiResponse<AnnouncementResponse> update(
             @RequestHeader("Authorization") String token,
@@ -40,7 +37,6 @@ public class AnnouncementController {
         return ApiResponse.success("공지사항이 수정되었습니다.", announcementService.update(token, id, request));
     }
 
-    // 삭제 (관리자)
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(
             @RequestHeader("Authorization") String token,

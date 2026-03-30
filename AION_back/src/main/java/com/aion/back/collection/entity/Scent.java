@@ -3,9 +3,6 @@ package com.aion.back.collection.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * Scents 테이블 매핑
- */
 @Entity(name = "CollectionScent")
 @Table(name = "\"Scents\"")
 @Getter

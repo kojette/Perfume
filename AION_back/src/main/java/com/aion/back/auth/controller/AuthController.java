@@ -14,15 +14,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*") // 프론트엔드 주소에 맞게 수정 필요
+@CrossOrigin(origins = "*") 
 public class AuthController {
 
     private final AuthService authService;
 
-    /**
-     * 로그인 기록 저장 (Supabase Auth 후 호출)
-     * 프론트엔드에서 Supabase 로그인 성공 후 이 API를 호출
-     */
     @PostMapping("/login-record")
     public ResponseEntity<Map<String, Object>> recordLogin(
             @RequestHeader("Authorization") String token,
@@ -45,10 +41,6 @@ public class AuthController {
         }
     }
 
-    /**
-     * 토큰 검증 (선택적)
-     * 프론트엔드에서 토큰이 유효한지 확인하고 싶을 때 사용
-     */
     @PostMapping("/verify-token")
     public ResponseEntity<Map<String, Object>> verifyToken(
             @RequestHeader("Authorization") String token) {
@@ -71,12 +63,6 @@ public class AuthController {
         }
     }
 
-    // ==================== 비밀번호 재설정 API ====================
-
-    /**
-     * 1. 비밀번호 찾기 - 이메일로 재설정 링크 전송
-     * POST /api/auth/find-password
-     */
     @PostMapping("/find-password")
     public ResponseEntity<Map<String, Object>> findPassword(
             @RequestBody Map<String, String> request) {
@@ -117,10 +103,6 @@ public class AuthController {
         }
     }
 
-    /**
-     * 2. 토큰 유효성 검증
-     * POST /api/auth/verify-reset-token
-     */
     @PostMapping("/verify-reset-token")
     public ResponseEntity<Map<String, Object>> verifyResetToken(
             @RequestBody Map<String, String> request) {
@@ -161,10 +143,6 @@ public class AuthController {
         }
     }
 
-    /**
-     * 3. 비밀번호 재설정
-     * POST /api/auth/reset-password
-     */
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, Object>> resetPassword(
             @RequestBody Map<String, String> request) {
@@ -187,7 +165,6 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            // 비밀번호 강도 검증 (최소 8자, 영문+숫자)
             if (newPassword.length() < 8) {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("success", false);

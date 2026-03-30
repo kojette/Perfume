@@ -33,24 +33,24 @@ public class PerfumeCreateRequest {
     @Positive(message = "원가는 0보다 커야 합니다")
     private Integer cost;
     
-    private Integer saleRate; // 0~100
+    private Integer saleRate; 
     
     @NotNull(message = "용량은 필수입니다")
     @Positive(message = "용량은 0보다 커야 합니다")
     private Integer volumeMl;
     
     @NotNull(message = "농도는 필수입니다")
-    private String concentration; // EDP, EDT, EDC, PARFUM
+    private String concentration; 
     
     @NotNull(message = "성별은 필수입니다")
-    private String gender; // MALE, FEMALE, UNISEX
+    private String gender; 
     
-    private String targetAgeGroup; // TEENS, TWENTIES, THIRTIES, ALL
+    private String targetAgeGroup; 
     private List<String> season;
     private List<String> occasion;
-    private String intensity; // LIGHT, MEDIUM, STRONG
+    private String intensity; 
     private Integer longevityHours;
-    private String sillage; // INTIMATE, MODERATE, STRONG
+    private String sillage; 
     private Boolean isCustomizable;
     private Boolean isLimitedEdition;
     private Integer initialStock;
@@ -68,10 +68,10 @@ public class PerfumeCreateRequest {
         private Long scentId;
         
         @NotNull
-        private String noteType; // TOP, MIDDLE, BASE
+        private String noteType; 
         
         @NotNull
         @Positive
-        private Integer intensity; // 0~100
+        private Integer intensity; 
     }
 }

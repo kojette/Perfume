@@ -13,11 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * AuthService 내부에서 REQUIRES_NEW 트랜잭션을 쓰면
- * Spring AOP self-invocation 문제로 작동 안 함.
- * → 별도 빈(Bean)으로 분리해서 프록시를 통해 호출해야 함.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -26,10 +21,6 @@ public class AuthTransactionHelper {
     private final MemberRepository memberRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
 
-    /**
-     * 항상 새 트랜잭션으로 토큰 저장
-     * 이전 트랜잭션 오염 상태와 완전히 분리됨
-     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PasswordResetToken saveResetToken(String email) {
         Member user = memberRepository.findByEmail(email)
@@ -44,9 +35,6 @@ public class AuthTransactionHelper {
         return saved;
     }
 
-    /**
-     * 항상 새 트랜잭션으로 비밀번호 업데이트
-     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updatePassword(PasswordResetToken resetToken, String encodedPassword,
                                MemberRepository memberRepo,

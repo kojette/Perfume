@@ -9,6 +9,5 @@ import java.util.List;
 @Repository
 public interface ScentRepository extends JpaRepository<Scent, Long> {
 
-    /** 향 ID 목록으로 조회 */
     List<Scent> findByScentIdIn(List<Long> scentIds);
 }

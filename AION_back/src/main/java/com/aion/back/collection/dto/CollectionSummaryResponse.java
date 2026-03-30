@@ -10,7 +10,7 @@ import java.util.UUID;
 @Getter
 @Builder
 public class CollectionSummaryResponse {
-    private UUID collectionId;   // UUID
+    private UUID collectionId;   
     private String title;
     private String description;
     private String type;

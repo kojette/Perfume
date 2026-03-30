@@ -25,7 +25,6 @@ public class AuthService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     
-    // 트랜잭션 분리를 위한 별도 빈 주입
     private final AuthTransactionHelper authTransactionHelper;
 
     @Transactional
@@ -52,11 +51,6 @@ public class AuthService {
         return jwtValidator.validateAndGetEmail(token);
     }
 
-    /**
-     * 이제 비밀번호 재설정은 Supabase가 모두 처리
-     * 프론트엔드에서 supabase.auth.resetPasswordForEmail() 호출 시 Supabase가 직접 메일 발송
-     * 이 메서드는 더 이상 사용되지 않지만, 기존 코드 호환을 위해 남김
-     */
     @Deprecated
     public void sendPasswordResetEmail(String email) {
         log.warn("❌ sendPasswordResetEmail() 호출됨 - 이제 Supabase가 메일을 직접 보냅니다!");
@@ -69,11 +63,6 @@ public class AuthService {
                 .orElse(false);
     }
 
-    /**
-     * 이제 비밀번호 변경은 Supabase가 모두 처리
-     * 프론트엔드에서 supabase.auth.updateUser({ password }) 호출 시 Supabase가 직접 처리
-     * 이 메서드는 더 이상 사용되지 않지만, 기존 코드 호환을 위해 남김
-     */
     @Deprecated
     public void resetPassword(String token, String newPassword) {
         log.warn("❌ resetPassword() 호출됨 - 이제 Supabase가 비밀번호 변경을 직접 처리합니다!");
