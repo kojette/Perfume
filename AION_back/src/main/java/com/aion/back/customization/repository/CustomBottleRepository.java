@@ -8,7 +8,5 @@ import java.util.List;
 
 @Repository
 public interface CustomBottleRepository extends JpaRepository<CustomBottle, Long> {
-
-    /** 활성화된 공병 목록만 조회 */
     List<CustomBottle> findByIsActiveTrueOrderByCreatedAtAsc();
 }

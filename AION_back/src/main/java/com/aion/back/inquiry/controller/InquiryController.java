@@ -25,7 +25,6 @@ public class InquiryController {
     private final InquiryRepository inquiryRepository;
     private final MemberRepository memberRepository;
 
-    // 내 문의 내역 조회
     @GetMapping("/my")
     public ApiResponse<List<InquiryResponseDto>> getMyInquiries(@RequestHeader("Authorization") String token) {
         Member member = memberService.getMemberEntityByToken(token);
@@ -38,7 +37,6 @@ public class InquiryController {
         return ApiResponse.success("문의 내역 조회 성공", dtos);
     }
 
-    // 문의 등록
     @PostMapping
     @Transactional
     public ApiResponse<String> createdInquiry(@RequestHeader("Authorization") String token, @RequestBody InquiryRequestDto request) {
@@ -59,7 +57,6 @@ public class InquiryController {
         return ApiResponse.success("문의가 성공적으로 등록되었습니다.");
     }
 
-    // 읽음 처리
     @PatchMapping("/{id}/read")
     @Transactional
     public ApiResponse<String> markAsRead(@RequestHeader("Authorization") String token, @PathVariable Long id) {
@@ -74,7 +71,6 @@ public class InquiryController {
         return ApiResponse.success("읽음 처리되었습니다.");
     }
 
-    // 문의 취소
     @PatchMapping("/{id}/cancel")
     @Transactional
     public ApiResponse<String> cancelInquiry(@RequestHeader("Authorization") String token,
@@ -91,7 +87,6 @@ public class InquiryController {
         return ApiResponse.success("문의가 취소되었습니다.");
     }
 
-    // 문의 삭제
     @DeleteMapping("/{id}")
     @Transactional
     public ApiResponse<String> deleteInquiry(@RequestHeader("Authorization") String token,
@@ -108,7 +103,6 @@ public class InquiryController {
         return ApiResponse.success("문의가 삭제되었습니다.");
     }
 
-    // [관리자 모드] 모든 문의 내역 조회
     @GetMapping("/admin/all")
     public ApiResponse<List<InquiryResponseDto>> getAllInquiries(@RequestHeader("Authorization") String token) {
         Member member = memberService.getMemberEntityByToken(token);
@@ -128,7 +122,6 @@ public class InquiryController {
         return ApiResponse.success("전체 문의 조회 성공", dtos);
     }
 
-    // [관리자] 답변 등록
     @PatchMapping("/admin/{id}/answer")
     @Transactional
     public ApiResponse<String> answerInquiry(@RequestHeader("Authorization") String token,
@@ -136,7 +129,6 @@ public class InquiryController {
                                              @RequestBody String answerContent) {
         Member admin = memberService.getMemberEntityByToken(token);
 
-        // 권한 체크
         if (!"ADMIN".equals(admin.getRole())) {
             throw new RuntimeException("관리자 권한이 없습니다. 답변을 등록할 수 없습니다.");
         }
@@ -152,7 +144,6 @@ public class InquiryController {
         return ApiResponse.success("답변이 등록되었습니다.");
     }
 
-    // [관리자] 경고 추가
     @PatchMapping("/admin/users/{userId}/warning/add")
     @Transactional
     public ApiResponse<String> addWarning(@RequestHeader("Authorization") String token,
@@ -172,7 +163,6 @@ public class InquiryController {
         return ApiResponse.success("경고가 추가되었습니다.");
     }
 
-    // [관리자] 경고 감소
     @PatchMapping("/admin/users/{userId}/warning/reduce")
     @Transactional
     public ApiResponse<String> reduceWarning(@RequestHeader("Authorization") String token,
@@ -192,7 +182,6 @@ public class InquiryController {
         return ApiResponse.success("경고가 감소되었습니다.");
     }
 
-    // [관리자] 블랙리스트 해제
     @PatchMapping("/admin/users/{userId}/blacklist/remove")
     @Transactional
     public ApiResponse<String> removeBlacklist(@RequestHeader("Authorization") String token,
@@ -211,7 +200,6 @@ public class InquiryController {
         return ApiResponse.success("블랙리스트가 해제되었습니다.");
     }
 
-    // 경고 횟수 → 레벨 변환
     private String calcWarningLevel(int count) {
         if (count <= 0) return "normal";
         if (count == 1) return "warning";

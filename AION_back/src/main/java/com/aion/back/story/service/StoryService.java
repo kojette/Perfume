@@ -19,7 +19,7 @@ public class StoryService {
 
     private final StoryRepository storyRepository;
 
-    // 공개용: 섹션별로 그룹핑해서 반환
+
     @Transactional(readOnly = true)
     public Map<String, List<StoryResponse>> getPublishedStories() {
         List<Story> stories = storyRepository.findByIsPublishedTrueOrderBySectionTypeAscSortOrderAsc();
@@ -28,7 +28,7 @@ public class StoryService {
                 .collect(Collectors.groupingBy(StoryResponse::getSectionType));
     }
 
-    // 관리자용: 전체 목록
+
     @Transactional(readOnly = true)
     public List<StoryResponse> getAllStories() {
         return storyRepository.findAllByOrderBySectionTypeAscSortOrderAsc()
@@ -37,7 +37,7 @@ public class StoryService {
                 .collect(Collectors.toList());
     }
 
-    // 단건 조회
+
     @Transactional(readOnly = true)
     public StoryResponse getStory(Long storyId) {
         Story story = storyRepository.findById(storyId)
@@ -45,7 +45,7 @@ public class StoryService {
         return StoryResponse.from(story);
     }
 
-    // 생성
+
     @Transactional
     public StoryResponse createStory(StoryCreateRequest request) {
         Story story = Story.builder()
@@ -62,7 +62,7 @@ public class StoryService {
         return StoryResponse.from(storyRepository.save(story));
     }
 
-    // 수정
+
     @Transactional
     public StoryResponse updateStory(Long storyId, StoryUpdateRequest request) {
         Story story = storyRepository.findById(storyId)
@@ -81,7 +81,7 @@ public class StoryService {
         return StoryResponse.from(storyRepository.save(story));
     }
 
-    // 삭제
+
     @Transactional
     public void deleteStory(Long storyId) {
         if (!storyRepository.existsById(storyId)) {

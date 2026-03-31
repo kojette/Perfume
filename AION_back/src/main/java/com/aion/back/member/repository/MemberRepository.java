@@ -17,7 +17,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findBySupabaseUid(String supabaseUid);
 
-    // 네이티브 쿼리로 회원 정보 수정 (타입 캐스팅 포함)
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = "UPDATE \"Users\" SET " +
@@ -43,7 +42,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("email") String email
     );
 
-    // 네이티브 쿼리로 계정 상태 변경 (타입 캐스팅 포함)
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = "UPDATE \"Users\" SET " +
@@ -58,12 +56,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("email") String email
     );
 
-    // 비밀번호만 업데이트 (비밀번호 재설정용)
-   // MemberRepository.java 내 해당 메서드 수정
-
-@Modifying(clearAutomatically = true, flushAutomatically = true)
-@Transactional
-@Query(value = "UPDATE \"Users\" SET password_hash = :passwordHash WHERE user_id = :userId", 
-       nativeQuery = true)
-int updatePassword(@Param("userId") Long userId, @Param("passwordHash") String passwordHash);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query(value = "UPDATE \"Users\" SET password_hash = :passwordHash WHERE user_id = :userId",
+           nativeQuery = true)
+    int updatePassword(@Param("userId") Long userId, @Param("passwordHash") String passwordHash);
 }

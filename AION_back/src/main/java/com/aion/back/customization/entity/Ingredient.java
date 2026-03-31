@@ -3,10 +3,6 @@ package com.aion.back.customization.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * 향수 재료 (향료 개별 항목)
- * 테이블: Ingredients
- */
 @Entity
 @Table(name = "\"Ingredients\"")
 @Getter
@@ -26,10 +22,10 @@ public class Ingredient {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "category_id")  // ✅ scent_category_id → category_id (실제 DB 컬럼명)
+    @Column(name = "category_id")
     private Long categoryId;
 
-    @Transient  // ✅ DB에 없는 컬럼 → JPA 매핑에서 제외
+    @Transient
     private Long scentId;
 
     @Column(name = "origin", length = 100)

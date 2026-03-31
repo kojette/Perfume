@@ -10,10 +10,6 @@ import java.util.Optional;
 
 @Repository
 public interface PerfumeImageRepository extends JpaRepository<PerfumeImage, Long> {
-
-    // 썸네일 이미지 조회
     Optional<PerfumeImage> findByPerfumeAndIsThumbnailTrue(Perfume perfume);
-
-    // 향수의 모든 이미지 조회 (정렬순)
     List<PerfumeImage> findByPerfumeOrderByDisplayOrder(Perfume perfume);
 }

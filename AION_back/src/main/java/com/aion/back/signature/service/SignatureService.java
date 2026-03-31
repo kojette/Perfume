@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SignatureService {
 
-    private static final String TYPE = "SIGNATURE"; // 이 서비스는 항상 SIGNATURE 타입만 처리
+    private static final String TYPE = "SIGNATURE";
 
     private final SignatureRepository signatureRepository;
     private final SignatureMediaRepository mediaRepository;
@@ -39,7 +39,7 @@ public class SignatureService {
     private final MemberService memberService;
     private final DataSource dataSource;
 
-    // ── 관리자 검증 ────────────────────────────────────────────
+
 
     private void validateAdmin(String token) {
         Member member = memberService.getMemberEntityByToken(token);
@@ -48,12 +48,9 @@ public class SignatureService {
         }
     }
 
-    // ── 목록 조회 (관리자) ─────────────────────────────────────
 
-    /**
-     * 시그니처 전체 목록
-     * GET /api/signature
-     */
+
+    
     @Transactional(readOnly = true)
     public List<SignatureSummaryResponse> getList(String token) {
         validateAdmin(token);
@@ -71,12 +68,9 @@ public class SignatureService {
         return result;
     }
 
-    // ── 활성 시그니처 단건 (공개) ──────────────────────────────
 
-    /**
-     * 활성화된 시그니처 조회 (유저/관리자 공용, 토큰 불필요)
-     * GET /api/signature/active
-     */
+
+    
     @Transactional(readOnly = true)
     public SignatureDetailResponse getActive() {
         String sql = "SELECT * FROM \"Collections\" WHERE type = ? AND is_active = true LIMIT 1";
@@ -89,27 +83,21 @@ public class SignatureService {
         } catch (Exception e) {
             throw new RuntimeException("활성 시그니처 조회 오류: " + e.getMessage(), e);
         }
-        return null; // 없으면 null → 컨트롤러에서 빈 응답 처리
+        return null;
     }
 
-    // ── 단건 상세 (관리자 편집용) ──────────────────────────────
 
-    /**
-     * ID로 상세 조회
-     * GET /api/signature/{id}
-     */
+
+    
     @Transactional(readOnly = true)
     public SignatureDetailResponse getDetail(String token, UUID collectionId) {
         validateAdmin(token);
         return buildDetail(collectionId);
     }
 
-    // ── 생성 ───────────────────────────────────────────────────
 
-    /**
-     * 시그니처 생성
-     * POST /api/signature
-     */
+
+    
     @Transactional
     public SignatureDetailResponse create(String token, SignatureSaveRequest req) {
         validateAdmin(token);
@@ -122,7 +110,7 @@ public class SignatureService {
             ps.setString(1, newId.toString());
             ps.setString(2, req.getTitle());
             ps.setString(3, req.getDescription());
-            ps.setString(4, TYPE); // type 항상 SIGNATURE
+            ps.setString(4, TYPE);
             ps.setString(5, req.getTextColor() != null ? req.getTextColor() : "#c9a961");
             ps.setBoolean(6, req.getIsPublished() != null ? req.getIsPublished() : false);
             ps.setBoolean(7, req.getIsActive() != null ? req.getIsActive() : false);
@@ -136,12 +124,9 @@ public class SignatureService {
         return buildDetail(newId);
     }
 
-    // ── 수정 ───────────────────────────────────────────────────
 
-    /**
-     * 시그니처 수정
-     * PUT /api/signature/{id}
-     */
+
+    
     @Transactional
     public SignatureDetailResponse update(String token, UUID collectionId, SignatureSaveRequest req) {
         validateAdmin(token);
@@ -164,29 +149,26 @@ public class SignatureService {
             throw new RuntimeException("시그니처 수정 오류: " + e.getMessage(), e);
         }
 
-        // 활성화 시 동일 type의 나머지 비활성화
+
         if (Boolean.TRUE.equals(req.getIsActive())) {
             deactivateOthers(collectionId);
         }
 
-        // 하위 데이터 교체
+
         deleteSubData(collectionId);
         saveSubData(collectionId, req);
 
         return buildDetail(collectionId);
     }
 
-    // ── 활성화 토글 ────────────────────────────────────────────
 
-    /**
-     * 활성화/비활성화 토글
-     * PATCH /api/signature/{id}/active?activate=true
-     */
+
+    
     @Transactional
     public void toggleActive(String token, UUID collectionId, boolean activate) {
         validateAdmin(token);
 
-        // 전체 SIGNATURE 비활성화
+
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "UPDATE \"Collections\" SET is_active = false WHERE type = ?")) {
@@ -196,7 +178,7 @@ public class SignatureService {
             throw new RuntimeException("비활성화 오류: " + e.getMessage(), e);
         }
 
-        // 요청 항목만 활성화
+
         if (activate) {
             try (Connection conn = dataSource.getConnection();
                  PreparedStatement ps = conn.prepareStatement(
@@ -210,12 +192,9 @@ public class SignatureService {
         }
     }
 
-    // ── 삭제 ───────────────────────────────────────────────────
 
-    /**
-     * 시그니처 삭제
-     * DELETE /api/signature/{id}
-     */
+
+    
     @Transactional
     public void delete(String token, UUID collectionId) {
         validateAdmin(token);
@@ -234,9 +213,9 @@ public class SignatureService {
         }
     }
 
-    // ── 내부 헬퍼 ──────────────────────────────────────────────
 
-    /** 다른 SIGNATURE 전체 비활성화 (특정 ID 제외) */
+
+    
     private void deactivateOthers(UUID exceptId) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(
@@ -249,7 +228,7 @@ public class SignatureService {
         }
     }
 
-    /** 하위 데이터(미디어·텍스트·향수) 삭제 */
+    
     private void deleteSubData(UUID collectionId) {
         try (Connection conn = dataSource.getConnection()) {
             for (String tbl : new String[]{"Collection_Media", "Collection_Text_Blocks", "Collection_Perfumes"}) {
@@ -264,11 +243,11 @@ public class SignatureService {
         }
     }
 
-    /** 하위 데이터(미디어·텍스트·향수) 저장 */
+    
     private void saveSubData(UUID collectionId, SignatureSaveRequest req) {
         try (Connection conn = dataSource.getConnection()) {
 
-            // 미디어
+
             if (req.getMediaList() != null && !req.getMediaList().isEmpty()) {
                 try (PreparedStatement ps = conn.prepareStatement(
                         "INSERT INTO \"Collection_Media\" (collection_id, media_url, media_type, display_order) VALUES (?::uuid, ?, ?, ?)")) {
@@ -283,7 +262,7 @@ public class SignatureService {
                 }
             }
 
-            // 텍스트 블록
+
             if (req.getTextBlocks() != null && !req.getTextBlocks().isEmpty()) {
                 try (PreparedStatement ps = conn.prepareStatement(
                         "INSERT INTO \"Collection_Text_Blocks\" (collection_id, content, font_size, font_weight, is_italic, position_x, position_y, display_order) " +
@@ -303,7 +282,7 @@ public class SignatureService {
                 }
             }
 
-            // 향수
+
             if (req.getPerfumes() != null && !req.getPerfumes().isEmpty()) {
                 try (PreparedStatement ps = conn.prepareStatement(
                         "INSERT INTO \"Collection_Perfumes\" (collection_id, perfume_id, display_order, is_featured) VALUES (?::uuid, ?, ?, ?) " +
@@ -324,7 +303,7 @@ public class SignatureService {
         }
     }
 
-    /** collectionId로 상세 응답 조립 */
+    
     private SignatureDetailResponse buildDetail(UUID collectionId) {
         SignatureEntity sig = findById(collectionId);
 
@@ -334,7 +313,7 @@ public class SignatureService {
 
         try (Connection conn = dataSource.getConnection()) {
 
-            // 미디어
+
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT media_id, media_url, media_type, display_order FROM \"Collection_Media\" " +
                     "WHERE collection_id = ?::uuid ORDER BY display_order ASC")) {
@@ -349,7 +328,7 @@ public class SignatureService {
                 }
             }
 
-            // 텍스트 블록
+
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT text_block_id, content, font_size, font_weight, is_italic, position_x, position_y, display_order " +
                     "FROM \"Collection_Text_Blocks\" WHERE collection_id = ?::uuid ORDER BY display_order ASC")) {
@@ -368,7 +347,7 @@ public class SignatureService {
                 }
             }
 
-            // 향수 (브랜드명·썸네일·세일 조인)
+
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT cp.perfume_id, cp.display_order, cp.is_featured, " +
                     "p.name, p.name_en, p.price, p.sale_price, p.sale_rate, " +
@@ -416,7 +395,7 @@ public class SignatureService {
                 .build();
     }
 
-    /** ID로 SignatureEntity 조회 (없으면 예외) */
+    
     private SignatureEntity findById(UUID id) {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(
@@ -447,7 +426,7 @@ public class SignatureService {
         return false;
     }
 
-    /** ResultSet → SignatureEntity 매핑 */
+    
     private SignatureEntity mapEntity(ResultSet rs) throws Exception {
         SignatureEntity e = new SignatureEntity();
         e.setCollectionId(UUID.fromString(rs.getString("collection_id")));

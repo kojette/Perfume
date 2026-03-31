@@ -24,26 +24,21 @@ public class MemberController {
     @Autowired
     private MemberService memberService;
 
-    // ===== 기존 메서드들 (그대로 유지) =====
-
     @GetMapping("/check-email")
     public ResponseEntity<?> checkEmail(@RequestParam String email) {
         try {
-            // 기존의 return memberService.isEmailDuplicated(email); 대신 아래 코드로 변경
             memberService.checkEmailAvailability(email);
 
-            // 에러 없이 통과하면 가입 가능한 상태
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "가입 가능한 이메일입니다.",
-                    "data", false // 중복되지 않음
+                    "data", false
             ));
         } catch (RuntimeException e) {
-            // 서비스에서 throw한 "탈퇴 후 30일 이내..." 메시지를 여기서 잡아서 응답
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                     "success", false,
                     "message", e.getMessage(),
-                    "data", true // 중복 혹은 제한 상태
+                    "data", true
             ));
         }
     }
@@ -60,11 +55,6 @@ public class MemberController {
         return ApiResponse.success("사용자 정보가 우리 DB에 성공적으로 등록되었습니다.");
     }
 
-    // ===== 새로 추가하는 메서드들 =====
-
-    /**
-     * 토큰으로 프로필 조회
-     */
     @GetMapping("/profile")
     public ApiResponse<MemberProfileResponse> getProfile(
             @RequestHeader("Authorization") String token) {
@@ -77,14 +67,11 @@ public class MemberController {
         }
     }
 
-    /**
-     * 회원 정보 수정
-     */
     @PutMapping("/profile")
     public ApiResponse<MemberProfileResponse> updateProfile(
             @RequestHeader("Authorization") String token,
             @RequestBody ProfileUpdateRequest request) {
-        
+
         try {
             MemberProfileResponse updated = memberService.updateProfile(token, request);
             return ApiResponse.success("회원 정보 수정 완료", updated);
@@ -93,15 +80,10 @@ public class MemberController {
         }
     }
 
-    /**
-     * 회원 탈퇴
-     */
-    // MemberController.java
-
     @DeleteMapping("/account")
     public ApiResponse<String> deleteAccount(
             @RequestHeader("Authorization") String token,
-            @RequestBody WithdrawalRequest request) { // DTO 추가
+            @RequestBody WithdrawalRequest request) {
 
         try {
             memberService.deleteAccount(token, request.getReason());

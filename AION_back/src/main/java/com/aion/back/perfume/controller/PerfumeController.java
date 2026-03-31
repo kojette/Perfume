@@ -17,9 +17,6 @@ public class PerfumeController {
 
     private final PerfumeService perfumeService;
 
-    /**
-     * 향수 목록 조회
-     */
     @GetMapping
     public ResponseEntity<Page<Perfume>> getPerfumes(
             @RequestParam(defaultValue = "0") int page,
@@ -30,27 +27,18 @@ public class PerfumeController {
         return ResponseEntity.ok(perfumes);
     }
 
-    /**
-     * 향수 상세 조회
-     */
     @GetMapping("/{perfumeId}")
     public ResponseEntity<Perfume> getPerfumeDetail(@PathVariable Long perfumeId) {
         Perfume perfume = perfumeService.getPerfumeDetail(perfumeId);
         return ResponseEntity.ok(perfume);
     }
 
-    /**
-     * 향수 등록 (관리자용)
-     */
     @PostMapping
     public ResponseEntity<Perfume> createPerfume(@RequestBody Perfume perfume) {
         Perfume saved = perfumeService.savePerfume(perfume);
         return ResponseEntity.ok(saved);
     }
 
-    /**
-     * 향수 삭제 (관리자용)
-     */
     @DeleteMapping("/{perfumeId}")
     public ResponseEntity<Void> deletePerfume(@PathVariable Long perfumeId) {
         perfumeService.deletePerfume(perfumeId);

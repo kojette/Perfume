@@ -20,7 +20,7 @@ public class StoryController {
 
     private final StoryService storyService;
 
-    // 공개 - 섹션별 그룹핑 반환
+
     @GetMapping("/public")
     public ResponseEntity<Map<String, Object>> getPublishedStories() {
         Map<String, Object> response = new HashMap<>();
@@ -29,7 +29,7 @@ public class StoryController {
         return ResponseEntity.ok(response);
     }
 
-    // 관리자 - 전체 목록
+
     @GetMapping("/admin")
     public ResponseEntity<Map<String, Object>> getAllStories() {
         Map<String, Object> response = new HashMap<>();
@@ -38,7 +38,7 @@ public class StoryController {
         return ResponseEntity.ok(response);
     }
 
-    // 단건 조회
+
     @GetMapping("/{storyId}")
     public ResponseEntity<Map<String, Object>> getStory(@PathVariable Long storyId) {
         Map<String, Object> response = new HashMap<>();
@@ -47,7 +47,7 @@ public class StoryController {
         return ResponseEntity.ok(response);
     }
 
-    // 생성 (관리자)
+
     @PostMapping
     public ResponseEntity<Map<String, Object>> createStory(@RequestBody StoryCreateRequest request) {
         Map<String, Object> response = new HashMap<>();
@@ -57,7 +57,7 @@ public class StoryController {
         return ResponseEntity.ok(response);
     }
 
-    // 수정 (관리자)
+
     @PutMapping("/{storyId}")
     public ResponseEntity<Map<String, Object>> updateStory(
             @PathVariable Long storyId,
@@ -69,7 +69,7 @@ public class StoryController {
         return ResponseEntity.ok(response);
     }
 
-    // 삭제 (관리자)
+
     @DeleteMapping("/{storyId}")
     public ResponseEntity<Map<String, Object>> deleteStory(@PathVariable Long storyId) {
         storyService.deleteStory(storyId);

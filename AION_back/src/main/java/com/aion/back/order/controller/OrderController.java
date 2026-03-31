@@ -29,11 +29,9 @@ public class OrderController {
 
     @PostMapping("/checkout")
     public ApiResponse<OrderResponseDto> checkout(
-                                                   @RequestHeader("Authorization") String token,
-                                                   @RequestBody com.aion.back.order.dto.request.OrderCheckoutRequestDto requestDto // 👈 프론트에서 보낸 데이터를 드디어 받습니다!!
-    ) {
+            @RequestHeader("Authorization") String token,
+            @RequestBody com.aion.back.order.dto.request.OrderCheckoutRequestDto requestDto) {
         OrderResponseDto response = orderService.checkout(token, requestDto);
-
         return ApiResponse.success("주문이 성공적으로 완료되었습니다!", response);
     }
 
@@ -59,7 +57,6 @@ public class OrderController {
             throw new RuntimeException("본인의 주문만 조회할 수 있습니다.");
         }
 
-        // 적립 포인트 계산 (0.1%)
         int pointsEarned = (int) Math.floor(
                 (order.getFinalAmount() == null ? 0 : order.getFinalAmount()) * 0.001
         );
@@ -69,11 +66,11 @@ public class OrderController {
         response.put("orderNumber", order.getOrderNumber());
         response.put("orderStatus", order.getOrderStatus());
         response.put("paymentMethod", order.getPaymentMethod());
-        response.put("totalAmount", order.getTotalAmount());                                              // 원가
-        response.put("discountAmount", order.getDiscountAmount() == null ? 0 : order.getDiscountAmount()); // 쿠폰 할인
-        response.put("pointsUsed", order.getPointsUsed() == null ? 0 : order.getPointsUsed());           // 포인트 차감
-        response.put("finalAmount", order.getFinalAmount());                                              // 최종 금액
-        response.put("pointsEarned", pointsEarned);                                                      // 적립 포인트
+        response.put("totalAmount", order.getTotalAmount());
+        response.put("discountAmount", order.getDiscountAmount() == null ? 0 : order.getDiscountAmount());
+        response.put("pointsUsed", order.getPointsUsed() == null ? 0 : order.getPointsUsed());
+        response.put("finalAmount", order.getFinalAmount());
+        response.put("pointsEarned", pointsEarned);
         response.put("receiverName", order.getReceiverName());
         response.put("receiverPhone", order.getReceiverPhone());
         response.put("shippingZipcode", order.getShippingZipcode());

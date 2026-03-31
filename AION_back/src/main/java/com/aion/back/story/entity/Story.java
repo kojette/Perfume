@@ -18,7 +18,7 @@ public class Story {
     @Column(name = "story_id")
     private Long storyId;
 
-    // HISTORY | PROCESS | PHILOSOPHY
+
     @Column(name = "section_type", nullable = false, length = 20)
     private String sectionType;
 
@@ -34,15 +34,15 @@ public class Story {
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
-    // 연도 (히스토리 섹션용, ex: "1847")
+
     @Column(name = "year_label", length = 10)
     private String yearLabel;
 
-    // 이미지 URL
+
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
-    // 이미지 위치: left | right | background | top
+
     @Column(name = "image_position", length = 20)
     private String imagePosition;
 

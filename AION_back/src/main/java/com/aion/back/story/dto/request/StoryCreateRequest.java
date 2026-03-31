@@ -7,13 +7,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class StoryCreateRequest {
 
-    private String sectionType;   // HISTORY | PROCESS | PHILOSOPHY
+    private String sectionType;   
     private Integer sortOrder;
     private String title;
     private String subtitle;
     private String content;
-    private String yearLabel;     // 히스토리용 연도 (ex: "1847")
+    private String yearLabel;    
     private String imageUrl;
-    private String imagePosition; // left | right | background | top
+    private String imagePosition; 
     private Boolean isPublished;
 }

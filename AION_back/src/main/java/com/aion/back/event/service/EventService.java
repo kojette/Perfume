@@ -32,7 +32,6 @@ public class EventService {
     private final CouponRepository couponRepository;
     private final UserCouponRepository userCouponRepository;
 
-    // 1. 일반 유저용 기능
     @Transactional
     public EventParticipationResponseDto participate(String token, Long eventId) {
         Member member = memberService.getMemberEntityByToken(token);
@@ -54,7 +53,6 @@ public class EventService {
                 .build();
         participationRepository.save(participation);
 
-        // 당첨 시 쿠폰 발급
         if (isWon && "COUPON".equals(event.getEventType()) && event.getCouponCode() != null) {
             Coupon coupon = couponRepository.findByCode(event.getCouponCode())
                     .orElseThrow(() -> new RuntimeException("해당 쿠폰 코드가 존재하지 않습니다."));
@@ -69,7 +67,6 @@ public class EventService {
         return EventParticipationResponseDto.builder().won(isWon).build();
     }
 
-    // 내 참여 내역 가져오기
     public List<Map<String, Object>> getMyParticipations(String token) {
         Member member = memberService.getMemberEntityByToken(token);
         return participationRepository.findAllByMember(member).stream()
@@ -83,7 +80,6 @@ public class EventService {
                 .collect(Collectors.toList());
     }
 
-    // 2. 관리자용 기능 (Admin)
     public List<Event> getAllEvents() {
         return eventRepository.findAll();
     }

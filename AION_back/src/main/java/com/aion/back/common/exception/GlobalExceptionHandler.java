@@ -12,7 +12,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntimeException(RuntimeException e) {
         Map<String, String> response = new HashMap<>();
-        // 여기서 e.getMessage()가 "탈퇴 처리된 계정입니다..."를 담아서 나갑니다.
         response.put("message", e.getMessage());
         return ResponseEntity.badRequest().body(response);
     }

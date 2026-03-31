@@ -27,7 +27,7 @@ public class Inquiry {
     private Member member;
 
     @Column(nullable = false)
-    private String type; // product, delivery, etc.
+    private String type;
 
     @Column(nullable = false)
     private String title;
@@ -42,7 +42,7 @@ public class Inquiry {
     private String customerEmail;
 
     @Column(nullable = false)
-    private String status; // pending, processing, completed, cancelled
+    private String status;
 
     @Column(name = "is_read", nullable = false)
     private boolean read;
@@ -51,7 +51,7 @@ public class Inquiry {
     private String answer;
 
     @Column(name = "assigned_to")
-    private String assignedTo; // 답변한 관리자 이름
+    private String assignedTo;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

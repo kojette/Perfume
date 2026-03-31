@@ -24,7 +24,7 @@ public class WishlistService {
     private final PerfumeRepository perfumeRepository;
     private final MemberService memberService;
 
-    // 1. 내 찜 목록 조회 (이미지 포함)
+
     public List<WishlistResponse> getMyWishlist(String token) {
         Member member = memberService.getMemberEntityByToken(token);
 
@@ -41,7 +41,7 @@ public class WishlistService {
         ).collect(Collectors.toList());
     }
 
-    // 2. 찜하기/취소하기 토글
+
     @Transactional
     public String toggleWishlist(String token, Long perfumeId) {
         Member member = memberService.getMemberEntityByToken(token);
@@ -63,7 +63,7 @@ public class WishlistService {
         }
     }
 
-    // 3. 찜 목록에서 삭제
+
     @Transactional
     public void deleteWishlist(String token, Long wishlistId) {
         Member member = memberService.getMemberEntityByToken(token);

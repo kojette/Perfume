@@ -1,4 +1,5 @@
 package com.aion.back.common.config;
+
 import java.security.AlgorithmParameters;
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -14,14 +15,6 @@ import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import java.math.BigInteger;
-import java.security.KeyFactory;
-import java.security.PublicKey;
-import java.security.spec.ECParameterSpec;
-import java.security.spec.ECPoint;
-import java.security.spec.ECPublicKeySpec;
-import java.util.Base64;
 
 @Slf4j
 @Component
@@ -60,7 +53,7 @@ public class SupabaseJwtValidator {
 
         ECPoint ecPoint = new ECPoint(x, y);
         AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
-        params.init(new ECGenParameterSpec("secp256r1")); // P-256은 secp256r1입니다.
+        params.init(new ECGenParameterSpec("secp256r1"));
         ECParameterSpec ecParameters = params.getParameterSpec(ECParameterSpec.class);
 
         ECPublicKeySpec keySpec = new ECPublicKeySpec(ecPoint, ecParameters);

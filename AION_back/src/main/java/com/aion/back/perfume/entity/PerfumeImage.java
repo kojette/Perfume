@@ -33,9 +33,6 @@ public class PerfumeImage {
     @Column(name = "display_order")
     private Integer displayOrder;
 
-    //@Column(name = "alt_text", length = 200)
-    //private String altText;
-
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

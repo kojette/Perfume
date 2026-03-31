@@ -15,12 +15,11 @@ public class OrderResponseDto {
     private Long orderId;
     private String orderNumber;
     private String orderStatus;
-
-    private Integer totalAmount;     // 원래 금액 (할인 전)
-    private Integer discountAmount;  // 쿠폰 할인 금액
-    private Integer pointsUsed;      // 사용된 포인트
-    private Integer finalAmount;     // 최종 결제 금액
-    private Integer pointsEarned;    // 이번 주문 적립 포인트 (0.1%)
+    private Integer totalAmount;
+    private Integer discountAmount;
+    private Integer pointsUsed;
+    private Integer finalAmount;
+    private Integer pointsEarned;
 
     public static OrderResponseDto from(Order order) {
         int earned = (int) Math.floor(

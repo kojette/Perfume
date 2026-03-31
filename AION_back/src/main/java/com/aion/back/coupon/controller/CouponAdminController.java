@@ -15,7 +15,6 @@ public class CouponAdminController {
 
     private final CouponService couponService;
 
-    // 관리자가 새 쿠폰 종류 생성
     @PostMapping
     public ApiResponse<Coupon> createCoupon(@RequestBody CouponCreateRequest request) {
         Coupon savedCoupon = couponService.createCoupon(request);

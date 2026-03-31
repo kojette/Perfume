@@ -6,10 +6,6 @@ import lombok.Getter;
 
 import java.util.List;
 
-/**
- * 향 카테고리 + 소속 재료 목록 응답
- * GET /api/custom/scents
- */
 @Getter
 @Builder
 public class ScentCategoryWithIngredientsResponse {

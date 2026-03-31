@@ -22,12 +22,12 @@ public class Wishlist {
     @Column(name = "wishlist_id")
     private Long wishlistId;
 
-    // 누가 찜했는지
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private Member member;
 
-    // 뭘 찜했는지
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "perfume_id")
     private Perfume perfume;

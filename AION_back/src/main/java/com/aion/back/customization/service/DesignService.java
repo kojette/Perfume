@@ -25,11 +25,6 @@ public class DesignService {
     private final CustomDesignRepository customDesignRepository;
     private final CustomBottleRepository customBottleRepository;
 
-    // ────────────────────────────────────────────────────
-    // 공병 템플릿 (모든 사용자)
-    // ────────────────────────────────────────────────────
-
-    /** 활성화된 관리자 추가 공병 목록 조회 */
     public List<CustomBottleResponse> getActiveBottles() {
         return customBottleRepository.findByIsActiveTrueOrderByCreatedAtAsc()
                 .stream()
@@ -37,11 +32,6 @@ public class DesignService {
                 .collect(Collectors.toList());
     }
 
-    // ────────────────────────────────────────────────────
-    // 공병 템플릿 (관리자 전용)
-    // ────────────────────────────────────────────────────
-
-    /** 전체 공병 목록 조회 (비활성 포함) */
     public List<CustomBottleResponse> getAllBottles() {
         return customBottleRepository.findAll()
                 .stream()
@@ -49,7 +39,6 @@ public class DesignService {
                 .collect(Collectors.toList());
     }
 
-    /** 공병 추가 */
     @Transactional
     public CustomBottleResponse createBottle(CustomBottleRequest request) {
         CustomBottle bottle = CustomBottle.builder()
@@ -61,7 +50,6 @@ public class DesignService {
         return CustomBottleResponse.from(customBottleRepository.save(bottle));
     }
 
-    /** 공병 활성/비활성 토글 */
     @Transactional
     public CustomBottleResponse toggleBottleActive(Long bottleId) {
         CustomBottle bottle = customBottleRepository.findById(bottleId)
@@ -70,7 +58,6 @@ public class DesignService {
         return CustomBottleResponse.from(customBottleRepository.save(bottle));
     }
 
-    /** 공병 삭제 */
     @Transactional
     public void deleteBottle(Long bottleId) {
         if (!customBottleRepository.existsById(bottleId)) {
@@ -79,11 +66,6 @@ public class DesignService {
         customBottleRepository.deleteById(bottleId);
     }
 
-    // ────────────────────────────────────────────────────
-    // 커스텀 디자인 (유저)
-    // ────────────────────────────────────────────────────
-
-    /** 내 디자인 목록 조회 */
     public List<CustomDesignResponse> getMyDesigns(Long userId) {
         return customDesignRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
@@ -91,14 +73,12 @@ public class DesignService {
                 .collect(Collectors.toList());
     }
 
-    /** 디자인 단건 조회 */
     public CustomDesignResponse getDesign(Long designId, Long userId) {
         CustomDesign design = customDesignRepository.findByDesignIdAndUserId(designId, userId)
                 .orElseThrow(() -> new RuntimeException("디자인을 찾을 수 없습니다."));
         return CustomDesignResponse.from(design);
     }
 
-    /** 디자인 저장 */
     @Transactional
     public CustomDesignResponse saveDesign(Long userId, CustomDesignRequest request) {
         CustomDesign design = CustomDesign.builder()
@@ -118,7 +98,6 @@ public class DesignService {
         return CustomDesignResponse.from(customDesignRepository.save(design));
     }
 
-    /** 디자인 수정 */
     @Transactional
     public CustomDesignResponse updateDesign(Long designId, Long userId, CustomDesignRequest request) {
         CustomDesign design = customDesignRepository.findByDesignIdAndUserId(designId, userId)
@@ -139,7 +118,6 @@ public class DesignService {
         return CustomDesignResponse.from(customDesignRepository.save(design));
     }
 
-    /** 디자인 삭제 (본인 소유 확인) */
     @Transactional
     public void deleteDesign(Long designId, Long userId) {
         CustomDesign design = customDesignRepository.findByDesignIdAndUserId(designId, userId)

@@ -39,16 +39,13 @@ public class OrderService {
     @Transactional
     public OrderResponseDto checkout(String token, OrderCheckoutRequestDto requestDto) {
 
-        // 1. 회원 조회
         Member member = memberService.getMemberEntityByToken(token);
 
-        // 2. 장바구니 조회
         List<Cart> cartItems = cartRepository.findByMember(member);
         if (cartItems.isEmpty()) {
             throw new RuntimeException("장바구니가 비어있어 주문을 진행할 수 없습니다.");
         }
 
-        // 3. 상품 금액 합산 (일반 + 커스텀 통합)
         int totalAmount = cartItems.stream()
                 .mapToInt(item -> {
                     if (Boolean.TRUE.equals(item.getIsCustom())) {
@@ -63,7 +60,6 @@ public class OrderService {
                 })
                 .sum();
 
-        // 4. 쿠폰 할인 계산
         int discountAmount = 0;
         if (requestDto.getUserCouponId() != null) {
             UserCoupon userCoupon = userCouponRepository.findById(requestDto.getUserCouponId())
@@ -84,7 +80,6 @@ public class OrderService {
             userCouponRepository.save(userCoupon);
         }
 
-        // 5. 포인트 사용 검증
         int pointsToUse = requestDto.getPointsToUse();
         if (pointsToUse < 0) {
             throw new RuntimeException("포인트 사용량이 유효하지 않습니다.");
@@ -100,11 +95,8 @@ public class OrderService {
             }
         }
 
-        // 6. 최종 결제 금액 계산
         int finalAmount = Math.max(0, totalAmount - discountAmount - pointsToUse);
 
-        // 7. 주문 저장
-        // 배송지: 요청에 포함된 값 우선, 없으면 프로필 저장 주소 사용
         String receiverName = (requestDto.getReceiverName() != null && !requestDto.getReceiverName().isBlank())
                 ? requestDto.getReceiverName() : member.getName();
         String receiverPhone = (requestDto.getReceiverPhone() != null && !requestDto.getReceiverPhone().isBlank())
@@ -131,7 +123,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // 8. 포인트 차감 처리
         if (pointsToUse > 0) {
             int balanceAfterUse = (member.getTotalPoints() == null ? 0 : member.getTotalPoints()) - pointsToUse;
 
@@ -151,7 +142,6 @@ public class OrderService {
             memberRepository.save(member);
         }
 
-        // 9. 주문 아이템 저장 (일반 + 커스텀 통합)
         List<OrderItem> orderItems = cartItems.stream()
                 .filter(cart -> Boolean.TRUE.equals(cart.getIsCustom()) || cart.getPerfume() != null)
                 .map(cart -> {
@@ -188,10 +178,8 @@ public class OrderService {
 
         orderItemRepository.saveAll(orderItems);
 
-        // 10. 장바구니 비우기
         cartRepository.deleteAll(cartItems);
 
-        // 11. 포인트 적립 처리
         int earnedPoints = (int) Math.floor(finalAmount * 0.001);
         if (earnedPoints > 0) {
             int currentBalance = member.getTotalPoints() == null ? 0 : member.getTotalPoints();
