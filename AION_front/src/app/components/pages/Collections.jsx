@@ -30,7 +30,7 @@ const SPINE_HEIGHTS = [108, 124, 96, 132, 112, 104, 128, 90, 118, 108, 134, 98, 
 const DEFAULT_LAYOUT = {
   imgLeft:          '30',
   imgTop:           '44',
-  imgMaxHeight:     '40%',
+  imgMaxHeight:     '50%',
   imgMaxWidth:      '20%',
   imgBlendStrength: '18',
 
@@ -39,12 +39,12 @@ const DEFAULT_LAYOUT = {
   nameWidth: '28%',
   nameAlign: 'center',
 
-  nameFontSize:      '1.6rem',
+  nameFontSize:      '2vw',
   nameFontWeight:    '600',
   nameColor:         '#3d1f08',
   nameLetterSpacing: '0.06em',
 
-  brandFontSize:      '0.62rem',
+  brandFontSize:      '1vw',
   brandColor:         '#7a4a1e',
   brandLetterSpacing: '0.35em',
 
@@ -54,23 +54,23 @@ const DEFAULT_LAYOUT = {
   dividerColor:     'rgba(100,60,20,0.4)',
 
   noteLeft:  '58',
-  noteTop:   '20',
+  noteTop:   '27',
   noteWidth: '29%',
 
-  noteLabelFontSize:      '0.7rem',
+  noteLabelFontSize:      '1.2vw',
   noteLabelColor:         '#7a4a1e',
   noteLabelLetterSpacing: '0.28em',
 
-  noteValueFontSize:   '0.84rem',
+  noteValueFontSize:   '1.1vw',
   noteValueColor:      '#3d1f08',
   noteValueLineHeight: '1.65',
-  noteGap:             '0.9rem',
+  noteGap:             '1vw',
   noteDividerColor:    'rgba(100,60,20,0.2)',
 
   reviewLeft:       '58',
-  reviewTop:        '72',
+  reviewTop:        '65',
   reviewWidth:      '29%',
-  reviewFontSize:   '1.2rem',
+  reviewFontSize:   '1.5vw',
   reviewColor:      '#3d1f08',
   reviewLineHeight: '1.6',
   reviewOpacity:    '0.85',
@@ -747,7 +747,7 @@ export default function Collections() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5ede0', fontFamily: "'Georgia', 'Times New Roman', serif" , marginTop: '-2px'}}>
 
-      <div style={{ position: 'relative', width: '100%', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: `${bgRatio}/1`, overflow: 'hidden', containerType: 'inline-size' }}>
 
         {bgUrl ? (
           <div style={{
@@ -783,7 +783,7 @@ export default function Collections() {
               <span style={{ color: 'rgba(100,60,20,0.45)', fontSize: '11px' }}>✦</span>
               <div style={{ height: '1px', width: '44px', background: 'rgba(100,60,20,0.3)' }} />
             </div>
-            <p style={{ color: 'rgba(100,60,20,0.55)', fontSize: '0.72rem', letterSpacing: '0.5em', fontStyle: 'italic', margin: 0 }}>
+            <p style={{ color: 'rgba(100,60,20,0.55)', fontSize: '1.25cqw', letterSpacing: '0.5em', fontStyle: 'italic', margin: 0 }}>
               아래 향수를 선택하세요
             </p>
           </div>
@@ -829,7 +829,7 @@ export default function Collections() {
               {loadingNotes ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '11px', height: '11px', borderRadius: '50%', border: '2px solid rgba(100,60,20,0.3)', borderTopColor: '#7a4a1e', animation: 'spin 0.8s linear infinite' }} />
-                  <span style={{ fontSize: '0.65rem', color: '#7a4a1e' }}>로딩 중…</span>
+                  <span style={{ fontSize: '0.9cqw', color: '#7a4a1e' }}>로딩 중…</span>
                 </div>
               ) : (
                 <div>
@@ -864,7 +864,7 @@ export default function Collections() {
                   {loadingReview ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid rgba(100,60,20,0.3)', borderTopColor: '#7a4a1e', animation: 'spin 0.8s linear infinite' }} />
-                      <span style={{ fontSize: '0.6rem', color: 'rgba(100,60,20,0.4)', fontStyle: 'italic' }}>향수 감상 중…</span>
+                      <span style={{ fontSize: '0.85cqw', color: 'rgba(100,60,20,0.4)', fontStyle: 'italic' }}>향수 감상 중…</span>
                     </div>
                   ) : (
                     <p style={{ fontSize: l.reviewFontSize, color: l.reviewColor, fontStyle: l.reviewFontStyle, lineHeight: l.reviewLineHeight, margin: 0, opacity: parseFloat(l.reviewOpacity) }}>
@@ -896,7 +896,7 @@ export default function Collections() {
                   border: '1px solid rgba(201,169,97,0.6)', 
                   backdropFilter: 'blur(4px)',
                   color: '#c9a961', 
-                  fontSize: '0.68rem', 
+                  fontSize: '0.95cqw', 
                   letterSpacing: '0.15em', 
                   whiteSpace: 'nowrap',
                   cursor: isAddingToWish ? 'wait' : 'pointer', 
@@ -915,7 +915,7 @@ export default function Collections() {
                   background: '#c9a961', 
                   border: '1px solid #c9a961', 
                   color: '#1a0c04', 
-                  fontSize: '0.68rem', 
+                  fontSize: '0.95cqw', 
                   letterSpacing: '0.15em', 
                   fontWeight: '600',
                   whiteSpace: 'nowrap',
@@ -992,7 +992,7 @@ export default function Collections() {
               onMouseOut={e => { if (canNext) e.currentTarget.style.background = 'rgba(0,0,0,0.55)'; }}
             >›</button>
 
-            <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, fontSize: '0.6rem', letterSpacing: '0.3em', color: 'rgba(201,169,97,0.6)' }}>
+            <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, fontSize: '0.85cqw', letterSpacing: '0.3em', color: 'rgba(201,169,97,0.6)' }}>
               {selectedIdx + 1} / {allPerfumes.length}
             </div>
           </>
