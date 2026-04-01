@@ -1,4 +1,25 @@
-## 🎬 시연 동영상(수정)
+## 1. 목차
+- [1. 프로젝트 개요](#1-목차)
+- [2. 사용 클라우드 및 서비스](#2-사용-클라우드-및-서비스)
+- [3. 기능 구성도](#3-기능-구성도---docs)
+- [4. API 명세서](#4-api-명세서---docs)
+- [5. 코드 (Source Code)](#5-code---aion_front-aion_back-aion_mobile)
+- [6. 앱 등록 및 설치](#6-앱-등록)
+- [7. 시연 동영상](#7-시연-동영상)
+- [8. 프로젝트 평가 및 비교](#8-우리팀-평가)
+
+## 2. 사용 클라우드 및 서비스
+| AWS | [https://simcar.kro.kr](https://aws.amazon.com/ko/) |
+| Superbase | [https://simcar.kro.kr](https://supabase.com/) |
+
+## 3. 기능 구성도 -> docs
+## 4. API 명세서 -> docs
+## 5. code -> AION_front, AION_back, AION_mobile
+
+## 6. 앱 등록
+App Store: [앱 링크]
+
+## 7. 시연 동영상
 
 - <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
   [안드로이드 시연 영상](영상링크)
@@ -11,3 +32,10 @@
 
 - <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
   [리액트(모바일) 시연 영상] https://youtu.be/7PYLcMUCvlM
+
+## 8. 우리팀 평가
+| 항목 | 작년 우수팀 (예: 황치즈) | 우리 팀 (AION) |
+| 주요 기능 | 쇼핑몰 | 향수 판매 및 서비스 |
+| 멀티 클라우드 | 단일 (AWS) | superbase |
+| 플랫폼 지원 | Web | Web + iOS + Android |
+| 성능 지표 | - | 응답 속도 20% 개선 등 |
