@@ -34,7 +34,7 @@ App Store: [앱 링크]
   [리액트(모바일) 시연 영상] https://youtu.be/7PYLcMUCvlM
 
 ## 8. 우리팀 평가
-| 항목 | 작년 우수팀 (예: 황치즈) | 우리 팀 (AION) |
+| 항목 | 작년 우수팀(?) | 우리 팀 (AION) |
 | 주요 기능 | 쇼핑몰 | 향수 판매 및 서비스 |
 | 멀티 클라우드 | 단일 (AWS) | superbase |
 | 플랫폼 지원 | Web | Web + iOS + Android |
