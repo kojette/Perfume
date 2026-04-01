@@ -16,7 +16,9 @@
 <img width="636" height="702" alt="1" src="https://github.com/user-attachments/assets/722cc042-801b-470a-bb22-fdfe66d44673" />
 <img width="830" height="828" alt="2" src="https://github.com/user-attachments/assets/976aa5fa-580b-4ed1-a85b-fd142e31aff8" />
 <img width="513" height="240" alt="3" src="https://github.com/user-attachments/assets/12b154f9-69d2-496b-8e2c-5293958c7308" />
+
 ## 4. API 명세서 -> docs
+
 ## 5. code -> AION_front, AION_back, AION_mobile
 
 ## 6. 앱 등록
