@@ -9,7 +9,7 @@
 - [8. 프로젝트 평가 및 비교](#8-우리팀-평가)
 
 ## 2. 사용 클라우드 및 서비스
-| AWS | [https://simcar.kro.kr](https://aws.amazon.com/ko/) |
+| AWS | [https://simcar.kro.kr](http://aion-frontend-967283278741-ap-northeast-2-an.s3-website.ap-northeast-2.amazonaws.com/) |
 | Superbase | [https://simcar.kro.kr](https://supabase.com/) |
 
 ## 3. 기능 구성도 -> docs
