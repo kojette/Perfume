@@ -16,7 +16,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   
   # HTTP & Network
-  http: ^1.2.0
+  http: ^1.2.1  #기존의 1.2.0인데 일단 바꿈. 안되면 롤백 시도. 
   
   # Supabase
   supabase_flutter: ^2.5.0
