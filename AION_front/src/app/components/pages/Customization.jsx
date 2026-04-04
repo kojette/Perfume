@@ -4,6 +4,7 @@ import { Ornament } from '../Ornament';
 import { ShoppingBag, Plus, Trash2, Edit3 } from 'lucide-react';
 import ScentBlend from './ScentBlend';
 import CustomizationEditor from './CustomizationEditor';
+import AiScentStudio from './AiScentStudio';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -260,7 +261,17 @@ const Customization = () => {
         )}
 
         {activeMode === 'scent' && (
-          <ScentBlend />
+          <div className="space-y-6">
+            <div className="border border-[#c9a961]/20 bg-white px-8 py-6 text-center">
+              <p className="text-[9px] tracking-[0.6em] text-[#c9a961] mb-2">POWERED BY GEMINI & CLAUDE</p>
+              <h3 className="font-serif text-xl text-[#1a1a1a] tracking-wider mb-2">AI SCENT STUDIO</h3>
+              <p className="text-sm text-[#8b8278] italic leading-relaxed">
+                AI가 이미지나 감성 키워드를 분석해 향수를 추천하고,<br />
+                전문 조향사 AI와의 대화로 세상에 하나뿐인 향수를 설계합니다.
+              </p>
+            </div>
+            <AiScentStudio />
+          </div>
         )}
 
       </div>
