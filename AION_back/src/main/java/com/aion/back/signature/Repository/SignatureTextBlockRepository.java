@@ -1,4 +1,4 @@
-package com.aion.back.signature.Repository;
+package com.aion.back.signature.repository;
 
 import com.aion.back.signature.entity.SignatureTextBlock;
 import org.springframework.data.jpa.repository.JpaRepository;
