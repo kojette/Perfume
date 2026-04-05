@@ -1,23 +1,7 @@
-/**
- * AiScentStudio.jsx
- *
- * Customization.jsx의 'scent' 탭에 추가되는 AI 조향 스튜디오.
- * 기존 ScentBlend 컴포넌트 위에 올라타는 구조.
- *
- * 탭 구성:
- *  ① AI 소믈리에 (Gemini) - 이미지 업로드 or 키워드 → 향수 추천
- *  ② AI 조향사 (Claude)  - 채팅으로 나만의 조향 레시피 설계
- *
- * 사용법 (Customization.jsx):
- *   import AiScentStudio from './AiScentStudio';
- *   // activeMode === 'scent' 렌더 부분에:
- *   <AiScentStudio />
- *   // 기존 <ScentBlend /> 아래 또는 대체
- */
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Send, Sparkles, Camera, MessageSquare, X, ChevronDown, RotateCcw } from 'lucide-react';
+import { Upload, Send, Sparkles, Camera, MessageSquare, X, ChevronDown, RotateCcw, FlaskConical } from 'lucide-react';
+import ScentBlend from './ScentBlend'; // 기존 향 조합 컴포넌트
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -32,12 +16,20 @@ const border = '#e8e2d6';
 // 메인 컴포넌트
 // ══════════════════════════════════════════════════════════════
 export default function AiScentStudio() {
-  const [activeAiTab, setActiveAiTab] = useState('gemini'); // 'gemini' | 'claude'
+  const [activeAiTab, setActiveAiTab] = useState('blend'); // 'blend' | 'gemini' | 'claude'
 
   return (
     <div className="max-w-3xl mx-auto py-2">
-      {/* AI 탭 선택 */}
+      {/* 탭 선택 - 3개 */}
       <div className="flex border border-[#c9a961]/30 mb-8 overflow-hidden">
+        <AiTabBtn
+          active={activeAiTab === 'blend'}
+          onClick={() => setActiveAiTab('blend')}
+          icon={<FlaskConical size={13} />}
+          label="향 조합하기"
+          sub="My Scent Lab"
+        />
+        <div className="w-px bg-[#c9a961]/20" />
         <AiTabBtn
           active={activeAiTab === 'gemini'}
           onClick={() => setActiveAiTab('gemini')}
@@ -55,7 +47,9 @@ export default function AiScentStudio() {
         />
       </div>
 
-      {activeAiTab === 'gemini' ? <GeminiPanel /> : <ClaudePanel />}
+      {activeAiTab === 'blend' && <ScentBlend />}
+      {activeAiTab === 'gemini' && <GeminiPanel />}
+      {activeAiTab === 'claude' && <ClaudePanel />}
     </div>
   );
 }

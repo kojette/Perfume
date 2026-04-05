@@ -1,738 +1,1145 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { getRecommendations } from '../../../services/recommendationApi';
 
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import {
+  ShoppingBag, Save, ChevronDown, ChevronUp, X,
+  Loader2, RefreshCw, AlertCircle, Trash2, ListOrdered, Search
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import imgFemale       from '../../../assets/female.png';
-import imgMale         from '../../../assets/male.png';
-import imgDate         from '../../../assets/date.png';
-import imgSpringSummer from '../../../assets/springsummer.png';
-import imgCool         from '../../../assets/cool.png';
-import imgFallWinter   from '../../../assets/fallwinter.png';
+const API_BASE_URL = 'http://localhost:8080';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
-
-const AGE_GROUPS = [
-  {
-    id: '10s',
-    label: '10대',
-    en: 'TEENS',
-    range: '15–19',
-    symbol: '✦',
-    desc: '청초하고 밝은 향',
-    keywords: ['플로럴', '프루티', '청량한'],
-    palette: { from: '#fce4ec', to: '#f8bbd0', accent: '#e91e8c', text: '#880e4f' },
-    tags: ['플로럴', '프루티', '청량한', '달콤한'],
-    poem: '꽃이 피어나는 계절처럼,\n처음 맡는 향기가 세상을 물들인다',
-  },
-  {
-    id: '20s',
-    label: '20대',
-    en: 'TWENTIES',
-    range: '20–29',
-    symbol: 'Ι',
-    desc: '자유롭고 생동감 넘치는',
-    keywords: ['시트러스', '아쿠아틱', '머스크'],
-    palette: { from: '#e3f2fd', to: '#bbdefb', accent: '#1976d2', text: '#0d47a1' },
-    tags: ['시트러스', '아쿠아틱', '머스크', '청량한'],
-    poem: '새벽 도시의 공기처럼,\n가능성으로 가득 찬 향기가 번져간다',
-  },
-  {
-    id: '30s',
-    label: '30대',
-    en: 'THIRTIES',
-    range: '30–39',
-    symbol: 'ΙΙ',
-    desc: '세련되고 깊이 있는',
-    keywords: ['우디', '앰버', '스파이시'],
-    palette: { from: '#fff3e0', to: '#ffe0b2', accent: '#f57c00', text: '#e65100' },
-    tags: ['우디', '앰버', '스파이시', '관능적인'],
-    poem: '익어가는 포도주처럼,\n시간이 빚어낸 향기가 공간을 채운다',
-  },
-  {
-    id: '40s',
-    label: '40대',
-    en: 'FORTIES',
-    range: '40–49',
-    symbol: 'ΙΙΙ',
-    desc: '클래식하고 우아한',
-    keywords: ['오리엔탈', '파우더리', '가죽'],
-    palette: { from: '#f3e5f5', to: '#e1bee7', accent: '#7b1fa2', text: '#4a148c' },
-    tags: ['오리엔탈', '파우더리', '가죽', '클래식'],
-    poem: '고전 음악의 선율처럼,\n세월이 담긴 향기가 품격을 말한다',
-  },
-  {
-    id: '50s',
-    label: '50대+',
-    en: 'FIFTIES+',
-    range: '50+',
-    symbol: 'IV',
-    desc: '기품 있고 고혹적인',
-    keywords: ['바닐라', '샌달우드', '로즈'],
-    palette: { from: '#efebe9', to: '#d7ccc8', accent: '#5d4037', text: '#3e2723' },
-    tags: ['바닐라', '샌달우드', '로즈', '우아한'],
-    poem: '깊은 밤 향나무 연기처럼,\n오래된 것들의 아름다움이 깃들다',
-  },
+// ── 카테고리별 고정 색상 팔레트 (displayOrder 순 인덱스 순환) ────────────────
+const CATEGORY_COLORS = [
+  '#e8a0bf', // 플로럴
+  '#f5c542', // 시트러스
+  '#8b6f47', // 우디
+  '#a0b4c8', // 머스크
+  '#e17055', // 스파이시
+  '#fd79a8', // 프루티
+  '#55efc4', // 그린
+  '#74b9ff', // 아쿠아틱
+  '#ffeaa7', // 구르망
+  '#b2835f', // 발사믹/레진
+  '#dfe6e9', // 파우더리
+  '#636e72', // 어시
+  '#6d4c41', // 얼씨
+  '#b0c4de', // 알데하이딕
+  '#a8e6cf', // 헤르비셔스
 ];
 
-
-const FILTER_IMAGES = {
-  '여성':      imgFemale,
-  '남성':      imgMale,
-  '데이트':    imgDate,
-  '봄/여름':   imgSpringSummer,
-  '청량한':    imgCool,
-  '가을/겨울': imgFallWinter,
+// ── 카테고리 SVG 선화 아이콘 ─────────────────────────────────────────────────
+// 금빛(#c9a961) / 깊은 초록(#3d6b4f) 번갈아 사용, stroke-only 선화
+const CATEGORY_SVG_ICONS = {
+  '플로럴': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <circle cx="16" cy="16" r="3.2" stroke="#c9a961" strokeWidth="1.1"/>
+      <ellipse cx="16" cy="9.5" rx="2.2" ry="3.8" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <ellipse cx="16" cy="22.5" rx="2.2" ry="3.8" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <ellipse cx="9.5" cy="16" rx="3.8" ry="2.2" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <ellipse cx="22.5" cy="16" rx="3.8" ry="2.2" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <ellipse cx="11.2" cy="11.2" rx="2.2" ry="3.6" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" transform="rotate(-45 11.2 11.2)"/>
+      <ellipse cx="20.8" cy="11.2" rx="2.2" ry="3.6" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" transform="rotate(45 20.8 11.2)"/>
+      <ellipse cx="11.2" cy="20.8" rx="2.2" ry="3.6" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" transform="rotate(45 11.2 20.8)"/>
+      <ellipse cx="20.8" cy="20.8" rx="2.2" ry="3.6" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" transform="rotate(-45 20.8 20.8)"/>
+    </svg>
+  ),
+  '시트러스': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <circle cx="16" cy="17" r="8.5" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M16 8.5 C16 8.5 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M7.5 17 C7.5 17 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M9.2 11.2 C9.2 11.2 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M22.8 11.2 C22.8 11.2 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M24.5 17 C24.5 17 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M9.2 22.8 C9.2 22.8 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M22.8 22.8 C22.8 22.8 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M16 25.5 C16 25.5 16 17 16 17" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+      <path d="M14 6 Q16 3 18 6" stroke="#3d6b4f" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <path d="M16 6 Q18 2 22 4" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+    </svg>
+  ),
+  '우디': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <rect x="13.5" y="10" width="5" height="16" rx="1" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M16 10 L10 4 L16 7 L22 4 L16 10Z" stroke="#3d6b4f" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+      <path d="M13.5 14 L8 11 L13.5 13" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <path d="M18.5 16 L24 13 L18.5 15" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <path d="M13.5 19 L8 17 L13.5 18.5" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <line x1="12" y1="26" x2="20" y2="26" stroke="#c9a961" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  ),
+  '머스크': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 6 C16 6 10 10 10 16 C10 20 12.5 24 16 25 C19.5 24 22 20 22 16 C22 10 16 6 16 6Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round"/>
+      <path d="M16 10 C16 10 12 13 12 16.5 C12 19 13.5 21.5 16 22.5" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.6"/>
+      <circle cx="16" cy="16" r="2" stroke="#c9a961" strokeWidth="0.9"/>
+      <path d="M13 8 Q10 5 8 8" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M19 8 Q22 5 24 8" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M10 23 Q8 27 12 27" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M22 23 Q24 27 20 27" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+    </svg>
+  ),
+  '스파이시': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 26 C16 26 9 20 9 14 C9 10 12 7 15 7 C15 7 14 10 16 12 C18 10 20 8 20 6 C23 7 24 11 23 15 C22 19 16 26 16 26Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M14 14 C14 14 13 17 14 20" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.6"/>
+      <path d="M18 15 C18 15 18.5 18 17.5 21" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.6"/>
+    </svg>
+  ),
+  '프루티': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <ellipse cx="12" cy="19" rx="5.5" ry="6" stroke="#c9a961" strokeWidth="1.1"/>
+      <ellipse cx="20" cy="19" rx="5.5" ry="6" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M16 14 Q16 8 20 6" stroke="#3d6b4f" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <path d="M20 6 Q24 4 23 8" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <path d="M10 17 Q10 15 12 15" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+      <path d="M18 17 Q18 15 20 15" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+    </svg>
+  ),
+  '그린': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 26 Q16 26 16 14" stroke="#3d6b4f" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M16 20 Q10 18 8 12 Q13 11 16 16" stroke="#3d6b4f" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M16 16 Q22 14 24 8 Q19 7 16 12" stroke="#3d6b4f" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M16 24 Q11 22 9 18" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.6"/>
+    </svg>
+  ),
+  '아쿠아틱': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 6 C16 6 10 14 10 19 C10 22.3 12.7 25 16 25 C19.3 25 22 22.3 22 19 C22 14 16 6 16 6Z" stroke="#c9a961" strokeWidth="1.1" fill="none"/>
+      <path d="M12 20 Q14 17 16 20 Q18 23 20 20" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.6"/>
+      <path d="M13 17 Q14.5 15 16 17" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.4"/>
+    </svg>
+  ),
+  '구르망': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M9 20 L10 14 Q16 11 22 14 L23 20 Q16 24 9 20Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M10 14 Q16 8 22 14" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <path d="M15 11 Q16 6 17 11" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <ellipse cx="16" cy="20" rx="4" ry="1.5" stroke="#c9a961" strokeWidth="0.8" opacity="0.5"/>
+    </svg>
+  ),
+  '발사믹/레진': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M10 24 L12 14 Q16 10 20 14 L22 24 Q16 27 10 24Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M14 16 Q16 13 18 16" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.6"/>
+      <path d="M13 20 Q16 18 19 20" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M15 10 Q16 6 17 10" stroke="#c9a961" strokeWidth="1" strokeLinecap="round" fill="none"/>
+      <circle cx="16" cy="5.5" r="1.2" stroke="#c9a961" strokeWidth="0.9"/>
+    </svg>
+  ),
+  '파우더리': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <circle cx="16" cy="17" r="8" stroke="#c9a961" strokeWidth="1.1"/>
+      <circle cx="16" cy="17" r="5" stroke="#c9a961" strokeWidth="0.8" opacity="0.5"/>
+      <circle cx="16" cy="17" r="2" stroke="#c9a961" strokeWidth="0.7" opacity="0.4"/>
+      <circle cx="10" cy="10" r="0.9" stroke="#c9a961" strokeWidth="0.8" opacity="0.5"/>
+      <circle cx="22" cy="10" r="0.7" stroke="#c9a961" strokeWidth="0.8" opacity="0.4"/>
+      <circle cx="8" cy="18" r="0.7" stroke="#c9a961" strokeWidth="0.7" opacity="0.3"/>
+      <circle cx="24" cy="20" r="0.9" stroke="#c9a961" strokeWidth="0.8" opacity="0.4"/>
+    </svg>
+  ),
+  '어시': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 26 C16 26 10 20 11 14 C11.5 11 13 9 14 8 C14 10 15 11 16 11 C17 10 17.5 8 18 7 C20 9 21.5 12 21 16 C20.5 20 16 26 16 26Z" stroke="#c9a961" strokeWidth="1.1" strokeLinejoin="round" fill="none"/>
+      <path d="M14 14 C14 14 13.5 17 14.5 20" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+      <path d="M18 15 C18 15 18 18 17 21" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" opacity="0.5"/>
+      <path d="M13 26 Q16 28 19 26" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.4"/>
+    </svg>
+  ),
+  '얼씨': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <ellipse cx="16" cy="22" rx="9" ry="4" stroke="#3d6b4f" strokeWidth="1.1"/>
+      <path d="M10 22 Q10 16 16 12 Q22 16 22 22" stroke="#3d6b4f" strokeWidth="1" fill="none"/>
+      <path d="M13 22 Q13 18 16 15" stroke="#3d6b4f" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.6"/>
+      <path d="M16 12 Q16 8 16 8" stroke="#3d6b4f" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M13 10 Q16 7 19 10" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+    </svg>
+  ),
+  '알데하이딕': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <rect x="12" y="18" width="8" height="7" rx="1" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M14 18 L14 13 L12 10" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M18 18 L18 13 L20 10" stroke="#c9a961" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M12 10 Q16 8 20 10" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round" fill="none"/>
+      <path d="M11 8 Q13 5 16 6" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <path d="M21 8 Q19 5 16 6" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+      <line x1="12" y1="21" x2="20" y2="21" stroke="#c9a961" strokeWidth="0.7" opacity="0.4"/>
+    </svg>
+  ),
+  '헤르비셔스': (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <path d="M16 26 Q16 26 16 16" stroke="#3d6b4f" strokeWidth="1.1" strokeLinecap="round"/>
+      <path d="M16 22 Q12 20 11 16 Q14 15 16 18" stroke="#3d6b4f" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+      <path d="M16 18 Q20 16 21 12 Q18 11 16 14" stroke="#3d6b4f" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+      <path d="M16 14 Q13 12 13 8 Q16 9 16 12" stroke="#3d6b4f" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+      <path d="M14 26 Q16 27 18 26" stroke="#3d6b4f" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.5"/>
+    </svg>
+  ),
 };
 
+// ── 병 선택 SVG 아이콘 ────────────────────────────────────────────────────────
+const BOTTLE_SVG_DEFAULT = (
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+    <rect x="11" y="16" width="10" height="11" rx="2" stroke="#c9a961" strokeWidth="1.1"/>
+    <path d="M13 16 L13 12 Q16 10 19 12 L19 16" stroke="#c9a961" strokeWidth="1" fill="none"/>
+    <rect x="13" y="9" width="6" height="3" rx="1" stroke="#c9a961" strokeWidth="0.9"/>
+    <line x1="11" y1="20" x2="21" y2="20" stroke="#c9a961" strokeWidth="0.7" opacity="0.4"/>
+    <line x1="11" y1="23" x2="21" y2="23" stroke="#c9a961" strokeWidth="0.7" opacity="0.3"/>
+    <circle cx="16" cy="18" r="1" stroke="#c9a961" strokeWidth="0.7" opacity="0.4"/>
+  </svg>
+);
 
-const QUICK_FILTERS = [
-  { label: '남성', en: 'Man',    type: 'gender', value: 'MALE'    },
-  { label: '여성', en: 'Woman',  type: 'gender', value: 'FEMALE'  },
-  { label: '데이트', en: 'Date', type: 'tags',   value: ['데이트'] },
-  { label: '청량한', en: 'Fresh',type: 'tags',   value: ['청량한'] },
-  { label: '봄/여름', en: 'Spring', type: 'tags', value: ['플로럴'] },
-  { label: '가을/겨울', en: 'Autumn', type: 'tags', value: ['우디'] },
+const BOTTLE_SVG_CUSTOM = (
+  <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+    <path d="M10 26 L10 17 Q10 15 13 14 L13 11 Q13 10 14 10 L18 10 Q19 10 19 11 L19 14 Q22 15 22 17 L22 26 Q22 27 21 27 L11 27 Q10 27 10 26Z" stroke="#c9a961" strokeWidth="1.1" fill="none"/>
+    <path d="M14 10 L14 8 L18 8 L18 10" stroke="#c9a961" strokeWidth="0.9" fill="none"/>
+    <polygon points="16,5 17.2,7.5 14.8,7.5" stroke="#c9a961" strokeWidth="0.9" fill="none"/>
+    <path d="M13 19 Q16 17 19 19" stroke="#c9a961" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+    <path d="M12 22 Q16 20.5 20 22" stroke="#c9a961" strokeWidth="0.7" strokeLinecap="round" fill="none" opacity="0.4"/>
+  </svg>
+);
+
+// ── 향수 농도 (고정) ─────────────────────────────────────────────────────────
+const CONCENTRATION_TYPES = [
+  { id: 'EDP',     name: '오 드 퍼퓸',   nameEn: 'EDP',     basePrice: 250000, desc: '15~20% 향료, 6~8시간 지속' },
+  { id: 'EDT',     name: '오 드 뚜왈렛', nameEn: 'EDT',     basePrice: 235000, desc: '5~15% 향료, 3~5시간 지속' },
+  { id: 'EDC',     name: '오 드 코롱',   nameEn: 'EDC',     basePrice: 220000, desc: '2~5% 향료, 2~3시간 지속' },
+  { id: 'COLOGNE', name: '코롱',         nameEn: 'COLOGNE', basePrice: 205000, desc: '2~4% 향료, 1~2시간 지속' },
 ];
 
+const BASE_VOLUME          = 50;
+const EXTRA_PRICE_PER_10ML = 30000;
+const VOLUME_OPTIONS       = [50, 60, 70, 80, 90, 100];
 
-
-function GoldDivider() {
-  return (
-    <div className="flex items-center gap-3 my-2">
-      <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent to-[#c9a961]/40" />
-      <span className="text-[#c9a961]/50 text-xs">◆</span>
-      <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent to-[#c9a961]/40" />
-    </div>
-  );
-}
-
-function PerfumeCard({ perfume, onClick }) {
-  return (
-    <div
-      onClick={() => onClick?.(perfume)}
-      className="group flex items-center gap-5 p-5 bg-white border border-[#e8e2d6] hover:border-[#c9a961]/60 hover:shadow-lg transition-all duration-300 cursor-pointer"
-    >
-      <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-[#f5f0e8] to-[#e8ddc8] flex items-center justify-center group-hover:scale-105 transition-transform duration-300 overflow-hidden">
-        {perfume.imageUrl ? (
-          <img src={perfume.imageUrl} alt={perfume.name} className="w-full h-full object-cover" />
-        ) : (
-          <span className="font-serif text-xl text-[#c9a961]/40">{perfume.name?.charAt(0)}</span>
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-medium tracking-[0.1em] text-[#2a2620] truncate">{perfume.name}</p>
-            <p className="text-[10px] tracking-[0.2em] text-[#c9a961] italic mt-0.5">{perfume.nameEn || perfume.brand}</p>
-          </div>
-          <div className="text-right flex-shrink-0">
-            {perfume.discountRate > 0 && (
-              <p className="text-[10px] text-[#a39d8f] line-through">₩{perfume.originalPrice?.toLocaleString()}</p>
-            )}
-            <p className="text-sm font-semibold text-[#c9a961]">₩{perfume.price?.toLocaleString()}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 mt-2">
-          <div className="flex flex-wrap gap-1">
-            {(perfume.tags || []).slice(0, 2).map((tag, i) => (
-              <span key={i} className="text-[9px] px-2 py-0.5 bg-[#faf8f3] border border-[#e8e2d6] text-[#8b8278]">#{tag}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
-  const [expanded, setExpanded] = useState(false);
-  const { palette } = group;
-  const displayPerfumes = expanded ? perfumes : perfumes.slice(0, 3);
-
-  return (
-    <div className="relative overflow-hidden border border-[#e8e2d6] bg-white">
+// ── 슬라이더 ─────────────────────────────────────────────────────────────────
+const RatioSlider = ({ value, onChange, color }) => (
+  <div className="relative flex items-center gap-3">
+    <div className="flex-1 relative h-2 rounded-full" style={{ background: '#e8e0d0' }}>
       <div
-        className="relative cursor-pointer select-none"
-        style={{ background: `linear-gradient(135deg, ${palette.from}, ${palette.to})` }}
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 font-serif text-[80px] leading-none pointer-events-none select-none"
-          style={{ color: palette.accent, opacity: 0.07 }}>
-          {group.symbol}
-        </div>
-
-        <div className="relative px-8 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="flex flex-col items-center justify-center w-16 h-16 border-2 rounded-full flex-shrink-0"
-              style={{ borderColor: palette.accent, background: 'white' }}>
-              <span className="font-serif text-lg leading-none" style={{ color: palette.accent }}>{group.label}</span>
-              <span className="text-[8px] tracking-widest mt-0.5" style={{ color: palette.text }}>{group.range}</span>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] tracking-[0.5em] font-medium uppercase" style={{ color: palette.accent }}>{group.en}</span>
-                <span className="text-[10px] text-[#8b8278]">— {group.desc}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {group.keywords.map((kw, i) => (
-                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/60 border"
-                    style={{ color: palette.text, borderColor: `${palette.accent}40` }}>
-                    {kw}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-[#8b8278]">{perfumes.length}개</span>
-            <div className={`w-6 h-6 border flex items-center justify-center transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
-              style={{ borderColor: `${palette.accent}50` }}>
-              <span className="text-[10px]" style={{ color: palette.accent }}>▼</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className={`overflow-hidden transition-all duration-500`}
-        style={{ maxHeight: expanded ? '2000px' : perfumes.length > 0 ? '280px' : '0' }}>
-
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="w-6 h-6 border-2 border-[#c9a961] border-t-transparent rounded-full animate-spin mx-auto" />
-          </div>
-        ) : perfumes.length > 0 ? (
-          <div>
-            <div className="px-8 py-5 border-b border-[#e8e2d6]/50"
-              style={{ background: `linear-gradient(to right, ${palette.from}30, transparent)` }}>
-              <p className="text-xs italic text-[#8b8278] leading-loose whitespace-pre-line tracking-wider">
-                {group.poem}
-              </p>
-            </div>
-
-            <div className="divide-y divide-[#f0ebe0]">
-              {displayPerfumes.map(p => (
-                <PerfumeCard key={p.id} perfume={p} onClick={onPerfumeClick} />
-              ))}
-            </div>
-
-            {perfumes.length > 3 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-                className="w-full py-3 text-[11px] tracking-[0.3em] text-[#8b8278] hover:text-[#c9a961] transition-colors border-t border-[#e8e2d6]"
-              >
-                {expanded ? '접기 ▲' : `${perfumes.length - 3}개 더 보기 ▼`}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="px-8 py-10 text-center">
-            <p className="text-sm text-[#a39d8f] italic">해당 연령대 추천 향수가 없습니다</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-
-function QuickFilterButton({ filter, isActive, onClick }) {
-  const imgSrc = FILTER_IMAGES[filter.label];
-
-  return (
-    <button
-      onClick={onClick}
-      className="relative overflow-hidden flex flex-col items-center justify-end gap-1 border transition-all duration-300 min-h-[110px]"
-      style={{
-        borderColor: isActive ? '#c9a961' : '#e8e2d6',
-        padding: 0,
-      }}
-    >
-      
-      {imgSrc && (
-        <img
-          src={imgSrc}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          style={{ opacity: isActive ? 0.55 : 0.35, transition: 'opacity 0.25s' }}
-        />
-      )}
-
-      
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: isActive
-            ? 'linear-gradient(to top, rgba(26,21,16,0.72) 0%, rgba(26,21,16,0.18) 55%, transparent 100%)'
-            : 'linear-gradient(to top, rgba(26,21,16,0.55) 0%, rgba(26,21,16,0.08) 55%, transparent 100%)',
-          transition: 'background 0.25s',
-        }}
+        className="absolute left-0 top-0 h-full rounded-full transition-all"
+        style={{ width: `${value}%`, background: color || '#c9a961' }}
       />
+      <input
+        type="range" min={0} max={100} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
+      />
+      <div
+        className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md pointer-events-none transition-all"
+        style={{ left: `calc(${value}% - 8px)`, background: color || '#c9a961' }}
+      />
+    </div>
+    <span className="text-[11px] font-mono text-[#2a2620] w-8 text-right">{value}</span>
+  </div>
+);
 
-      
-      {isActive && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ boxShadow: 'inset 0 0 0 2px #c9a961' }}
-        />
-      )}
+// ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
+const ScentBlend = () => {
+  const navigate   = useNavigate();
+  const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
+  const token      = sessionStorage.getItem('accessToken');
 
-      
-      <div className="relative z-10 flex flex-col items-center gap-0.5 pb-3 pt-2">
-        <span
-          className="text-[12px] font-medium tracking-wider"
-          style={{ color: isActive ? '#c9a961' : 'rgba(255,255,255,0.92)' }}
-        >
-          {filter.label}
-        </span>
-        <span
-          className="text-[9px] tracking-widest"
-          style={{ color: isActive ? 'rgba(201,169,97,0.8)' : 'rgba(255,255,255,0.55)' }}
-        >
-          {filter.en}
-        </span>
-      </div>
-    </button>
-  );
-}
+  // DB에서 로드한 카테고리+재료
+  const [categories,    setCategories]    = useState([]);
+  const [loadingScents, setLoadingScents] = useState(true);
+  const [scentsError,   setScentsError]   = useState(null);
 
+  // ── 검색 ────────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
 
-export default function Recommend() {
-  const navigate = useNavigate();
+  // 선택된 재료 { "ingredientId": ratio(0-100) }
+  const [selectedIngredients, setSelectedIngredients] = useState({});
+  // 열린 카테고리 아코디언
+  const [openCategories, setOpenCategories] = useState({});
 
+  // 향수 설정
+  const [concentration, setConcentration] = useState(CONCENTRATION_TYPES[0]);
+  const [volume,        setVolume]         = useState(50);
+  const [blendName,     setBlendName]      = useState('');
+  const [saving,        setSaving]         = useState(false);
 
-  const isAdmin = sessionStorage.getItem('role') === 'ADMIN';
+  // 내 조합 목록 패널
+  const [showMyBlends,  setShowMyBlends]  = useState(false);
+  const [myBlends,      setMyBlends]      = useState([]);
+  const [loadingBlends, setLoadingBlends] = useState(false);
 
+  // 병 선택
+  const [myBottles,      setMyBottles]      = useState([]);
+  const [loadingBottles, setLoadingBottles] = useState(false);
+  const [selectedBottle, setSelectedBottle] = useState(null);
 
-  const [heroEditing, setHeroEditing]   = useState(false);
-  const [heroSubtitle, setHeroSubtitle] = useState('AION Parfums');
-  const [heroTitle,    setHeroTitle]    = useState('RECOMMEND');
-  const [heroDesc,     setHeroDesc]     = useState('당신을 위한 신화의 향');
+  // ────────────────────────────────────────────────────────────────
+  // 검색 필터링: 검색어가 있으면 재료명/설명 매칭 카테고리+재료만 추출
+  // ────────────────────────────────────────────────────────────────
+  const trimmedQuery = searchQuery.trim().toLowerCase();
 
-  const [perfumeData, setPerfumeData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [tagInput, setTagInput] = useState('');
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedGender, setSelectedGender] = useState('');
-  const [sortBy, setSortBy] = useState('latest');
-
-  const [ageData, setAgeData] = useState({});
-  const [ageLoading, setAgeLoading] = useState(false);
-
-  const handlePerfumeClick = (perfume) => {
-    navigate('/collections', { state: { targetPerfumeId: perfume.id } });
-  };
-
-  useEffect(() => { fetchPerfumes(); }, [sortBy]);
-
-  useEffect(() => {
-    const t = setTimeout(() => { fetchPerfumes(); }, 500);
-    return () => clearTimeout(t);
-  }, [searchTerm, selectedTags, selectedGender]);
-
-  useEffect(() => {
-    if (activeTab === 'age' && Object.keys(ageData).length === 0) {
-      fetchAgeGroupData();
-    }
-  }, [activeTab]);
-
-  const fetchPerfumes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params = {
-        search: searchTerm || undefined,
-        tags: selectedTags.length > 0 ? selectedTags : undefined,
-        gender: selectedGender || undefined,
-        sortBy,
-        page: 0,
-        size: 100,
-      };
-      const response = await getRecommendations(params);
-      const transformed = (response.content || []).map(p => ({
-        id: p.id,
-        name: p.name,
-        nameEn: p.nameEn || p.name,
-        category: p.category || p.scentCategories?.join(' & ') || '기타',
-        price: p.salePrice || p.price,
-        originalPrice: p.originalPrice,
-        discountRate: p.discountRate || 0,
-        tags: p.tags || [],
-        rating: p.rating || 0,
-        brand: p.brandName || '',
-        imageUrl: p.imageUrl,
-        seasons: p.seasons || [],
-        occasions: p.occasions || [],
-      }));
-      setPerfumeData(transformed);
-    } catch (err) {
-      setError(err.message || '데이터를 불러오는 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAgeGroupData = async () => {
-    setAgeLoading(true);
-    const result = {};
-    await Promise.all(
-      AGE_GROUPS.map(async (group) => {
-        try {
-          const res = await fetch(`${API_BASE}/api/recommendations/age/${group.id}?limit=8`);
-          if (!res.ok) throw new Error();
-          const data = await res.json();
-          result[group.id] = (data || []).map(p => ({
-            id: p.id, name: p.name, nameEn: p.nameEn || '',
-            price: p.salePrice || p.price, originalPrice: p.originalPrice,
-            discountRate: p.discountRate || 0, tags: p.tags || [],
-            rating: p.rating || 0, brand: p.brandName || '', imageUrl: p.imageUrl,
-          }));
-        } catch {
-          try {
-            const params = { tags: group.tags, sortBy: 'rating', page: 0, size: 8 };
-            const fallbackRes = await getRecommendations(params);
-            result[group.id] = (fallbackRes.content || []).map(p => ({
-              id: p.id, name: p.name, nameEn: p.nameEn || '',
-              price: p.salePrice || p.price, originalPrice: p.originalPrice,
-              discountRate: p.discountRate || 0, tags: p.tags || [],
-              rating: p.rating || 0, brand: p.brandName || '', imageUrl: p.imageUrl,
-            }));
-          } catch {
-            result[group.id] = [];
-          }
-        }
+  const filteredCategories = useMemo(() => {
+    if (!trimmedQuery) return categories;
+    return categories
+      .map(cat => {
+        const matchedIngredients = cat.ingredients.filter(ing =>
+          ing.name?.toLowerCase().includes(trimmedQuery) ||
+          ing.description?.toLowerCase().includes(trimmedQuery)
+        );
+        // 카테고리명 자체가 검색어와 맞으면 전체 재료 표시
+        const catNameMatches = cat.categoryName?.toLowerCase().includes(trimmedQuery);
+        if (catNameMatches) return cat;
+        if (matchedIngredients.length === 0) return null;
+        return { ...cat, ingredients: matchedIngredients };
       })
-    );
-    setAgeData(result);
-    setAgeLoading(false);
-  };
+      .filter(Boolean);
+  }, [categories, trimmedQuery]);
 
-  const handleQuickFilter = (filter) => {
-    if (filter.type === 'gender') {
-      setSelectedGender(prev => prev === filter.value ? '' : filter.value);
-      return;
+  // 검색 중일 때 결과 카테고리 모두 열기
+  useEffect(() => {
+    if (trimmedQuery) {
+      const openAll = {};
+      filteredCategories.forEach(cat => { openAll[cat.categoryId] = true; });
+      setOpenCategories(openAll);
     }
-    if (filter.type === 'tags') {
-      const tag = filter.value[0];
-      setSelectedTags(prev =>
-        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-      );
-    }
-  };
+  }, [trimmedQuery, filteredCategories]);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && tagInput.trim()) {
-      e.preventDefault();
-      if (!selectedTags.includes(tagInput.trim())) {
-        setSelectedTags([...selectedTags, tagInput.trim()]);
-      }
-      setTagInput('');
-    }
-  };
-
-  const isFilterActive = (filter) => {
-    if (filter.type === 'gender') return selectedGender === filter.value;
-    if (filter.type === 'tags') return selectedTags.includes(filter.value[0]);
-    return false;
-  };
-
-  const filteredPerfumes = useMemo(() => perfumeData, [perfumeData]);
-
-  return (
-    <main className="min-h-screen bg-[#faf8f3]">
-      <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
+  // ────────────────────────────────────────────────────────────────
+  // 마운트 시 카테고리+재료 로드
+  // ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      setLoadingScents(true);
+      setScentsError(null);
+      try {
+        const res  = await fetch(`${API_BASE_URL}/api/custom/scents`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const data = json.data ?? json;
+        setCategories(data);
+        if (data.length > 0) {
+          setOpenCategories({ [data[0].categoryId]: true });
         }
-        .fade-up { animation: fadeUp 0.6s ease forwards; }
-        .delay-1 { animation-delay: 0.1s; opacity: 0; }
-        .delay-2 { animation-delay: 0.2s; opacity: 0; }
-        .delay-3 { animation-delay: 0.3s; opacity: 0; }
-        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: #f5f1e8; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #c9a961; border-radius: 4px; }
-      `}</style>
+      } catch (e) {
+        console.error('향 카테고리 로드 실패:', e);
+        setScentsError('향 재료 목록을 불러오지 못했습니다.');
+      } finally {
+        setLoadingScents(false);
+      }
+    })();
+  }, []);
 
-      
-      <div className="relative bg-[#1a1510] py-20 overflow-hidden mt-[-2px]">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #c9a961 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#1a1510]" />
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-          <span className="font-serif text-[20vw] text-[#c9a961]/3 leading-none">RECOMMEND</span>
-        </div>
+  // ────────────────────────────────────────────────────────────────
+  // 마운트 시 내 병 목록 로드 (로그인 상태일 때만)
+  // ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    (async () => {
+      setLoadingBottles(true);
+      try {
+        const res  = await fetch(`${API_BASE_URL}/api/custom/designs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        setMyBottles(json.data ?? json);
+      } catch (e) {
+        console.error('내 병 목록 로드 실패:', e);
+      } finally {
+        setLoadingBottles(false);
+      }
+    })();
+  }, [isLoggedIn, token]);
 
-        
-        {isAdmin && (
-          <div className="absolute top-4 right-4 z-20 flex gap-2">
-            {heroEditing ? (
-              <>
-                <button
-                  onClick={() => setHeroEditing(false)}
-                  className="px-3 py-1.5 text-[10px] tracking-widest bg-[#c9a961] text-[#1a1510] hover:bg-[#e0c070] transition-colors"
-                >
-                  저장
-                </button>
-                <button
-                  onClick={() => setHeroEditing(false)}
-                  className="px-3 py-1.5 text-[10px] tracking-widest border border-white/20 text-white/50 hover:text-white transition-colors"
-                >
-                  취소
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setHeroEditing(true)}
-                className="px-3 py-1.5 text-[10px] tracking-widest border border-[#c9a961]/40 text-[#c9a961]/70 hover:border-[#c9a961] hover:text-[#c9a961] transition-colors flex items-center gap-1.5"
-              >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                  <path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                </svg>
-                히어로 편집
-              </button>
-            )}
-          </div>
-        )}
+  const loadMyBlends = useCallback(async () => {
+    if (!isLoggedIn) { navigate('/login'); return; }
+    setLoadingBlends(true);
+    try {
+      const res  = await fetch(`${API_BASE_URL}/api/custom/scent-blends`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setMyBlends(json.data ?? json);
+    } catch (e) {
+      console.error('내 조합 로드 실패:', e);
+    } finally {
+      setLoadingBlends(false);
+    }
+  }, [isLoggedIn, token, navigate]);
 
-        <div className="relative text-center px-6 fade-up">
-          {heroEditing ? (
-            
-            <div className="flex flex-col items-center gap-3 max-w-md mx-auto">
-              <input
-                value={heroSubtitle}
-                onChange={e => setHeroSubtitle(e.target.value)}
-                className="w-full text-center bg-white/10 border border-[#c9a961]/40 text-[#c9a961]/80 text-[10px] tracking-[0.8em] uppercase px-3 py-2 outline-none focus:border-[#c9a961] transition-colors placeholder-[#c9a961]/30"
-                placeholder="서브타이틀 (예: AION Parfums)"
-              />
-              <input
-                value={heroTitle}
-                onChange={e => setHeroTitle(e.target.value)}
-                className="w-full text-center bg-white/10 border border-[#c9a961]/40 text-white font-serif text-3xl tracking-[0.4em] px-3 py-2 outline-none focus:border-[#c9a961] transition-colors placeholder-white/30"
-                placeholder="메인 타이틀"
-              />
-              <div className="w-full flex items-center gap-3">
-                <div className="flex-1 h-[1px] bg-[#c9a961]/20" />
-                <span className="text-[#c9a961]/30 text-xs">◆</span>
-                <div className="flex-1 h-[1px] bg-[#c9a961]/20" />
-              </div>
-              <input
-                value={heroDesc}
-                onChange={e => setHeroDesc(e.target.value)}
-                className="w-full text-center bg-white/10 border border-[#c9a961]/40 text-[#c9a961]/60 italic text-sm tracking-widest px-3 py-2 outline-none focus:border-[#c9a961] transition-colors placeholder-[#c9a961]/20"
-                placeholder="설명 문구"
-              />
-              <p className="text-[9px] tracking-widest text-white/20 mt-1">* 저장 시 이 세션에만 반영됩니다. DB 연동은 별도 API 호출이 필요합니다.</p>
-            </div>
-          ) : (
-            
-            <>
-              <p className="text-[10px] tracking-[0.8em] text-[#c9a961]/60 uppercase mb-4">{heroSubtitle}</p>
-              <h1 className="font-serif text-5xl md:text-6xl tracking-[0.4em] text-white mb-4">{heroTitle}</h1>
-              <GoldDivider />
-              <p className="text-[#c9a961]/50 italic text-sm tracking-widest mt-4">{heroDesc}</p>
-            </>
+  const toggleMyBlends = () => {
+    if (!showMyBlends) loadMyBlends();
+    setShowMyBlends(v => !v);
+  };
+
+  // ── 유틸 ────────────────────────────────────────────────────────
+  const getCategoryColor = (idx) => CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
+  const getCategoryIcon  = (name) => CATEGORY_SVG_ICONS[name] || (
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+      <circle cx="16" cy="16" r="7" stroke="#c9a961" strokeWidth="1.1"/>
+      <path d="M16 10 L16 22 M10 16 L22 16" stroke="#c9a961" strokeWidth="0.9" strokeLinecap="round"/>
+    </svg>
+  );
+
+  // 카테고리 원본 인덱스 (색상 고정)
+  const getCategoryOriginalIndex = (categoryId) =>
+    categories.findIndex(c => c.categoryId === categoryId);
+
+  const toggleIngredient = (ingredientId) => {
+    setSelectedIngredients(prev => {
+      const key = String(ingredientId);
+      if (key in prev) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: 50 };
+    });
+  };
+
+  const handleRatioChange = (ingredientId, value) => {
+    setSelectedIngredients(prev => ({ ...prev, [String(ingredientId)]: value }));
+  };
+
+  // ── 계산 ────────────────────────────────────────────────────────
+  const selectedList = Object.entries(selectedIngredients);
+  const ratioSum     = selectedList.reduce((s, [, v]) => s + v, 0);
+
+  const normalizedRatios = useCallback(() => {
+    if (ratioSum === 0) return {};
+    const r = {};
+    selectedList.forEach(([id, v]) => {
+      r[id] = parseFloat(((v / ratioSum) * 100).toFixed(3));
+    });
+    return r;
+  }, [selectedList, ratioSum]);
+
+  const totalPrice = concentration.basePrice
+    + Math.max(0, Math.floor((volume - BASE_VOLUME) / 10)) * EXTRA_PRICE_PER_10ML
+    + (selectedBottle?.totalPrice ?? 0);
+
+  const getIngredientInfo = (ingredientId) => {
+    const key = String(ingredientId);
+    for (let i = 0; i < categories.length; i++) {
+      const cat = categories[i];
+      const ing = cat.ingredients.find(g => String(g.ingredientId) === key);
+      if (ing) return { ingredient: ing, category: cat, color: getCategoryColor(i) };
+    }
+    return null;
+  };
+
+  // ── API 페이로드 빌더 ────────────────────────────────────────────
+  const buildPayload = () => {
+    const norms = normalizedRatios();
+    return {
+      name:          blendName.trim(),
+      concentration: concentration.id,
+      volumeMl:      volume,
+      totalPrice,
+      bottleDesignId: selectedBottle ? selectedBottle.designId : null,
+      items: Object.entries(norms).map(([ingredientId, ratio]) => ({
+        ingredientId: Number(ingredientId),
+        ratio,
+      })),
+    };
+  };
+
+  const validate = () => {
+    if (selectedList.length === 0) { alert('향 재료를 하나 이상 선택해주세요.'); return false; }
+    if (!blendName.trim())         { alert('블렌드 이름을 입력해주세요.'); return false; }
+    return true;
+  };
+
+  // ── 저장 ────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    if (!isLoggedIn) { navigate('/login'); return; }
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/custom/scent-blends`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload()),
+      });
+      if (res.ok) {
+        alert('블렌드가 저장되었습니다!');
+        setBlendName('');
+        setSelectedIngredients({});
+        setConcentration(CONCENTRATION_TYPES[0]);
+        setVolume(50);
+        setSelectedBottle(null);
+        setSearchQuery('');
+        if (categories.length > 0) {
+          setOpenCategories({ [categories[0].categoryId]: true });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || '저장에 실패했습니다.');
+      }
+    } catch (e) {
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── 장바구니 ─────────────────────────────────────────────────────
+  const handleAddToCart = async () => {
+    if (!isLoggedIn) { navigate('/login'); return; }
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const saveRes = await fetch(`${API_BASE_URL}/api/custom/scent-blends`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload()),
+      });
+      if (!saveRes.ok) {
+        const err = await saveRes.json().catch(() => ({}));
+        alert(err.message || '향 조합 저장에 실패했습니다.');
+        return;
+      }
+
+      const norms = normalizedRatios();
+      const ingredientDetails = Object.entries(norms).map(([id, ratio]) => {
+        const info = getIngredientInfo(id);
+        return info ? `${info.ingredient.name}(${Math.round(ratio)}%)` : null;
+      }).filter(Boolean);
+
+      const blendMeta = JSON.stringify({
+        blendName:   blendName.trim(),
+        concentration: concentration.name,
+        volume:      `${volume}ml`,
+        bottle:      selectedBottle ? selectedBottle.name : '기본 병',
+        ingredients: ingredientDetails,
+        prices: {
+          base:   concentration.basePrice,
+          volume: Math.max(0, Math.floor((volume - BASE_VOLUME) / 10)) * EXTRA_PRICE_PER_10ML,
+          bottle: selectedBottle?.totalPrice ?? 0,
+        },
+      });
+
+      const cartRes = await fetch(`${API_BASE_URL}/api/cart/scent-blend`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:     `[향조합] ${blendName.trim()}`,
+          price:    totalPrice,
+          quantity: 1,
+          imageUrl: `__blend__${blendMeta}`,
+        }),
+      });
+      if (cartRes.ok) {
+        alert('장바구니에 담겼습니다!');
+        setBlendName('');
+        setSelectedIngredients({});
+        setConcentration(CONCENTRATION_TYPES[0]);
+        setVolume(50);
+        setSelectedBottle(null);
+        setSearchQuery('');
+        if (categories.length > 0) {
+          setOpenCategories({ [categories[0].categoryId]: true });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const err = await cartRes.json().catch(() => ({}));
+        alert(err.message || '장바구니 추가에 실패했습니다.');
+      }
+    } catch (e) {
+      alert('오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── 삭제 ────────────────────────────────────────────────────────
+  const handleDeleteBlend = async (blendId) => {
+    if (!window.confirm('이 조합을 삭제하시겠습니까?')) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/custom/scent-blends/${blendId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setMyBlends(prev => prev.filter(b => b.blendId !== blendId));
+      } else {
+        alert('삭제에 실패했습니다.');
+      }
+    } catch (e) {
+      alert('오류가 발생했습니다.');
+    }
+  };
+
+  // ── 저장된 조합 불러오기 ─────────────────────────────────────────
+  const handleLoadBlend = (blend) => {
+    setBlendName(blend.name || '');
+    const conc = CONCENTRATION_TYPES.find(c => c.id === blend.concentration);
+    if (conc) setConcentration(conc);
+    if (blend.volumeMl && VOLUME_OPTIONS.includes(blend.volumeMl)) {
+      setVolume(blend.volumeMl);
+    }
+    if (blend.items && blend.items.length > 0) {
+      const restored = {};
+      blend.items.forEach(item => {
+        const ratio = item.ratio > 1 ? Math.round(item.ratio) : Math.round(item.ratio * 100);
+        restored[String(item.ingredientId)] = Math.max(1, Math.min(100, ratio));
+      });
+      setSelectedIngredients(restored);
+    }
+    setShowMyBlends(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    alert(`"${blend.name}" 조합을 불러왔습니다.`);
+  };
+
+  // ────────────────────────────────────────────────────────────────
+  // 렌더
+  // ────────────────────────────────────────────────────────────────
+  return (
+    <div className="w-full bg-[#faf8f3] pt-10 pb-24 px-4 md:px-6">
+      <div className="max-w-6xl mx-auto">
+
+        {/* 타이틀 */}
+        <div className="text-center mb-10">
+          <div className="text-[#c9a961] text-[10px] tracking-[0.5em] mb-3 italic">COMPOSE YOUR SIGNATURE</div>
+          <h3 className="text-2xl font-serif text-[#1a1a1a] tracking-[0.3em] mb-2">나만의 향 조합하기</h3>
+          <p className="text-[#8b8278] text-xs tracking-widest italic">원하는 향 재료를 선택하고 비율을 조절하세요</p>
+          {isLoggedIn && (
+            <button
+              onClick={toggleMyBlends}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 border border-[#c9a961]/40 text-[#8b8278] text-[10px] tracking-[0.2em] hover:border-[#c9a961] hover:text-[#c9a961] transition-all"
+            >
+              <ListOrdered size={12} />
+              {showMyBlends ? '목록 닫기' : '내 저장된 조합 보기'}
+            </button>
           )}
         </div>
-      </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-12">
-
-        
-        <div className="flex border border-[#e8e2d6] mb-10 fade-up delay-1">
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`flex-1 py-4 text-xs tracking-[0.4em] uppercase transition-all duration-300 ${
-              activeTab === 'all' ? 'bg-[#1a1510] text-[#c9a961]' : 'bg-white text-[#8b8278] hover:text-[#c9a961]'
-            }`}
-          >
-            전체 추천
-          </button>
-          <div className="w-[1px] bg-[#e8e2d6]" />
-          <button
-            onClick={() => setActiveTab('age')}
-            className={`flex-1 py-4 text-xs tracking-[0.4em] uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
-              activeTab === 'age' ? 'bg-[#1a1510] text-[#c9a961]' : 'bg-white text-[#8b8278] hover:text-[#c9a961]'
-            }`}
-          >
-            <span>연령별 추천</span>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded ${activeTab === 'age' ? 'bg-[#c9a961]/20 text-[#c9a961]' : 'bg-[#f0ebe0] text-[#a39d8f]'}`}>NEW</span>
-          </button>
-        </div>
-
-        
-        {activeTab === 'all' && (
-          <div className="space-y-8">
-
-            
-            <div className="fade-up delay-1">
-              <p className="text-[10px] tracking-[0.5em] text-[#8b8278] uppercase mb-4">QUICK FILTER</p>
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                {QUICK_FILTERS.map((f, i) => (
-                  <QuickFilterButton
-                    key={i}
-                    filter={f}
-                    isActive={isFilterActive(f)}
-                    onClick={() => handleQuickFilter(f)}
-                  />
-                ))}
-              </div>
+        {/* 내 조합 목록 */}
+        {showMyBlends && (
+          <div className="mb-8 bg-white border border-[#c9a961]/20 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase">저장된 향 조합</span>
+              <button onClick={loadMyBlends} className="text-[#8b8278] hover:text-[#c9a961] transition-colors">
+                <RefreshCw size={12} />
+              </button>
             </div>
-
-            
-            <div className="flex flex-col md:flex-row gap-3 fade-up delay-2">
-              <div className="flex-1 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#c9a961]/50 text-sm">✦</span>
-                <input
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="상품명, 브랜드, 카테고리 검색"
-                  className="w-full pl-10 pr-4 py-3 border border-[#e8e2d6] bg-white text-sm text-[#2a2620] placeholder:text-[#a39d8f] outline-none focus:border-[#c9a961] transition-colors"
-                />
+            {loadingBlends ? (
+              <div className="flex justify-center py-6">
+                <Loader2 size={20} className="animate-spin text-[#c9a961]" />
               </div>
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
-                className="w-full md:w-44 px-4 py-3 border border-[#e8e2d6] bg-white text-sm text-[#2a2620] outline-none focus:border-[#c9a961] cursor-pointer"
-              >
-                <option value="latest">최신순</option>
-                <option value="price-low">가격 낮은순</option>
-                <option value="price-high">가격 높은순</option>
-                <option value="popular">인기순</option>
-              </select>
-            </div>
-
-            
-            <div className="fade-up delay-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] tracking-[0.5em] text-[#8b8278] uppercase">PREFERENCE TAGS</p>
-                {selectedTags.length > 0 && (
-                  <button onClick={() => setSelectedTags([])} className="text-[10px] text-[#a39d8f] hover:text-[#c9a961]">전체 삭제</button>
-                )}
-              </div>
-              <div className="border border-[#e8e2d6] bg-white p-3 flex flex-wrap gap-2 min-h-[48px]">
-                {selectedTags.map((tag, i) => (
-                  <span key={i}
-                    onClick={() => setSelectedTags(selectedTags.filter(t => t !== tag))}
-                    className="text-xs px-3 py-1 border border-[#c9a961] text-[#c9a961] bg-[#c9a961]/5 cursor-pointer hover:bg-[#c9a961] hover:text-white transition-colors flex items-center gap-1.5">
-                    #{tag} <span className="text-[10px]">✕</span>
-                  </span>
+            ) : myBlends.length === 0 ? (
+              <p className="text-center text-[11px] text-[#8b8278]/60 italic py-6">저장된 조합이 없습니다.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {myBlends.map(blend => (
+                  <div
+                    key={blend.blendId}
+                    onClick={() => handleLoadBlend(blend)}
+                    className="border border-[#c9a961]/15 p-4 relative cursor-pointer hover:border-[#c9a961] hover:bg-[#faf8f3] transition-all group"
+                  >
+                    <button
+                      onClick={e => { e.stopPropagation(); handleDeleteBlend(blend.blendId); }}
+                      className="absolute top-2 right-2 text-[#8b8278] hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                    <div className="pr-5">
+                      <div className="text-[12px] tracking-wider text-[#2a2620] font-medium mb-1 truncate group-hover:text-[#c9a961] transition-colors">
+                        {blend.name}
+                      </div>
+                      <div className="text-[10px] text-[#8b8278] space-y-0.5">
+                        <div>{blend.concentration} · {blend.volumeMl}ml</div>
+                        <div className="text-[#c9a961]">₩{blend.totalPrice?.toLocaleString()}</div>
+                        <div className="text-[#8b8278]/60">재료 {blend.items?.length ?? 0}종</div>
+                      </div>
+                      <div className="mt-2 text-[9px] text-[#c9a961]/60 tracking-wider group-hover:text-[#c9a961] transition-colors">
+                        클릭하여 불러오기 →
+                      </div>
+                    </div>
+                  </div>
                 ))}
-                <input
-                  value={tagInput}
-                  onChange={e => setTagInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="태그 입력 후 Enter (예: 플로럴, 우디)"
-                  className="flex-1 min-w-[180px] outline-none text-sm text-[#2a2620] placeholder:text-[#c0b8a8] bg-transparent"
-                />
-              </div>
-            </div>
-
-            
-            {(selectedGender || selectedTags.length > 0) && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] tracking-widest text-[#a39d8f]">필터:</span>
-                {selectedGender && (
-                  <span className="text-xs px-3 py-1 bg-[#1a1510] text-[#c9a961] flex items-center gap-1.5">
-                    {selectedGender === 'MALE' ? '남성' : '여성'}
-                    <button onClick={() => setSelectedGender('')} className="hover:text-white">✕</button>
-                  </span>
-                )}
-                {selectedTags.map((t, i) => (
-                  <span key={i} className="text-xs px-3 py-1 bg-[#1a1510] text-[#c9a961] flex items-center gap-1.5">
-                    #{t}
-                    <button onClick={() => setSelectedTags(selectedTags.filter(x => x !== t))} className="hover:text-white">✕</button>
-                  </span>
-                ))}
-                <button
-                  onClick={() => { setSelectedGender(''); setSelectedTags([]); setSearchTerm(''); }}
-                  className="text-[10px] text-[#a39d8f] hover:text-[#c9a961] underline ml-2"
-                >
-                  초기화
-                </button>
               </div>
             )}
-
-            
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] tracking-[0.5em] text-[#8b8278] uppercase">SCENTS FOR YOU</p>
-                <p className="text-xs text-[#a39d8f] italic">{filteredPerfumes.length}개의 향수</p>
-              </div>
-
-              {loading ? (
-                <div className="py-20 flex flex-col items-center gap-4">
-                  <div className="font-serif text-4xl text-[#c9a961]/20 animate-pulse">✦</div>
-                  <p className="text-sm text-[#a39d8f] italic">향수를 불러오는 중...</p>
-                </div>
-              ) : error ? (
-                <div className="py-16 text-center border border-[#e8e2d6] bg-white">
-                  <p className="text-sm text-[#a39d8f] mb-4">{error}</p>
-                  <button onClick={fetchPerfumes}
-                    className="text-xs px-6 py-2 border border-[#c9a961] text-[#c9a961] hover:bg-[#c9a961] hover:text-white transition-colors">
-                    다시 시도
-                  </button>
-                </div>
-              ) : filteredPerfumes.length > 0 ? (
-                <div className="max-h-[600px] overflow-y-auto scrollbar-thin divide-y divide-[#f0ebe0]">
-                  {filteredPerfumes.map(p => (
-                    <PerfumeCard key={p.id} perfume={p} onClick={handlePerfumeClick} />
-                  ))}
-                </div>
-              ) : (
-                <div className="py-20 text-center border border-[#e8e2d6] bg-white">
-                  <div className="font-serif text-5xl text-[#c9a961]/10 mb-4">?</div>
-                  <p className="text-sm text-[#a39d8f] italic">검색 결과가 없습니다</p>
-                  <p className="text-xs text-[#c0b8a8] mt-2">다른 키워드나 태그로 검색해보세요</p>
-                </div>
-              )}
-            </div>
           </div>
         )}
 
-        
-        {activeTab === 'age' && (
-          <div className="space-y-4 fade-up">
-            <div className="border border-[#e8e2d6] bg-white p-8 text-center mb-8">
-              <p className="text-[10px] tracking-[0.6em] text-[#c9a961] uppercase mb-3">AGE-BASED CURATION</p>
-              <h2 className="font-serif text-2xl text-[#1a1510] tracking-wider mb-3">연령별 맞춤 향수</h2>
-              <GoldDivider />
-              <p className="text-sm text-[#8b8278] italic mt-4 leading-relaxed">
-                삶의 단계마다 어울리는 향기가 있습니다.<br />
-                나이가 담긴 향기로 당신의 이야기를 완성하세요.
-              </p>
+        {/* 로딩 */}
+        {loadingScents ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <Loader2 size={32} className="animate-spin text-[#c9a961]" />
+            <p className="text-[11px] tracking-widest text-[#8b8278] italic">향 재료 목록 불러오는 중...</p>
+          </div>
+
+        /* 에러 */
+        ) : scentsError ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <AlertCircle size={32} className="text-red-400" />
+            <p className="text-[11px] text-[#8b8278]">{scentsError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-[10px] tracking-wider text-[#c9a961] border border-[#c9a961]/40 px-4 py-2 hover:bg-[#c9a961]/5 transition-all"
+            >
+              다시 시도
+            </button>
+          </div>
+
+        /* 메인 UI */
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* ── 왼쪽: 향 재료 선택 ── */}
+            <div className="lg:col-span-2 space-y-3">
+              <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase mb-4">① 향 재료 선택</div>
+
+              {/* ── 검색창 ── */}
+              <div className="relative mb-4">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                  <Search size={13} className="text-[#8b8278]" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="향 재료 검색 (예: 로즈, 바닐라, 시트러스...)"
+                  className="w-full bg-white border border-[#c9a961]/25 pl-9 pr-9 py-2.5 text-[12px] tracking-wider text-[#2a2620] placeholder-[#8b8278]/50 outline-none focus:border-[#c9a961] transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-3 flex items-center text-[#8b8278] hover:text-[#c9a961] transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {/* 검색 결과 카운트 */}
+              {trimmedQuery && (
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-[10px] tracking-wider text-[#8b8278]">
+                    {filteredCategories.length === 0
+                      ? '검색 결과 없음'
+                      : `"${trimmedQuery}" — ${filteredCategories.reduce((s, c) => s + c.ingredients.length, 0)}종 재료 발견`
+                    }
+                  </span>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="text-[9px] tracking-wider text-[#c9a961]/70 hover:text-[#c9a961] transition-colors underline"
+                  >
+                    전체 보기
+                  </button>
+                </div>
+              )}
+
+              {/* 검색 결과 없음 */}
+              {trimmedQuery && filteredCategories.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white border border-[#c9a961]/20">
+                  <Search size={24} className="text-[#c9a961]/30" />
+                  <p className="text-[11px] text-[#8b8278]/60 italic">
+                    "{trimmedQuery}"에 해당하는 재료가 없습니다.
+                  </p>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="text-[10px] tracking-wider text-[#c9a961] border border-[#c9a961]/40 px-4 py-1.5 hover:bg-[#c9a961]/5 transition-all"
+                  >
+                    전체 재료 보기
+                  </button>
+                </div>
+              ) : (
+                filteredCategories.map((cat) => {
+                  const catOriginalIdx = getCategoryOriginalIndex(cat.categoryId);
+                  const color          = getCategoryColor(catOriginalIdx);
+                  const icon           = getCategoryIcon(cat.categoryName);
+                  const isOpen         = !!openCategories[cat.categoryId];
+                  const selectedCount  = cat.ingredients.filter(
+                    g => String(g.ingredientId) in selectedIngredients
+                  ).length;
+
+                  return (
+                    <div key={cat.categoryId} className="bg-white border border-[#c9a961]/20 overflow-hidden">
+
+                      {/* 헤더 */}
+                      <button
+                        onClick={() => setOpenCategories(prev => ({
+                          ...prev, [cat.categoryId]: !prev[cat.categoryId],
+                        }))}
+                        className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#faf8f3] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center justify-center w-6 h-6 shrink-0">{icon}</span>
+                          <div className="text-left">
+                            <span className="text-[12px] tracking-[0.2em] text-[#2a2620] font-medium">
+                              {/* 검색 시 카테고리명 하이라이트 */}
+                              {trimmedQuery && cat.categoryName?.toLowerCase().includes(trimmedQuery) ? (
+                                <HighlightText text={cat.categoryName} query={trimmedQuery} color={color} />
+                              ) : cat.categoryName}
+                            </span>
+                            <span className="ml-2 text-[9px] tracking-widest text-[#8b8278]">
+                              {cat.ingredients.length}종
+                            </span>
+                          </div>
+                          {selectedCount > 0 && (
+                            <span
+                              className="text-[9px] px-2 py-0.5 rounded-full text-white tracking-wider"
+                              style={{ background: color }}
+                            >
+                              {selectedCount}
+                            </span>
+                          )}
+                        </div>
+                        {isOpen
+                          ? <ChevronUp size={14} className="text-[#8b8278]" />
+                          : <ChevronDown size={14} className="text-[#8b8278]" />
+                        }
+                      </button>
+
+                      {/* 재료 그리드 */}
+                      {isOpen && (
+                        <div className="border-t border-[#c9a961]/10 px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {cat.ingredients.length === 0 ? (
+                            <p className="col-span-3 text-center text-[10px] text-[#8b8278]/50 py-4 italic">
+                              등록된 재료가 없습니다.
+                            </p>
+                          ) : cat.ingredients.map(ingredient => {
+                            const selected = String(ingredient.ingredientId) in selectedIngredients;
+                            return (
+                              <button
+                                key={ingredient.ingredientId}
+                                onClick={() => toggleIngredient(ingredient.ingredientId)}
+                                className={`text-left px-3 py-2.5 border text-[11px] tracking-wider transition-all ${
+                                  selected
+                                    ? 'border-[#c9a961] bg-[#c9a961]/8 text-[#2a2620]'
+                                    : 'border-[#c9a961]/15 bg-[#faf8f3] text-[#8b8278] hover:border-[#c9a961]/40 hover:text-[#2a2620]'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="font-medium text-[12px] leading-tight line-clamp-1">
+                                    {trimmedQuery ? (
+                                      <HighlightText text={ingredient.name} query={trimmedQuery} color={color} />
+                                    ) : ingredient.name}
+                                  </span>
+                                  {selected && (
+                                    <div className="w-2 h-2 rounded-full shrink-0 ml-1" style={{ background: color }} />
+                                  )}
+                                </div>
+                                {ingredient.description && (
+                                  <div className="text-[9px] text-[#8b8278] truncate leading-tight">
+                                    {trimmedQuery ? (
+                                      <HighlightText text={ingredient.description} query={trimmedQuery} color={color} />
+                                    ) : ingredient.description}
+                                  </div>
+                                )}
+                                {ingredient.isNatural != null && (
+                                  <div
+                                    className="text-[8px] mt-0.5"
+                                    style={{ color: ingredient.isNatural ? '#55a66a' : '#a0a0a0' }}
+                                  >
+                                    {ingredient.isNatural ? '천연' : '합성'}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
 
-            {AGE_GROUPS.map((group, idx) => (
-              <div key={group.id} className="fade-up" style={{ animationDelay: `${idx * 0.08}s`, opacity: 0 }}>
-                <AgeGroupSection
-                  group={group}
-                  perfumes={ageData[group.id] || []}
-                  loading={ageLoading}
-                  onPerfumeClick={handlePerfumeClick}
-                />
-              </div>
-            ))}
+            {/* ── 오른쪽 패널 ── */}
+            <div className="space-y-4">
 
-            <div className="pt-6 text-center">
-              <GoldDivider />
-              <p className="text-[10px] tracking-[0.3em] text-[#a39d8f] italic mt-4">
-                추천은 향수의 주요 특성과 연령대 선호도 데이터를 기반으로 제공됩니다
-              </p>
+              {/* ② 비율 조절 */}
+              <div className="bg-white border border-[#c9a961]/20 p-5">
+                <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase mb-4">② 비율 조절</div>
+
+                {selectedList.length === 0 ? (
+                  <div className="text-center py-8 text-[#8b8278]/50">
+                    <div className="text-2xl mb-2">✦</div>
+                    <p className="text-[10px] tracking-widest italic">왼쪽에서 향 재료를 선택하세요</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {selectedList.map(([ingredientId, ratio]) => {
+                      const info = getIngredientInfo(ingredientId);
+                      if (!info) return null;
+                      const { ingredient, category, color } = info;
+                      const normalized = ratioSum > 0
+                        ? Math.round((ratio / ratioSum) * 100) : 0;
+                      return (
+                        <div key={ingredientId} className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="flex items-center justify-center w-5 h-5 shrink-0">{getCategoryIcon(category.categoryName)}</span>
+                              <span className="text-[11px] tracking-wider text-[#2a2620] truncate">
+                                {ingredient.name}
+                              </span>
+                              <span className="text-[9px] text-[#8b8278] shrink-0">→ {normalized}%</span>
+                            </div>
+                            <button
+                              onClick={() => toggleIngredient(ingredientId)}
+                              className="text-[#8b8278] hover:text-red-400 transition-colors shrink-0 ml-1"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                          <RatioSlider
+                            value={ratio}
+                            onChange={v => handleRatioChange(ingredientId, v)}
+                            color={color}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* 시각화 바 */}
+                    <div className="pt-3 border-t border-[#c9a961]/10">
+                      <div className="flex justify-between text-[9px] tracking-wider text-[#8b8278] mb-2">
+                        <span>비율 미리보기</span>
+                        <span className="text-[#c9a961] italic">합산 100% 자동 환산</span>
+                      </div>
+                      {ratioSum > 0 && (
+                        <div className="h-2 rounded-full overflow-hidden flex">
+                          {selectedList.map(([ingredientId, ratio]) => {
+                            const info = getIngredientInfo(ingredientId);
+                            const pct  = (ratio / ratioSum) * 100;
+                            return (
+                              <div
+                                key={ingredientId}
+                                style={{ width: `${pct}%`, background: info?.color || '#c9a961' }}
+                                title={`${info?.ingredient.name}: ${Math.round(pct)}%`}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ③ 향수 종류 */}
+              <div className="bg-white border border-[#c9a961]/20 p-5">
+                <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase mb-4">③ 향수 종류</div>
+                <div className="space-y-2">
+                  {CONCENTRATION_TYPES.map(type => (
+                    <button
+                      key={type.id}
+                      onClick={() => setConcentration(type)}
+                      className={`w-full text-left px-4 py-3 border transition-all ${
+                        concentration.id === type.id
+                          ? 'border-[#c9a961] bg-[#c9a961]/5'
+                          : 'border-[#c9a961]/15 hover:border-[#c9a961]/40'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-[12px] tracking-wider text-[#2a2620]">{type.name}</span>
+                          <span className="ml-2 text-[9px] text-[#8b8278]">{type.nameEn}</span>
+                          <div className="text-[9px] text-[#8b8278] mt-0.5">{type.desc}</div>
+                        </div>
+                        <span className="text-[11px] text-[#c9a961] ml-2 shrink-0">
+                          ₩{type.basePrice.toLocaleString()}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ④ 용량 */}
+              <div className="bg-white border border-[#c9a961]/20 p-5">
+                <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase mb-4">④ 용량 선택</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {VOLUME_OPTIONS.map(v => {
+                    const extra = Math.floor((v - BASE_VOLUME) / 10) * EXTRA_PRICE_PER_10ML;
+                    return (
+                      <button
+                        key={v}
+                        onClick={() => setVolume(v)}
+                        className={`py-2.5 border text-center transition-all ${
+                          volume === v
+                            ? 'border-[#c9a961] bg-[#c9a961]/5'
+                            : 'border-[#c9a961]/15 hover:border-[#c9a961]/40'
+                        }`}
+                      >
+                        <div className="text-[12px] tracking-wider text-[#2a2620]">{v}ml</div>
+                        <div className="text-[9px] text-[#c9a961]">
+                          {extra > 0 ? `+₩${extra.toLocaleString()}` : '기본'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ⑤ 병 선택 */}
+              <div className="bg-white border border-[#c9a961]/20 p-5">
+                <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase mb-4">⑤ 병 선택</div>
+
+                {loadingBottles ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 size={16} className="animate-spin text-[#c9a961]" />
+                  </div>
+                ) : myBottles.length === 0 ? (
+                  <div className="border border-[#c9a961]/30 bg-[#faf8f3] px-4 py-3 flex items-center gap-3">
+                    <span className="flex items-center justify-center w-6 h-6 shrink-0">{BOTTLE_SVG_DEFAULT}</span>
+                    <div>
+                      <div className="text-[12px] tracking-wider text-[#2a2620]">기본 병</div>
+                      <div className="text-[9px] text-[#8b8278] mt-0.5">
+                        커스텀 병이 없어 기본 병이 사용됩니다
+                      </div>
+                      <button
+                        onClick={() => navigate('/custom')}
+                        className="text-[9px] text-[#c9a961] underline mt-1 hover:text-[#a8882a] transition-colors"
+                      >
+                        + 나만의 병 디자인하기
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setSelectedBottle(null)}
+                      className={`w-full text-left px-4 py-3 border transition-all flex items-center gap-3 ${
+                        selectedBottle === null
+                          ? 'border-[#c9a961] bg-[#c9a961]/5'
+                          : 'border-[#c9a961]/15 hover:border-[#c9a961]/40'
+                      }`}
+                    >
+                      <span className="flex items-center justify-center w-6 h-6 shrink-0">{BOTTLE_SVG_DEFAULT}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] tracking-wider text-[#2a2620]">기본 병</div>
+                        <div className="text-[9px] text-[#8b8278]">AION 기본 제공 병</div>
+                      </div>
+                      {selectedBottle === null && (
+                        <div className="w-2 h-2 rounded-full bg-[#c9a961] shrink-0" />
+                      )}
+                    </button>
+
+                    {myBottles.map(bottle => (
+                      <button
+                        key={bottle.designId}
+                        onClick={() => setSelectedBottle(bottle)}
+                        className={`w-full text-left px-4 py-3 border transition-all flex items-center gap-3 ${
+                          selectedBottle?.designId === bottle.designId
+                            ? 'border-[#c9a961] bg-[#c9a961]/5'
+                            : 'border-[#c9a961]/15 hover:border-[#c9a961]/40'
+                        }`}
+                      >
+                        <span className="flex items-center justify-center w-6 h-6 shrink-0">{BOTTLE_SVG_CUSTOM}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[12px] tracking-wider text-[#2a2620] truncate">
+                            {bottle.name || '나만의 병'}
+                          </div>
+                          <div className="text-[9px] text-[#8b8278]">
+                            커스텀 디자인
+                            {bottle.totalPrice > 0 && ` · ₩${bottle.totalPrice.toLocaleString()}`}
+                          </div>
+                        </div>
+                        {selectedBottle?.designId === bottle.designId && (
+                          <div className="w-2 h-2 rounded-full bg-[#c9a961] shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ⑥ 이름 + 저장 */}
+              <div className="bg-white border border-[#c9a961]/20 p-5 space-y-4">
+                <div className="text-[10px] tracking-[0.3em] text-[#8b8278] uppercase">⑥ 저장</div>
+
+                <div>
+                  <label className="text-[10px] tracking-wider text-[#8b8278] block mb-1.5">블렌드 이름 *</label>
+                  <input
+                    type="text"
+                    value={blendName}
+                    onChange={e => setBlendName(e.target.value)}
+                    placeholder="나만의 블렌드 이름"
+                    maxLength={100}
+                    className="w-full border-b border-[#c9a961]/40 bg-transparent text-sm text-[#2a2620] pb-1.5 outline-none placeholder-[#8b8278]/50 focus:border-[#c9a961] transition-colors"
+                  />
+                </div>
+
+                {/* 가격 요약 */}
+                <div className="space-y-1 border-t border-[#c9a961]/10 pt-4">
+                  <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
+                    <span>{concentration.name} ({volume}ml)</span>
+                    <span>₩{concentration.basePrice.toLocaleString()}</span>
+                  </div>
+                  {volume > BASE_VOLUME && (
+                    <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
+                      <span>추가 용량 +{volume - BASE_VOLUME}ml</span>
+                      <span>+₩{(Math.floor((volume - BASE_VOLUME) / 10) * EXTRA_PRICE_PER_10ML).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {selectedBottle && (
+                    <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
+                      <span>커스텀 병 ({selectedBottle.name})</span>
+                      <span>+₩{(selectedBottle.totalPrice ?? 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="h-[1px] bg-[#c9a961]/20 my-2" />
+                  <div className="flex justify-between items-center">
+                    <span className="font-serif italic text-[#c9a961] text-sm">Total</span>
+                    <span className="text-lg font-bold text-[#1a1a1a]">₩{totalPrice.toLocaleString()}</span>
+                  </div>
+                  <div className="text-[9px] text-[#8b8278] text-right">
+                    선택된 재료: {selectedList.length}종
+                  </div>
+                </div>
+
+                {/* 버튼 */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#c9a961] text-[#c9a961] text-[10px] tracking-[0.2em] hover:bg-[#c9a961] hover:text-white transition-all disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                    저장
+                  </button>
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={saving}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1a1a1a] text-white text-[10px] tracking-[0.2em] hover:bg-[#c9a961] transition-all disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 size={12} className="animate-spin" /> : <ShoppingBag size={12} />}
+                    장바구니
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
-}
+};
+
+// ── 검색어 하이라이트 컴포넌트 ───────────────────────────────────────────────
+const HighlightText = ({ text, query, color }) => {
+  if (!text || !query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span
+        style={{
+          background: `${color}33`,
+          color: color,
+          borderRadius: '2px',
+          padding: '0 1px',
+        }}
+      >
+        {text.slice(idx, idx + query.length)}
+      </span>
+      {text.slice(idx + query.length)}
+    </>
+  );
+};
+
+export default ScentBlend;
