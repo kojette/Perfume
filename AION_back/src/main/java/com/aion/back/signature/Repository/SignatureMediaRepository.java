@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface SignatureMediaRepository extends JpaRepository<SignatureMedia, Long> {
@@ -17,6 +18,7 @@ public interface SignatureMediaRepository extends JpaRepository<SignatureMedia, 
     List<SignatureMedia> findByCollectionIdOrderByDisplayOrderAsc(@Param("collectionId") UUID collectionId);
 
     @Modifying
+    @Transactional
     @Query(value = "DELETE FROM \"Collection_Media\" WHERE collection_id = :collectionId::uuid", nativeQuery = true)
     void deleteByCollectionId(@Param("collectionId") UUID collectionId);
 }

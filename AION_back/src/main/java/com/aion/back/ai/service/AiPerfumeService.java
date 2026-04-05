@@ -35,7 +35,7 @@ public class AiPerfumeService {
     private final ObjectMapper objectMapper;
 
     private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
     private static final String CLAUDE_URL =
             "https://api.anthropic.com/v1/messages";
 

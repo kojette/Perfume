@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface SignaturePerfumeRepository extends JpaRepository<SignaturePerfume, Long> {
@@ -17,6 +18,7 @@ public interface SignaturePerfumeRepository extends JpaRepository<SignaturePerfu
     List<SignaturePerfume> findByCollectionIdOrderByDisplayOrderAsc(@Param("collectionId") UUID collectionId);
 
     @Modifying
+    @Transactional
     @Query(value = "DELETE FROM \"Collection_Perfumes\" WHERE collection_id = :collectionId::uuid", nativeQuery = true)
     void deleteByCollectionId(@Param("collectionId") UUID collectionId);
 }
