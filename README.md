@@ -9,8 +9,8 @@
 - [8. 프로젝트 평가 및 비교](#8-우리팀-평가)
 
 ## 2. 사용 클라우드 및 서비스
-| AWS | [https://simcar.kro.kr](http://aion-frontend-967283278741-ap-northeast-2-an.s3-website.ap-northeast-2.amazonaws.com/) |
-| Superbase | [https://simcar.kro.kr](https://supabase.com/) |
+| AWS | [http://aion-perfume.kro.kr](http://aion-frontend-967283278741-ap-northeast-2-an.s3-website.ap-northeast-2.amazonaws.com/) |
+| Superbase | [http://aion-perfume.kro.kr](https://supabase.com/) |
 
 ## 3. 기능 구성도 -> docs
 <img width="636" height="702" alt="1" src="https://github.com/user-attachments/assets/722cc042-801b-470a-bb22-fdfe66d44673" />
