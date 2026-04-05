@@ -1,4 +1,4 @@
-package com.aion.back.signature.repository;
+package com.aion.back.signature.Repository;
 
 import com.aion.back.signature.entity.SignaturePerfume;
 import org.springframework.data.jpa.repository.JpaRepository;
