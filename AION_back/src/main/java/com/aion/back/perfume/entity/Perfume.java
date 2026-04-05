@@ -42,7 +42,8 @@ public class Perfume {
     @Column(name = "sale_rate")
     private Integer saleRate;
 
-    @Column(name = "sale_price", insertable = false, updatable = false)
+   // @Column(name = "sale_price", insertable = false, updatable = false)
+    @Column(name = "sale_price")//계산 컬럼이면 위걸로 교체하고 ->AdminPerfumeService에서 setSalePrice() 호출을 제거
     private Integer salePrice;
 
     @Column(name = "volume_ml")
@@ -85,6 +86,8 @@ public class Perfume {
     private LocalDateTime updatedAt;
 
     // 비즈니스 메서드
+    public Boolean getIsActive() { return this.isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
     public void incrementViewCount() {
         this.viewCount = (this.viewCount == null ? 0 : this.viewCount) + 1;
     }

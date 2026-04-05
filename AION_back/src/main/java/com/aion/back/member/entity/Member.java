@@ -76,6 +76,8 @@ public class Member {
 
     @Column(name = "warning_level", columnDefinition = "VARCHAR(20) DEFAULT 'normal'")
     private String warningLevel = "normal";
+    
+    public String getRole() { return this.role; }
 
     public LocalDateTime getWithdrawDate() {
         return null;

@@ -43,4 +43,8 @@ public class Announcement {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+    public Boolean getIsPinned() { return this.isPinned; }
+    public void setIsPinned(Boolean isPinned) { this.isPinned = isPinned; }
+    public Boolean getIsImportant() { return this.isImportant; }
+    public void setIsImportant(Boolean isImportant) { this.isImportant = isImportant; }
 }
