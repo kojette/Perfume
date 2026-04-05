@@ -28,7 +28,7 @@ public class AiPerfumeService {
     @Value("${gemini.api.key}")
     private String geminiApiKey;
 
-    @Value("${claude.api.key}")
+    @Value("${claude.api.key:}")//콜론(:) 뒤에 아무것도 없으면 빈 문자열을 기본값으로 쓰겠다는 뜻이에요. 키가 없어도 서버가 실행돼요!
     private String claudeApiKey;
 
     private final PerfumeRepository perfumeRepository;
