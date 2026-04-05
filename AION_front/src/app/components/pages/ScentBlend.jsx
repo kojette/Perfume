@@ -329,7 +329,7 @@ const ScentBlend = () => {
   // 마운트 시 내 병 목록 로드 (로그인 상태일 때만)
   // ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isLoggedIn) return;
+     if (!isLoggedIn || !token) return;
     (async () => {
       setLoadingBottles(true);
       try {

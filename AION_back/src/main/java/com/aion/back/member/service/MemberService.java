@@ -194,7 +194,7 @@ public class MemberService {
             throw new RuntimeException("회원 탈퇴 실패: " + e.getMessage());
         }
     }
-
+    @Transactional(readOnly = true)
     public Member getMemberEntityByToken(String token) {
         String actualToken = token.replace("Bearer ", "");
         String email = jwtValidator.validateAndGetEmail(actualToken);

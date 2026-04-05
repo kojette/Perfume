@@ -35,7 +35,7 @@ public class AiPerfumeService {
     private final ObjectMapper objectMapper;
 
     private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent";
     private static final String CLAUDE_URL =
             "https://api.anthropic.com/v1/messages";
 
@@ -80,8 +80,8 @@ public class AiPerfumeService {
                 "generationConfig", Map.of(
                     "temperature", 0.7,
                     "maxOutputTokens", 512,
-                    "responseMimeType", "application/json",
-                    "thinkingConfig", Map.of("thinkingLevel", "MINIMAL")  // ← 추가
+                    "responseMimeType", "application/json"//,
+                    //"thinkingConfig", Map.of("thinkingLevel", "MINIMAL")  // ← 추가
                 )
             );
 
@@ -121,8 +121,8 @@ public class AiPerfumeService {
                 "generationConfig", Map.of(
                     "temperature", 0.7,
                     "maxOutputTokens", 512,
-                    "responseMimeType", "application/json",
-                    "thinkingConfig", Map.of("thinkingLevel", "MINIMAL")  // ← 추가
+                    "responseMimeType", "application/json"//,
+                    //"thinkingConfig", Map.of("thinkingLevel", "MINIMAL")  // ← 추가
             )
             );
 
