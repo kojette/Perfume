@@ -566,7 +566,6 @@ export default function Recommend() {
             }`}
           >
             <span>연령별 추천</span>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded ${activeTab === 'age' ? 'bg-[#c9a961]/20 text-[#c9a961]' : 'bg-[#f0ebe0] text-[#a39d8f]'}`}>NEW</span>
           </button>
         </div>
 

@@ -394,8 +394,20 @@ class _CustomizationScreenState extends State<CustomizationScreen>
     padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
     color: Colors.white,
     child: Column(children: [
-      const Text('CREATE YOUR SIGNATURE',
-          style: TextStyle(fontSize: 9, letterSpacing: 5, color: _gold, fontStyle: FontStyle.italic)),
+      Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Icon(Icons.arrow_back_ios, size: 16, color: _grey.withOpacity(0.6)),
+            ),
+          ),
+          const Text('CREATE YOUR SIGNATURE',
+              style: TextStyle(fontSize: 9, letterSpacing: 5, color: _gold, fontStyle: FontStyle.italic)),
+        ],
+      ),
       const SizedBox(height: 6),
       const Text('CUSTOMIZING',
           style: TextStyle(fontSize: 20, letterSpacing: 8, color: _dark, fontWeight: FontWeight.w300)),

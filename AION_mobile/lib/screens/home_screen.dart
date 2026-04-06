@@ -128,10 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: const Icon(Icons.search, color: _dark, size: 22),
           onPressed: () => Navigator.pushNamed(context, '/search'),
         ),
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: _dark, size: 22),
-          onPressed: () {},
-        ),
+
         IconButton(
           icon: const Icon(Icons.favorite_border, color: _dark, size: 22),
           onPressed: () => Navigator.pushNamed(context, '/wishlist'),
@@ -341,13 +338,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildQuickMenu() {
-    final items = [
+    final row1 = [
       {'icon': Icons.menu_book_outlined, 'label': 'LIBRARY', 'route': '/collections'},
       {'icon': Icons.auto_fix_high_outlined, 'label': 'SIGNATURE', 'route': '/signature'},
-      {'icon': Icons.history_edu_outlined, 'label': 'STORY', 'route': '/story'},
+      {'icon': Icons.local_florist_outlined, 'label': 'RECOMMEND', 'route': '/recommend'},
       {'icon': Icons.water_drop_outlined, 'label': 'CUSTOM', 'route': '/custom'},
+      {'icon': Icons.history_edu_outlined, 'label': 'STORY', 'route': '/story'},
       {'icon': Icons.store_outlined, 'label': 'STORE', 'route': '/store'},
     ];
+
+    Widget menuItem(Map item) => GestureDetector(
+      onTap: () {
+        final route = item['route'] as String?;
+        if (route != null) Navigator.pushNamed(context, route);
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              border: Border.all(color: _gold.withOpacity(0.3)),
+              color: _gold.withOpacity(0.04),
+            ),
+            child: Icon(item['icon'] as IconData, color: _dark.withOpacity(0.6), size: 20),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item['label'] as String,
+            style: TextStyle(fontSize: 8, letterSpacing: 1.5, color: _dark.withOpacity(0.6)),
+          ),
+        ],
+      ),
+    );
 
     return Container(
       color: Colors.white,
@@ -358,33 +382,12 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: items.map((item) {
-              return GestureDetector(
-                onTap: () {
-                  final route = item['route'] as String?;
-                  if (route != null) Navigator.pushNamed(context, route);
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: _gold.withOpacity(0.3)),
-                        color: _gold.withOpacity(0.04),
-                      ),
-                      child: Icon(item['icon'] as IconData, color: _dark.withOpacity(0.6), size: 20),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item['label'] as String,
-                      style: TextStyle(fontSize: 8, letterSpacing: 1.5, color: _dark.withOpacity(0.6)),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+            children: row1.sublist(0, 3).map(menuItem).toList(),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: row1.sublist(3).map(menuItem).toList(),
           ),
           const SizedBox(height: 16),
           Container(height: 0.5, color: _gold.withOpacity(0.15)),
