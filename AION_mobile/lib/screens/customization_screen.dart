@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
@@ -45,6 +48,7 @@ class _CustomizationScreenState extends State<CustomizationScreen>
   final _keywordCtrl   = TextEditingController();
   int  _aiSubTab       = 0;   // 0=키워드, 1=이미지
   File? _pickedImage;
+  Uint8List? _pickedImageBytes;
   Map<String, dynamic>? _geminiResult;
   bool _geminiLoading  = false;
   String? _geminiError;
@@ -225,12 +229,28 @@ class _CustomizationScreenState extends State<CustomizationScreen>
   }
 
   Future<void> _analyzeImage() async {
-    if (_pickedImage == null) { _snack('이미지를 선택해주세요'); return; }
+    if (_pickedImageBytes == null && _pickedImage == null) { _snack('이미지를 선택해주세요'); return; }
     setState(() { _geminiLoading = true; _geminiResult = null; _geminiError = null; });
     try {
       final req = http.MultipartRequest(
         'POST', Uri.parse('${ApiConfig.baseUrl}/api/ai/image-to-scent'));
-      req.files.add(await http.MultipartFile.fromPath('image', _pickedImage!.path));
+      if (kIsWeb && _pickedImageBytes != null) {
+        req.files.add(http.MultipartFile.fromBytes(
+          'image',
+          _pickedImageBytes!,
+          filename: 'image.jpg',
+          contentType: MediaType('image', 'jpeg'),
+        ));
+      } else {
+        final path = _pickedImage!.path;
+        final ext = path.split('.').last.toLowerCase();
+        final subtype = (ext == 'png') ? 'png' : (ext == 'webp') ? 'webp' : 'jpeg';
+        req.files.add(await http.MultipartFile.fromPath(
+          'image',
+          path,
+          contentType: MediaType('image', subtype),
+        ));
+      }
       final streamed = await req.send();
       final res = await http.Response.fromStream(streamed);
       if (res.statusCode == 200) {
@@ -249,7 +269,12 @@ class _CustomizationScreenState extends State<CustomizationScreen>
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked != null && mounted) {
-      setState(() { _pickedImage = File(picked.path); _geminiResult = null; });
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _pickedImageBytes = bytes;
+        _pickedImage = kIsWeb ? null : File(picked.path);
+        _geminiResult = null;
+      });
     }
   }
 
@@ -974,12 +999,14 @@ class _CustomizationScreenState extends State<CustomizationScreen>
               color: Colors.white,
               border: Border.all(color: _gold.withOpacity(0.3), width: 1.5),
             ),
-            child: _pickedImage != null
+            child: (_pickedImageBytes != null || _pickedImage != null)
                 ? Stack(fit: StackFit.expand, children: [
-                    Image.file(_pickedImage!, fit: BoxFit.cover),
+                    kIsWeb && _pickedImageBytes != null
+                        ? Image.memory(_pickedImageBytes!, fit: BoxFit.cover)
+                        : Image.file(_pickedImage!, fit: BoxFit.cover),
                     Positioned(top: 8, right: 8,
                       child: GestureDetector(
-                        onTap: () => setState(() => _pickedImage = null),
+                        onTap: () => setState(() { _pickedImage = null; _pickedImageBytes = null; }),
                         child: Container(
                           width: 28, height: 28,
                           color: Colors.white.withOpacity(0.9),
