@@ -5,12 +5,12 @@ import { MessageSquare, Send, Clock, CheckCircle, AlertCircle, X, Trash2 } from 
 import { supabase } from '../../supabaseClient';
 
 const INQUIRY_TYPES = [
-  { value: 'product', label: '상품문의', icon: '🛍️' },
-  { value: 'delivery', label: '배송문의', icon: '🚚'},
-  { value: 'refund', label: '환불문의', icon: '💰' },
-  { value: 'site', label: '사이트문의', icon: '🌐' },
-  { value: 'company', label: '회사문의', icon: '🏢' },
-  { value: 'newProduct', label: '신제품문의', icon: '✨' }
+  { value: 'product', label: '상품문의' },
+  { value: 'delivery', label: '배송문의' },
+  { value: 'refund', label: '환불문의' },
+  { value: 'site', label: '사이트문의' },
+  { value: 'company', label: '회사문의' },
+  { value: 'newProduct', label: '신제품문의' }
 ];
 
 const CustomerInquiry = () => {
@@ -252,7 +252,6 @@ const CustomerInquiry = () => {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{type.icon}</span>
                         <span className="text-sm tracking-wider text-[#2a2620]">{type.label}</span>
                       </div>
                     </button>
@@ -267,7 +266,6 @@ const CustomerInquiry = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">❓</span>
                         <div>
                           <span className="text-sm tracking-wider text-[#2a5580] font-medium">
                             자주 묻는 질문
@@ -341,7 +339,7 @@ const CustomerInquiry = () => {
                 .map(inquiry => {
                   const statusConfig = getStatusConfig(inquiry.status);
                   const StatusIcon = statusConfig.icon;
-                  const typeInfo = INQUIRY_TYPES.find(t => t.value === inquiry.type) || { icon: '📝' };
+                  const typeInfo = INQUIRY_TYPES.find(t => t.value === inquiry.type) || {};
 
                 return (
                   <div
@@ -350,7 +348,6 @@ const CustomerInquiry = () => {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{typeInfo.icon}</span>
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-semibold text-[#2a2620]">{inquiry.title}</h3>

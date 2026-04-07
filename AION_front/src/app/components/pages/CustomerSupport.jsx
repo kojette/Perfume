@@ -7,13 +7,13 @@ import { supabase } from '../../supabaseClient';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const INQUIRY_TYPES = [
-  { value: 'product', label: '상품문의', icon: '🛍️' },
-  { value: 'refund', label: '환불문의', icon: '💰' },
-  { value: 'delivery', label: '배송문의', icon: '🚚' },
-  { value: 'site', label: '사이트문의', icon: '🌐' },
-  { value: 'company', label: '회사문의', icon: '🏢' },
-  { value: 'faq', label: '자주묻는질문', icon: '❓' },
-  { value: 'newProduct', label: '신제품문의', icon: '✨' }
+  { value: 'product', label: '상품문의' },
+  { value: 'refund', label: '환불문의' },
+  { value: 'delivery', label: '배송문의' },
+  { value: 'site', label: '사이트문의' },
+  { value: 'company', label: '회사문의' },
+  { value: 'faq', label: '자주묻는질문' },
+  { value: 'newProduct', label: '신제품문의' }
 ];
 
 const STATUS = {
@@ -337,7 +337,6 @@ const CustomerSupport = () => {
                        className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${warningConfig.color} ${selectedInquiry?.id === inquiry.id ? 'ring-2 ring-[#c9a961]' : ''} hover:shadow-md`}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{INQUIRY_TYPES.find(t => t.value === inquiry.type)?.icon}</span>
                         <div>
                           <h3 className="font-semibold text-sm text-[#2a2620] mb-1">{inquiry.title}</h3>
                           <p className="text-xs text-[#8b8278]">{new Date(inquiry.createdAt).toLocaleString()}</p>
@@ -396,7 +395,7 @@ const CustomerSupport = () => {
                         <p className="text-sm text-[#2a2620] whitespace-pre-wrap">{selectedInquiry.answer}</p>
                       </div>
                     ) : selectedInquiry.status === 'cancelled' ? (
-                      <div className="p-4 bg-gray-100 text-center text-gray-500 text-sm rounded">🚫 취소된 문의입니다.</div>
+                      <div className="p-4 bg-gray-100 text-center text-gray-500 text-sm rounded">취소된 문의입니다.</div>
                     ) : (
 
                       <div>
@@ -422,8 +421,8 @@ const CustomerSupport = () => {
 
                     {selectedInquiry.status !== 'cancelled' && (
                         <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-[#eee]">
-                            <button onClick={() => handleAddWarning()} className="py-2 bg-orange-50 text-orange-700 border border-orange-200 text-[10px] hover:bg-orange-100 rounded">⚠️ 경고 추가</button>
-                            <button onClick={() => handleReduceWarning()} className="py-2 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] hover:bg-blue-100 rounded">✓ 경고 감소</button>
+                            <button onClick={() => handleAddWarning()} className="py-2 bg-orange-50 text-orange-700 border border-orange-200 text-[10px] hover:bg-orange-100 rounded">경고 추가</button>
+                            <button onClick={() => handleReduceWarning()} className="py-2 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] hover:bg-blue-100 rounded">경고 감소</button>
                         </div>
                     )}
                     {selectedInquiry.customer.warningLevel === 'blacklist' && (
