@@ -85,8 +85,18 @@ const Customization = () => {
     }
   };
 
+  const requireLogin = () => {
+    if (!isLoggedIn) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate('/login');
+      return false;
+    }
+    return true;
+  };
+
   const openNewEditor = () => {
-    if (!isLoggedIn) { navigate('/login'); return; }
+    if (!requireLogin()) return;
+
     setEditingDesign(null);
     setEditorOpen(true);
   };
@@ -159,7 +169,10 @@ const Customization = () => {
             <div className="w-px bg-[#c9a961]/30" />
 
             <button
-              onClick={() => setActiveMode('scent')}
+              onClick={() => {
+                if (!requireLogin()) return;
+                setActiveMode('scent');
+              }}
               className={`flex items-center gap-2.5 px-8 py-4 text-[11px] tracking-[0.25em] transition-all duration-300 ${
                 activeMode === 'scent'
                   ? 'bg-[#1a1a1a] text-[#c9a961]'

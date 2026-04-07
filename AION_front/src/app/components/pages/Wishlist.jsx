@@ -16,7 +16,7 @@ const Wishlist = () => {
         try {
             const {data: {session}} = await supabase.auth.getSession();
             if(!session) {
-                alert("로그인이 필요합니다.");
+                alert("로그인이 필요한 서비스입니다.");
                 navigate('/login');
                 return;
             }
@@ -71,7 +71,7 @@ const Wishlist = () => {
         try {
             const {data: {session}} = await supabase.auth.getSession();
             if(!session) {
-                alert("로그인이 필요합니다.");
+                alert("로그인이 필요한 서비스입니다.");
                 return;
             }
 
