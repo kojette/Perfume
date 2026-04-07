@@ -10,6 +10,12 @@ import imgSpringSummer from '../../../assets/springsummer.png';
 import imgCool         from '../../../assets/cool.png';
 import imgFallWinter   from '../../../assets/fallwinter.png';
 
+import imgTeen from '../../../assets/teen.png';
+import imgTwenties from '../../../assets/twenties.png';
+import imgThirties from '../../../assets/thirties.png';
+import imgForties from '../../../assets/forties.png';
+import imgFifties from '../../../assets/fifties.png';
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 
@@ -19,7 +25,7 @@ const AGE_GROUPS = [
     label: '10대',
     en: 'TEENS',
     range: '15–19',
-    symbol: '✦',
+    symbol: 'Ι',
     desc: '청초하고 밝은 향',
     keywords: ['플로럴', '프루티', '청량한'],
     palette: { from: '#fce4ec', to: '#f8bbd0', accent: '#e91e8c', text: '#880e4f' },
@@ -31,7 +37,7 @@ const AGE_GROUPS = [
     label: '20대',
     en: 'TWENTIES',
     range: '20–29',
-    symbol: 'Ι',
+    symbol: 'ΙΙ',
     desc: '자유롭고 생동감 넘치는',
     keywords: ['시트러스', '아쿠아틱', '머스크'],
     palette: { from: '#e3f2fd', to: '#bbdefb', accent: '#1976d2', text: '#0d47a1' },
@@ -43,7 +49,7 @@ const AGE_GROUPS = [
     label: '30대',
     en: 'THIRTIES',
     range: '30–39',
-    symbol: 'ΙΙ',
+    symbol: 'ΙΙΙ',
     desc: '세련되고 깊이 있는',
     keywords: ['우디', '앰버', '스파이시'],
     palette: { from: '#fff3e0', to: '#ffe0b2', accent: '#f57c00', text: '#e65100' },
@@ -55,7 +61,7 @@ const AGE_GROUPS = [
     label: '40대',
     en: 'FORTIES',
     range: '40–49',
-    symbol: 'ΙΙΙ',
+    symbol: 'IV',
     desc: '클래식하고 우아한',
     keywords: ['오리엔탈', '파우더리', '가죽'],
     palette: { from: '#f3e5f5', to: '#e1bee7', accent: '#7b1fa2', text: '#4a148c' },
@@ -67,7 +73,7 @@ const AGE_GROUPS = [
     label: '50대+',
     en: 'FIFTIES+',
     range: '50+',
-    symbol: 'IV',
+    symbol: 'V',
     desc: '기품 있고 고혹적인',
     keywords: ['바닐라', '샌달우드', '로즈'],
     palette: { from: '#efebe9', to: '#d7ccc8', accent: '#5d4037', text: '#3e2723' },
@@ -112,9 +118,17 @@ function PerfumeCard({ perfume, onClick }) {
   return (
     <div
       onClick={() => onClick?.(perfume)}
-      className="group flex items-center gap-5 p-5 bg-white border border-[#e8e2d6] hover:border-[#c9a961]/60 hover:shadow-lg transition-all duration-300 cursor-pointer"
+      className="
+      group flex items-center gap-5 p-5
+      bg-white/90 backdrop-blur-sm
+      border border-[#e8e2d6]
+      hover:border-[#c9a961]/60
+      hover:shadow-[0_10px_30px_rgba(201,169,97,0.12)]
+      transition-all duration-300
+      cursor-pointer
+      "
     >
-      <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-[#f5f0e8] to-[#e8ddc8] flex items-center justify-center group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+      <div className="w-20 h-20 shadow-md flex-shrink-0 bg-gradient-to-br from-[#f5f0e8] to-[#e8ddc8] flex items-center justify-center group-hover:scale-105 transition-transform duration-300 overflow-hidden">
         {perfume.imageUrl ? (
           <img src={perfume.imageUrl} alt={perfume.name} className="w-full h-full object-cover" />
         ) : (
@@ -152,42 +166,136 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
   const [expanded, setExpanded] = useState(false);
   const { palette } = group;
   const displayPerfumes = expanded ? perfumes : perfumes.slice(0, 3);
-
+  const AGE_IMAGES = {
+  '10s': imgTeen,
+  '20s': imgTwenties,
+  '30s': imgThirties,
+  '40s': imgForties,
+  '50s': imgFifties,
+};
   return (
     <div className="relative overflow-hidden border border-[#e8e2d6] bg-white">
       <div
         className="relative cursor-pointer select-none"
-        style={{ background: `linear-gradient(135deg, ${palette.from}, ${palette.to})` }}
+        style={{
+          // 상단 헤더 전체 배경
+          background: `
+            linear-gradient(
+              135deg,
+              ${palette.from}f5 0%,
+              ${palette.to}dd 60%,
+              #ffffffaa 100%
+            ),
+            radial-gradient(
+              circle at 80% 20%,
+              rgba(255,255,255,0.45),
+              transparent 55%
+            )
+          `,
+          backdropFilter: 'blur(10px)',
+        }}
         onClick={() => setExpanded(!expanded)}
       >
+        {AGE_IMAGES[group.id] && (
+  <div className="absolute inset-0 pointer-events-none">
+    <img
+      src={AGE_IMAGES[group.id]}
+      alt=""
+      aria-hidden="true"
+      className="absolute right-0 top-0 w-[42%] h-full object-cover"
+      style={{
+        // 오른쪽 배경 이미지 선명도
+        opacity: 0.48,
+        filter: 'blur(0.5px) brightness(1.04)',
+        WebkitMaskImage:
+          'linear-gradient(to left, black 45%, transparent 100%)',
+        maskImage:
+          'linear-gradient(to left, black 45%, transparent 100%)',
+      }}
+    />
+
+    <div
+      className="absolute inset-0"
+      style={{
+        background: `
+          radial-gradient(circle at 80% 35%, rgba(255,255,255,0.28), transparent 45%),
+          linear-gradient(to left, rgba(255,255,255,0.12), transparent 55%)
+        `,
+      }}
+    />
+  </div>
+)}
         <div className="absolute right-4 top-1/2 -translate-y-1/2 font-serif text-[80px] leading-none pointer-events-none select-none"
           style={{ color: palette.accent, opacity: 0.07 }}>
           {group.symbol}
         </div>
-
         <div className="relative px-8 py-6 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <div className="flex flex-col items-center justify-center w-16 h-16 border-2 rounded-full flex-shrink-0"
-              style={{ borderColor: palette.accent, background: 'white' }}>
-              <span className="font-serif text-lg leading-none" style={{ color: palette.accent }}>{group.label}</span>
-              <span className="text-[8px] tracking-widest mt-0.5" style={{ color: palette.text }}>{group.range}</span>
+            {/* 왼쪽 연령 배지 */}
+            <div className="relative w-16 h-16 flex-shrink-0">
+              <div
+                className="w-full h-full rounded-full flex flex-col items-center justify-center border"
+                style={{
+                  // 배지 배경
+                  background: 'linear-gradient(145deg, #fffdf8, #f8f1e6)',
+
+                  // 금색 테두리
+                  borderColor: '#c9a961',
+
+                  // 고급스러운 은은한 그림자
+                  boxShadow: `
+                    0 3px 10px rgba(201,169,97,0.16),
+                    inset 0 1px 1px rgba(255,255,255,0.9)
+                  `,
+                }}
+              >
+                {/* 10대 / 20대 */}
+                <span
+                  className="font-serif text-[15px]"
+                  style={{ color: '#8d6f37' }}
+                >
+                  {group.label}
+                </span>
+
+                {/* 나이 범위 */}
+                <span
+                  className="text-[10px] tracking-[0.2em]"
+                  style={{ color: '#b89a5d' }}
+                >
+                  {group.range}
+                </span>
+              </div>
             </div>
 
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] tracking-[0.5em] font-medium uppercase" style={{ color: palette.accent }}>{group.en}</span>
-                <span className="text-[10px] text-[#8b8278]">— {group.desc}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {group.keywords.map((kw, i) => (
-                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/60 border"
-                    style={{ color: palette.text, borderColor: `${palette.accent}40` }}>
-                    {kw}
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className="text-[10px] tracking-[0.5em] font-medium uppercase"
+                    style={{ color: palette.accent }}
+                  >
+                    {group.en}
                   </span>
-                ))}
+                  <span className="text-[10px] text-[#8b8278]">
+                    — {group.desc}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {group.keywords.map((kw, i) => (
+                    <span
+                      key={i}
+                      className="text-[10px] px-3 py-1 rounded-full border bg-white/70"
+                      style={{
+                        color: palette.text,
+                        borderColor: `${palette.accent}40`,
+                      }}
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
           <div className="flex items-center gap-3">
             <span className="text-xs text-[#8b8278]">{perfumes.length}개</span>
@@ -260,7 +368,7 @@ function QuickFilterButton({ filter, isActive, onClick }) {
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          style={{ opacity: isActive ? 0.55 : 0.35, transition: 'opacity 0.25s' }}
+          style={{ opacity: isActive ? 0.9 : 0.75, transition: 'opacity 0.25s' }}
         />
       )}
 
@@ -269,8 +377,8 @@ function QuickFilterButton({ filter, isActive, onClick }) {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: isActive
-            ? 'linear-gradient(to top, rgba(26,21,16,0.72) 0%, rgba(26,21,16,0.18) 55%, transparent 100%)'
-            : 'linear-gradient(to top, rgba(26,21,16,0.55) 0%, rgba(26,21,16,0.08) 55%, transparent 100%)',
+            ? 'linear-gradient(to top, rgba(26,21,16,0.38) 0%, rgba(26,21,16,0.08) 55%, transparent 100%)'
+            : 'linear-gradient(to top, rgba(26,21,16,0.24) 0%, rgba(26,21,16,0.04) 55%, transparent 100%)',
           transition: 'background 0.25s',
         }}
       />
