@@ -33,10 +33,10 @@ App Store: [앱 링크]
   [아이폰 시연 영상] https://youtube.com/shorts/-78CjKY0Bbg?si=USJmO4naypFdUQFr
 
 - <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
-  [리액트(PC) 시연 영상] https://youtu.be/0TNtEe0dChg
+  [리액트(PC) 시연 영상] https://youtu.be/u-tWHm96XvY
 
 - <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
-  [리액트(모바일) 시연 영상] https://youtu.be/7PYLcMUCvlM
+  [리액트(모바일) 시연 영상] https://youtu.be/pASaf5W0ZKs
 
 ## 8. 우리팀 평가
 | 항목 | 작년 우수팀(?) | 우리 팀 (AION) |
