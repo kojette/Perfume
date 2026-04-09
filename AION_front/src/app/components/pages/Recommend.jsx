@@ -231,39 +231,86 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
         </div>
         <div className="relative px-8 py-6 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            {/* 왼쪽 연령 배지 */}
-            <div className="relative w-16 h-16 flex-shrink-0">
-              <div
-                className="w-full h-full rounded-full flex flex-col items-center justify-center border"
-                style={{
-                  // 배지 배경
-                  background: 'linear-gradient(145deg, #fffdf8, #f8f1e6)',
+            <div className="flex items-center gap-6">
+              {/* 왼쪽 연령 배지 */}
+              <div className="relative w-19 h-19 flex-shrink-0">
+                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                  <defs>
+                    {/* 아이보리 배지 면 — 메탈릭 없이 은은한 크림톤 */}
+                    <linearGradient id={`face-${group.label}`} x1="30%" y1="0%" x2="70%" y2="100%">
+                      <stop offset="0%"   stopColor="#ffffff"/>
+                      <stop offset="40%"  stopColor="#fdfcf7"/>
+                      <stop offset="100%" stopColor="#f8f4ec"/>
+                    </linearGradient>
 
-                  // 금색 테두리
-                  borderColor: '#c9a961',
+                    {/* 배지 상단 하이라이트 — 금박지 위에 빛이 스치는 느낌 */}
+                    <radialGradient id={`highlight-${group.label}`} cx="50%" cy="20%" r="55%">
+                      <stop offset="0%"   stopColor="#fffbe0" stopOpacity="0.85"/>
+                      <stop offset="60%"  stopColor="#f7e89a" stopOpacity="0.2"/>
+                      <stop offset="100%" stopColor="#e8c84a" stopOpacity="0"/>
+                    </radialGradient>
 
-                  // 고급스러운 은은한 그림자
-                  boxShadow: `
-                    0 3px 10px rgba(201,169,97,0.16),
-                    inset 0 1px 1px rgba(255,255,255,0.9)
-                  `,
-                }}
-              >
-                {/* 10대 / 20대 */}
-                <span
-                  className="font-serif text-[15px]"
-                  style={{ color: '#8d6f37' }}
-                >
-                  {group.label}
-                </span>
+                    {/* 안쪽 테두리 금박 그라디언트 */}
+                    <linearGradient id={`innerRim-${group.label}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%"   stopColor="#fff5c0"/>
+                      <stop offset="20%"  stopColor="#e8c84a"/>
+                      <stop offset="50%"  stopColor="#faeea0"/>
+                      <stop offset="80%"  stopColor="#c8a020"/>
+                      <stop offset="100%" stopColor="#f5e878"/>
+                    </linearGradient>
+                  </defs>
 
-                {/* 나이 범위 */}
-                <span
-                  className="text-[10px] tracking-[0.2em]"
-                  style={{ color: '#b89a5d' }}
-                >
-                  {group.range}
-                </span>
+                  {/* ── 바깥쪽 선: 매우 얇고 연한 금선 ── */}
+                  <circle cx="32" cy="32" r="31"
+                    fill="none"
+                    stroke="#c9a94880"
+                    strokeWidth="0.6"
+                  />
+
+                  {/* ── 안쪽 선: 두꺼운 금박 테두리 ── */}
+                  <circle cx="32" cy="32" r="28.5"
+                    fill="none"
+                    stroke={`url(#innerRim-${group.label})`}
+                    strokeWidth="2.1"
+                  />
+
+                  {/* ── 테두리 상단 하이라이트 (빛이 림 위쪽에 맺히는 느낌) ── */}
+                  <path
+                    d="M 14 18 A 20 20 0 0 1 50 18"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="1.2"
+                    strokeOpacity="0.55"
+                    strokeLinecap="round"
+                  />
+
+                  {/* ── 배지 면 ── */}
+                  <circle cx="32" cy="32" r="27"
+                    fill={`url(#face-${group.label})`}
+                  />
+
+                  {/* ── 배지 상단 금박 하이라이트 ── */}
+                  <circle cx="32" cy="32" r="27"
+                    fill={`url(#highlight-${group.label})`}
+                  />
+
+                  {/* ── 면 안쪽 얇은 내선 ── */}
+                  <circle cx="32" cy="32" r="25"
+                    fill="none"
+                    stroke="#d4aa4430"
+                    strokeWidth="0.5"
+                  />
+                </svg>
+
+                {/* 텍스트 */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-0">
+                  <span className="font-serif text-[18px]" style={{ color: '#8d6f37' }}>
+                    {group.label}
+                  </span>
+                  <span className="text-[10px] tracking-[0.2em]" style={{ color: '#b89a5d' }}>
+                    {group.range}
+                  </span>
+                </div>
               </div>
             </div>
 
