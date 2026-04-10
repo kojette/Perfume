@@ -44,13 +44,18 @@ import StoryManagement from './components/pages/StoryManagement';
 import Customization from './components/pages/Customization';
 import BottleManagement from './components/pages/BottleManagement';
 
+import AdminStatistics from './components/pages/AdminStatistics';
+
+// Hero를 표시할 경로 (정확히 일치하는 경로만)
+const HERO_PATHS = ['/', '/admin'];
+
 function AppLayout() {
   const location = useLocation();
   const [navHeight, setNavHeight] = useState(0);
   const navRef = useRef(null);
 
-  const isHome = location.pathname === "/";
   const isAdmin = location.pathname.startsWith("/admin");
+  const showHero = HERO_PATHS.includes(location.pathname);
 
   useEffect(() => {
     if (!navRef.current) return;
@@ -69,7 +74,7 @@ function AppLayout() {
       </div>
 
       <div style={{ paddingTop: `${navHeight}px` }}>
-        {(isHome || isAdmin) && <Hero isAdmin={isAdmin} navHeight={navHeight} />}
+        {showHero && <Hero isAdmin={isAdmin} navHeight={navHeight} />}
 
         <main>
           <Routes>
@@ -108,6 +113,7 @@ function AppLayout() {
             <Route path="/admin/coupons"       element={<AdminRoute><CouponPointManagement /></AdminRoute>} />
             <Route path="/admin/story"         element={<AdminRoute><StoryManagement /></AdminRoute>} />
             <Route path="/admin/bottles"       element={<AdminRoute><BottleManagement /></AdminRoute>} />
+            <Route path="/admin/statistics"    element={<AdminRoute><AdminStatistics /></AdminRoute>} />
 
             <Route path="/terms"   element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />

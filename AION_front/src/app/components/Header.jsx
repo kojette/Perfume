@@ -54,7 +54,7 @@ export function Header() {
               <button 
                 className="lg:hidden text-[#c9a961] p-2 cursor-pointer hover:opacity-70 transition-opacity"
                 onClick={() => setMenuOpen(!menuOpen)}
-                style = {{ pointerEvents: 'auto' }}
+                style={{ pointerEvents: 'auto' }}
               >
                 {menuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
@@ -88,22 +88,32 @@ export function Header() {
               <a href="/customer/inquiry" className="hover:text-[#c9a961] transition-colors italic">
                 고객센터
               </a>
+
+              {/* 관리자 전용 통계 메뉴 */}
+              {role === 'ADMIN' && (
+                <a
+                  href="/admin/statistics"
+                  className="px-3 py-1 rounded-sm text-[#006400] border border-[#006400] font-bold hover:bg-[#006400] hover:text-white transition-colors italic"
+                >
+                  통계
+                </a>
+              )}
             </nav>
 
             <div className="flex items-center gap-4">
-              <div className = "flex items-center">
+              <div className="flex items-center">
                 {isSearchOpen && (
-                  <form onSubmit = {handleSearch} className = "mr-2 animate-in fade-in slide-in-from-right-2 duration-200">
+                  <form onSubmit={handleSearch} className="mr-2 animate-in fade-in slide-in-from-right-2 duration-200">
                     <input
-                      type = "text" placeholder = "검색어 입력" value = {searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                      className = "border-b border-[#c9a961] bg-transparent text-xs text-[#2a2620] w-24 md:w-32 outline-none placeholder-[#8b8278] pb-1"
+                      type="text" placeholder="검색어 입력" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                      className="border-b border-[#c9a961] bg-transparent text-xs text-[#2a2620] w-24 md:w-32 outline-none placeholder-[#8b8278] pb-1"
                       autoFocus />
                   </form>
                 )}
                 <button
-                  onClick = {() => setIsSearchOpen(!isSearchOpen)}
-                  className = "p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
-                    {isSearchOpen ? <X size = {20} /> : <Search size = {20} />}
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
+                    {isSearchOpen ? <X size={20} /> : <Search size={20} />}
                   </button>
               </div>
 
@@ -122,14 +132,14 @@ export function Header() {
                   <User size={20} />
               </button>
               <button 
-                onClick = {() => navigate('/wishlist')}
+                onClick={() => navigate('/wishlist')}
                 className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer">
                 <Heart size={20} />
               </button>
               <button 
-                onClick = {() => navigate('/cart')}
+                onClick={() => navigate('/cart')}
                 className="p-2 hover:text-[#c9a961] transition-colors cursor-pointer"
-                title = "장바구니">
+                title="장바구니">
                 <ShoppingBag size={20} />
               </button>
             </div>
@@ -158,6 +168,17 @@ export function Header() {
               <a href="/customer/inquiry" className="hover:text-[#c9a961] transition-colors italic" onClick={() => setMenuOpen(false)}>
                 고객센터
               </a>
+
+              {/* 모바일 관리자 통계 메뉴 */}
+              {role === 'ADMIN' && (
+                <a
+                  href="/admin/statistics"
+                  className="self-start px-3 py-1 rounded-sm text-[#006400] border border-[#006400] font-bold italic"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  통계
+                </a>
+              )}
             </nav>
           )}
         </div>

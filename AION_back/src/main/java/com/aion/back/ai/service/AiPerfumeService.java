@@ -1,6 +1,10 @@
 package com.aion.back.ai.service;
 
 import com.aion.back.ai.dto.*;
+import com.aion.back.customization.entity.Ingredient;
+import com.aion.back.customization.entity.ScentCategory;
+import com.aion.back.customization.repository.IngredientRepository;
+import com.aion.back.customization.repository.ScentCategoryRepository;
 import com.aion.back.perfume.entity.Perfume;
 import com.aion.back.perfume.repository.PerfumeRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,10 +32,12 @@ public class AiPerfumeService {
     @Value("${gemini.api.key}")
     private String geminiApiKey;
 
-    @Value("${claude.api.key:}")//콜론(:) 뒤에 아무것도 없으면 빈 문자열을 기본값으로 쓰겠다는 뜻이에요. 키가 없어도 서버가 실행돼요!
+    @Value("${claude.api.key:}")
     private String claudeApiKey;
 
     private final PerfumeRepository perfumeRepository;
+    private final IngredientRepository ingredientRepository;
+    private final ScentCategoryRepository scentCategoryRepository;
     private final ObjectMapper objectMapper;
 
     private static final String GEMINI_URL =
@@ -40,16 +46,14 @@ public class AiPerfumeService {
             "https://api.anthropic.com/v1/messages";
 
     // ══════════════════════════════════════════════════════════════
-    // GEMINI: 이미지 → 향수
+    // 탭 2: GEMINI 이미지 → 향수 추천 (기존 유지)
     // ══════════════════════════════════════════════════════════════
 
     public ImageToScentResponse analyzeImageToScent(MultipartFile image) {
         try {
-            // 1. 이미지 → base64 (서버 저장 없이 메모리에서 처리)
             String base64 = Base64.getEncoder().encodeToString(image.getBytes());
             String mimeType = image.getContentType() != null ? image.getContentType() : "image/jpeg";
 
-            // 2. Gemini Vision 프롬프트 구성
             String prompt = """
                 당신은 전문 조향사입니다. 이 이미지를 보고 향수 전문가 관점에서 분석해주세요.
                 
@@ -66,15 +70,11 @@ public class AiPerfumeService {
                 노트는 반드시 실제 향수 재료명(예: 베르가못, 장미, 샌달우드, 머스크 등)으로 답하세요.
                 """;
 
-            // 3. Gemini API 요청 body 구성
             Map<String, Object> body = Map.of(
                 "contents", List.of(Map.of(
                     "parts", List.of(
                         Map.of("text", prompt),
-                        Map.of("inline_data", Map.of(
-                            "mime_type", mimeType,
-                            "data", base64
-                        ))
+                        Map.of("inline_data", Map.of("mime_type", mimeType, "data", base64))
                     )
                 )),
                 "generationConfig", Map.of(
@@ -85,7 +85,7 @@ public class AiPerfumeService {
             );
 
             String responseText = callGemini(body);
-            return parseGeminiResponse(responseText);
+            return parseGeminiImageResponse(responseText);
 
         } catch (Exception e) {
             log.error("Gemini 이미지 분석 오류", e);
@@ -93,25 +93,259 @@ public class AiPerfumeService {
         }
     }
 
-    public ImageToScentResponse searchByKeyword(String query) {
-        try {
-            String prompt = String.format("""
-                당신은 전문 조향사입니다. 아래 감성/상황을 향수로 표현해주세요.
-                
-                입력: "%s"
-                
-                반드시 아래 JSON 형식으로만 응답하세요:
-                {
-                  "mood": "전반적인 향 무드",
-                  "analysisText": "이 느낌을 향수로 표현한 설명 (2-3문장, 한국어)",
-                  "keywords": ["키워드1", "키워드2", "키워드3"],
-                  "topNotes": ["탑노트1", "탑노트2"],
-                  "middleNotes": ["미들노트1", "미들노트2"],
-                  "baseNotes": ["베이스노트1", "베이스노트2"]
+    // ══════════════════════════════════════════════════════════════
+    // 탭 3: STEP 1 - Gemini로 재료 키워드 15개 추출
+    // 빠른 단순 응답만 요청 (Flash Lite 적합)
+    // ══════════════════════════════════════════════════════════════
+
+    private List<String> extractIngredientKeywords(String userPrompt) throws Exception {
+        String prompt = String.format("""
+            사용자가 원하는 향수 감성: "%s"
+            
+            이 감성에 어울리는 향수 재료명만 15개 이내로 추출하세요.
+            재료명은 실제 향수 재료 이름이어야 합니다 (예: 베르가못, 장미, 샌달우드, 머스크, 바닐라 등).
+            
+            반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요:
+            {"keywords": ["재료1", "재료2", "재료3", ...]}
+            """, userPrompt);
+
+        Map<String, Object> body = Map.of(
+            "contents", List.of(Map.of(
+                "parts", List.of(Map.of("text", prompt))
+            )),
+            "generationConfig", Map.of(
+                "temperature", 0.3,          // 낮을수록 일관된 재료명 반환
+                "maxOutputTokens", 200,      // 키워드만 뽑으니 짧게
+                "responseMimeType", "application/json"
+            )
+        );
+
+        String raw = callGemini(body);
+        String clean = raw.strip()
+                .replaceAll("^```json\\s*", "")
+                .replaceAll("^```\\s*", "")
+                .replaceAll("\\s*```$", "");
+
+        JsonNode node = objectMapper.readTree(clean);
+        return toStringList(node.path("keywords"));
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 탭 3: STEP 2 - Supabase Ingredient 테이블에서 키워드 매칭 재료 검색
+    // 개수 제한 없이 매칭되는 재료 전부 반환
+    // ══════════════════════════════════════════════════════════════
+
+    private List<Ingredient> searchIngredientsByKeywords(List<String> keywords) {
+        // 카테고리 정보를 함께 쓰기 위해 카테고리 맵 로드
+        Map<Long, String> categoryNames = scentCategoryRepository.findActiveWithIngredients()
+                .stream()
+                .collect(Collectors.toMap(
+                        ScentCategory::getCategoryId,
+                        ScentCategory::getCategoryName,
+                        (a, b) -> a
+                ));
+
+        // 키워드별 검색 후 합산 (중복 제거)
+        Set<Long> seen = new LinkedHashSet<>();
+        List<Ingredient> result = new ArrayList<>();
+
+        for (String keyword : keywords) {
+            String trimmed = keyword.trim();
+            if (trimmed.isEmpty()) continue;
+            List<Ingredient> found = ingredientRepository.findActiveByNameContaining(trimmed);
+            for (Ingredient ing : found) {
+                if (seen.add(ing.getIngredientId())) {
+                    result.add(ing);
                 }
+            }
+        }
+
+        log.info("키워드 {} 개 → 매칭 재료 {} 개", keywords.size(), result.size());
+        return result;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 탭 3: STEP 3 - Claude SSE 스트리밍 조향
+    // 사용자 원본 프롬프트 + 실제 Supabase 재료 목록 전달
+    // ══════════════════════════════════════════════════════════════
+
+    public SseEmitter streamClaudeBlend(ClaudeBlendRequest request) {
+        SseEmitter emitter = new SseEmitter(180_000L); // 3분 타임아웃
+
+        new Thread(() -> {
+            try {
+                String userPrompt = request.getUserPrompt();
+                if (userPrompt == null || userPrompt.isBlank()) {
+                    // 메시지 히스토리에서 마지막 user 메시지를 프롬프트로 사용
+                    userPrompt = request.getMessages() == null ? "" :
+                            request.getMessages().stream()
+                                    .filter(m -> "user".equals(m.getRole()))
+                                    .reduce((a, b) -> b)
+                                    .map(ClaudeBlendRequest.ChatMessage::getContent)
+                                    .orElse("");
+                }
+
+                // ── STEP 1: Gemini로 키워드 추출 ──────────────────────
+                emitter.send(SseEmitter.event()
+                        .data(objectMapper.writeValueAsString(Map.of("status", "extracting_keywords"))));
+
+                List<String> keywords = extractIngredientKeywords(userPrompt);
+                log.info("Gemini 추출 키워드: {}", keywords);
+
+                // ── STEP 2: Supabase에서 재료 검색 ────────────────────
+                emitter.send(SseEmitter.event()
+                        .data(objectMapper.writeValueAsString(Map.of("status", "searching_ingredients"))));
+
+                List<Ingredient> matched = searchIngredientsByKeywords(keywords);
+
+                // 카테고리 이름 맵 (프롬프트에 포함)
+                Map<Long, String> catNames = scentCategoryRepository.findActiveWithIngredients()
+                        .stream()
+                        .collect(Collectors.toMap(
+                                ScentCategory::getCategoryId,
+                                ScentCategory::getCategoryName,
+                                (a, b) -> a
+                        ));
+
+                // 재료 목록을 Claude 프롬프트용 문자열로 변환
+                // 형식: "ingredientId|이름|카테고리" → Claude가 ingredientId 기준으로 선택
+                String ingredientList = matched.stream()
+                        .map(i -> String.format("  - ID:%d | %s | 계열:%s",
+                                i.getIngredientId(),
+                                i.getName(),
+                                catNames.getOrDefault(i.getCategoryId(), "기타")))
+                        .collect(Collectors.joining("\n"));
+
+                if (ingredientList.isBlank()) {
+                    ingredientList = "  (매칭된 재료가 없습니다. 일반적인 향수 재료를 사용해주세요)";
+                }
+
+                // 매칭된 재료 목록을 프론트에도 전송 (슬라이더 패널 구성용)
+                List<Map<String, Object>> ingredientData = matched.stream()
+                        .map(i -> Map.<String, Object>of(
+                                "ingredientId", i.getIngredientId(),
+                                "name", i.getName(),
+                                "category", catNames.getOrDefault(i.getCategoryId(), "기타")
+                        ))
+                        .collect(Collectors.toList());
+
+                emitter.send(SseEmitter.event()
+                        .data(objectMapper.writeValueAsString(Map.of(
+                                "status", "ingredients_found",
+                                "ingredients", ingredientData,
+                                "count", matched.size()
+                        ))));
+
+                // ── STEP 3: Claude 조향 스트리밍 ──────────────────────
+                String systemPrompt = buildClaudeSystemPrompt(userPrompt, ingredientList);
+                List<Map<String, Object>> messages = buildClaudeMessages(request.getMessages(), userPrompt);
+
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("model", "claude-sonnet-4-20250514");
+                body.put("max_tokens", 2000);
+                body.put("stream", true);
+                body.put("system", systemPrompt);
+                body.put("messages", messages);
+
+                String jsonBody = objectMapper.writeValueAsString(body);
+
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest httpRequest = HttpRequest.newBuilder()
+                        .uri(URI.create(CLAUDE_URL))
+                        .header("Content-Type", "application/json")
+                        .header("x-api-key", claudeApiKey)
+                        .header("anthropic-version", "2023-06-01")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
+                        .build();
+
+                HttpResponse<InputStream> response = client.send(
+                        httpRequest, HttpResponse.BodyHandlers.ofInputStream());
+
+                if (response.statusCode() != 200) {
+                    emitter.completeWithError(new RuntimeException("Claude API 오류: " + response.statusCode()));
+                    return;
+                }
+
+                // Claude 응답 스트리밍
+                StringBuilder fullResponse = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (!line.startsWith("data: ")) continue;
+                        String data = line.substring(6).trim();
+                        if (data.equals("[DONE]")) break;
+
+                        try {
+                            JsonNode event = objectMapper.readTree(data);
+                            String type = event.path("type").asText();
+
+                            if ("content_block_delta".equals(type)) {
+                                String delta = event.path("delta").path("text").asText("");
+                                if (!delta.isEmpty()) {
+                                    fullResponse.append(delta);
+                                    emitter.send(SseEmitter.event()
+                                            .data(objectMapper.writeValueAsString(Map.of("delta", delta))));
+                                }
+                            } else if ("message_stop".equals(type)) {
+                                // 스트리밍 완료 후 <recipe> 태그 파싱해서 전송
+                                String recipeJson = extractAndParseRecipe(fullResponse.toString());
+                                emitter.send(SseEmitter.event()
+                                        .data(objectMapper.writeValueAsString(Map.of(
+                                                "done", true,
+                                                "recipeJson", recipeJson
+                                        ))));
+                                break;
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+
+                emitter.complete();
+
+            } catch (Exception e) {
+                log.error("Claude 조향 파이프라인 오류", e);
+                try {
+                    emitter.send(SseEmitter.event()
+                            .data(objectMapper.writeValueAsString(Map.of("error", e.getMessage()))));
+                } catch (Exception ignored) {}
+                emitter.completeWithError(e);
+            }
+        }).start();
+
+        return emitter;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // 탭 3: Gemini 레시피 변경 평가
+    // 슬라이더 조절 후 이전/현재 레시피 비교 → 향 변화 조언
+    // ══════════════════════════════════════════════════════════════
+
+    public String evaluateRecipeChange(ClaudeBlendRequest request) {
+        try {
+            ClaudeBlendRequest.RecipeSnapshot prev = request.getPreviousRecipe();
+            ClaudeBlendRequest.RecipeSnapshot curr = request.getCurrentRecipe();
+
+            if (prev == null || curr == null) {
+                return "레시피 정보가 부족합니다.";
+            }
+
+            String prevDesc = formatRecipeForPrompt(prev);
+            String currDesc = formatRecipeForPrompt(curr);
+
+            String prompt = String.format("""
+                전문 조향사로서 두 향수 레시피를 비교하고, 비율 변경이 향에 어떤 영향을 주는지 2-3문장으로 평가해주세요.
+                한국어로, 간결하고 시적으로 표현해주세요.
                 
-                노트는 반드시 실제 향수 재료명으로 답하세요.
-                """, query);
+                [이전 레시피]
+                %s
+                
+                [현재 레시피]
+                %s
+                
+                변경된 부분을 중심으로 향이 어떻게 달라졌는지 조언해주세요.
+                """, prevDesc, currDesc);
 
             Map<String, Object> body = Map.of(
                 "contents", List.of(Map.of(
@@ -119,21 +353,121 @@ public class AiPerfumeService {
                 )),
                 "generationConfig", Map.of(
                     "temperature", 0.7,
-                    "maxOutputTokens", 512,
-                    "responseMimeType", "application/json"
-            )
+                    "maxOutputTokens", 300
+                )
             );
 
-            String responseText = callGemini(body);
-            return parseGeminiResponse(responseText);
+            // Gemini는 JSON 모드 없이 자연어 응답
+            String url = GEMINI_URL + "?key=" + geminiApiKey;
+            String jsonBody = objectMapper.writeValueAsString(body);
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request2 = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+
+            HttpResponse<String> response = client.send(request2, HttpResponse.BodyHandlers.ofString());
+            JsonNode root = objectMapper.readTree(response.body());
+            return root.path("candidates").get(0)
+                       .path("content").path("parts").get(0)
+                       .path("text").asText("평가를 생성할 수 없습니다.");
 
         } catch (Exception e) {
-            log.error("Gemini 키워드 검색 오류", e);
-            throw new RuntimeException("키워드 분석에 실패했습니다: " + e.getMessage());
+            log.error("Gemini 레시피 평가 오류", e);
+            return "평가 중 오류가 발생했습니다.";
         }
     }
 
-    // Gemini API 공통 호출
+    // ══════════════════════════════════════════════════════════════
+    // 내부 유틸
+    // ══════════════════════════════════════════════════════════════
+
+    private String buildClaudeSystemPrompt(String userPrompt, String ingredientList) {
+        return String.format("""
+            당신은 30년 경력의 전문 조향사입니다.
+            
+            [고객 요청]
+            %s
+            
+            [사용 가능한 실제 재료 목록 - Supabase DB 기준]
+            반드시 아래 목록에서만 재료를 선택하세요. ID가 있는 재료만 사용할 수 있습니다.
+            %s
+            
+            [조향 원칙]
+            - 반드시 위 재료 목록에 있는 재료만 사용하세요
+            - 고객 요청의 감성/분위기에 맞게 재료를 선택하세요
+            - 탑/미들/베이스 노트 비율 합이 반드시 100%%가 되어야 합니다
+            - 조향 이유를 시적으로 설명해주세요
+            
+            [응답 형식]
+            대화 형식으로 조향 과정을 설명하고, 마지막에 반드시 아래 태그를 포함하세요:
+            <recipe>
+            {
+              "perfumeName": "창의적인 향수 이름",
+              "concept": "한 줄 콘셉트",
+              "story": "향수 스토리 2-3문장",
+              "topNotes": [{"ingredientId": ID, "ingredientName": "이름", "ratio": 0.XX, "reason": "선택 이유"}],
+              "middleNotes": [{"ingredientId": ID, "ingredientName": "이름", "ratio": 0.XX, "reason": "선택 이유"}],
+              "baseNotes": [{"ingredientId": ID, "ingredientName": "이름", "ratio": 0.XX, "reason": "선택 이유"}],
+              "concentration": "EDP",
+              "recommendedSeason": "봄/가을",
+              "recommendedOccasion": "데이트, 산책"
+            }
+            </recipe>
+            """, userPrompt, ingredientList);
+    }
+
+    private List<Map<String, Object>> buildClaudeMessages(
+            List<ClaudeBlendRequest.ChatMessage> msgs, String userPrompt) {
+
+        if (msgs == null || msgs.isEmpty()) {
+            // 첫 요청: 사용자 프롬프트로 시작
+            return List.of(Map.of("role", "user", "content",
+                    userPrompt != null && !userPrompt.isBlank()
+                            ? userPrompt
+                            : "저만의 향수를 만들어주세요."));
+        }
+        return msgs.stream()
+                .map(m -> Map.<String, Object>of("role", m.getRole(), "content", m.getContent()))
+                .collect(Collectors.toList());
+    }
+
+    // Claude 응답에서 <recipe>...</recipe> 태그 파싱
+    private String extractAndParseRecipe(String fullText) {
+        try {
+            int start = fullText.indexOf("<recipe>");
+            int end = fullText.indexOf("</recipe>");
+            if (start == -1 || end == -1) return "{}";
+
+            String json = fullText.substring(start + 8, end).strip();
+            // JSON 유효성 확인
+            objectMapper.readTree(json);
+            return json;
+        } catch (Exception e) {
+            log.warn("레시피 파싱 실패: {}", e.getMessage());
+            return "{}";
+        }
+    }
+
+    private String formatRecipeForPrompt(ClaudeBlendRequest.RecipeSnapshot recipe) {
+        StringBuilder sb = new StringBuilder();
+        appendNotes(sb, "탑", recipe.getTopNotes());
+        appendNotes(sb, "미들", recipe.getMiddleNotes());
+        appendNotes(sb, "베이스", recipe.getBaseNotes());
+        return sb.toString();
+    }
+
+    private void appendNotes(StringBuilder sb, String label,
+            List<ClaudeBlendRequest.RecipeSnapshot.NoteItem> notes) {
+        if (notes == null || notes.isEmpty()) return;
+        sb.append(label).append("노트: ");
+        notes.forEach(n -> sb.append(n.getIngredientName())
+                .append("(").append(Math.round(n.getRatio() * 100)).append("%) "));
+        sb.append("\n");
+    }
+
+    // Gemini 공통 호출
     private String callGemini(Map<String, Object> body) throws Exception {
         String url = GEMINI_URL + "?key=" + geminiApiKey;
         String jsonBody = objectMapper.writeValueAsString(body);
@@ -158,24 +492,19 @@ public class AiPerfumeService {
                    .path("text").asText();
     }
 
-    // Gemini JSON 응답 파싱 + DB 향수 매칭
-    private ImageToScentResponse parseGeminiResponse(String jsonText) throws Exception {
-        // JSON 펜스 제거 (안전하게)
+    // 탭 2 이미지 응답 파싱
+    private ImageToScentResponse parseGeminiImageResponse(String jsonText) throws Exception {
         String clean = jsonText.strip()
                 .replaceAll("^```json\\s*", "")
                 .replaceAll("^```\\s*", "")
                 .replaceAll("\\s*```$", "");
 
         JsonNode node = objectMapper.readTree(clean);
-
         List<String> topNotes    = toStringList(node.path("topNotes"));
         List<String> middleNotes = toStringList(node.path("middleNotes"));
-        List<String> baseNotes   = toStringList(node.path("baseNotes"));
         List<String> keywords    = toStringList(node.path("keywords"));
 
-        // DB에서 키워드 기반 향수 매칭 (이름/설명에 키워드 포함 여부)
-        List<String> searchTerms = new ArrayList<>();
-        searchTerms.addAll(topNotes);
+        List<String> searchTerms = new ArrayList<>(topNotes);
         searchTerms.addAll(middleNotes);
         searchTerms.addAll(keywords);
 
@@ -187,22 +516,19 @@ public class AiPerfumeService {
                 .analysisText(node.path("analysisText").asText(""))
                 .topNotes(topNotes)
                 .middleNotes(middleNotes)
-                .baseNotes(baseNotes)
+                .baseNotes(toStringList(node.path("baseNotes")))
                 .keywords(keywords)
                 .recommendedPerfumes(matched)
                 .build();
     }
 
-    // DB 향수 매칭: 키워드로 향수 name/description 검색 후 최대 4개 반환
     private List<ImageToScentResponse.RecommendedPerfume> matchPerfumesFromDb(
             List<String> keywords, String mood) {
 
-        // DB에서 활성 향수 최대 200개 로드 (캐시 가능)
         List<Perfume> all = perfumeRepository
                 .findByIsActiveTrue(PageRequest.of(0, 200))
                 .getContent();
 
-        // 키워드 매칭 점수 계산
         return all.stream()
                 .map(p -> {
                     String haystack = String.join(" ",
@@ -210,7 +536,6 @@ public class AiPerfumeService {
                             Optional.ofNullable(p.getNameEn()).orElse(""),
                             Optional.ofNullable(p.getDescription()).orElse("")
                     ).toLowerCase();
-
                     long score = keywords.stream()
                             .filter(kw -> kw != null && haystack.contains(kw.toLowerCase()))
                             .count();
@@ -233,229 +558,6 @@ public class AiPerfumeService {
                 })
                 .collect(Collectors.toList());
     }
-
-    // ══════════════════════════════════════════════════════════════
-    // CLAUDE: AI 조향 채팅 - SSE 스트리밍
-    // ══════════════════════════════════════════════════════════════
-
-    public SseEmitter streamClaudeBlend(ClaudeBlendRequest request) {
-        SseEmitter emitter = new SseEmitter(120_000L); // 2분 타임아웃
-
-        new Thread(() -> {
-            try {
-                String systemPrompt = buildClaudeSystemPrompt(request.getAvailableIngredients());
-                List<Map<String, Object>> messages = buildClaudeMessages(request.getMessages());
-
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("model", "claude-sonnet-4-20250514");
-                body.put("max_tokens", 1500);
-                body.put("stream", true);
-                body.put("system", systemPrompt);
-                body.put("messages", messages);
-
-                String jsonBody = objectMapper.writeValueAsString(body);
-
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest httpRequest = HttpRequest.newBuilder()
-                        .uri(URI.create(CLAUDE_URL))
-                        .header("Content-Type", "application/json")
-                        .header("x-api-key", claudeApiKey)
-                        .header("anthropic-version", "2023-06-01")
-                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                        .build();
-
-                // 스트리밍 응답 처리
-                HttpResponse<InputStream> response = client.send(
-                        httpRequest, HttpResponse.BodyHandlers.ofInputStream());
-
-                if (response.statusCode() != 200) {
-                    emitter.completeWithError(new RuntimeException("Claude API 오류: " + response.statusCode()));
-                    return;
-                }
-
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
-
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (line.startsWith("data: ")) {
-                            String data = line.substring(6).trim();
-                            if (data.equals("[DONE]")) break;
-
-                            try {
-                                JsonNode event = objectMapper.readTree(data);
-                                String type = event.path("type").asText();
-
-                                if ("content_block_delta".equals(type)) {
-                                    String delta = event.path("delta")
-                                                        .path("text").asText("");
-                                    if (!delta.isEmpty()) {
-                                        // 토큰 단위로 프론트에 실시간 전송
-                                        emitter.send(SseEmitter.event()
-                                                .data(objectMapper.writeValueAsString(
-                                                        Map.of("delta", delta))));
-                                    }
-                                } else if ("message_stop".equals(type)) {
-                                    emitter.send(SseEmitter.event()
-                                            .data(objectMapper.writeValueAsString(
-                                                    Map.of("done", true))));
-                                    break;
-                                }
-                            } catch (Exception ignored) {}
-                        }
-                    }
-                }
-                emitter.complete();
-
-            } catch (Exception e) {
-                log.error("Claude 스트리밍 오류", e);
-                emitter.completeWithError(e);
-            }
-        }).start();
-
-        return emitter;
-    }
-
-    // Claude 비스트리밍: 최종 레시피 JSON 파싱
-    public ClaudeRecipeResponse generateRecipe(ClaudeBlendRequest request) {
-        try {
-            String systemPrompt = buildClaudeRecipeSystemPrompt(request.getAvailableIngredients());
-            List<Map<String, Object>> messages = buildClaudeMessages(request.getMessages());
-
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", "claude-sonnet-4-20250514");
-            body.put("max_tokens", 1500);
-            body.put("system", systemPrompt);
-            body.put("messages", messages);
-
-            String jsonBody = objectMapper.writeValueAsString(body);
-
-            HttpClient client = HttpClient.newHttpClient();
-            HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(CLAUDE_URL))
-                    .header("Content-Type", "application/json")
-                    .header("x-api-key", claudeApiKey)
-                    .header("anthropic-version", "2023-06-01")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                    .build();
-
-            HttpResponse<String> response = client.send(
-                    httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-
-            JsonNode root = objectMapper.readTree(response.body());
-            String text = root.path("content").get(0).path("text").asText();
-
-            return parseClaudeRecipe(text);
-
-        } catch (Exception e) {
-            log.error("Claude 레시피 생성 오류", e);
-            throw new RuntimeException("레시피 생성 실패: " + e.getMessage());
-        }
-    }
-
-    // ── 프롬프트 빌더 ───────────────────────────────────────────
-
-    private String buildClaudeSystemPrompt(List<String> ingredients) {
-        String ingList = ingredients != null && !ingredients.isEmpty()
-                ? String.join(", ", ingredients)
-                : "베르가못, 레몬, 장미, 자스민, 라벤더, 샌달우드, 시더우드, 머스크, 바닐라, 앰버";
-
-        return String.format("""
-            당신은 30년 경력의 전문 조향사입니다. 사용자와 대화하며 세상에 하나뿐인 맞춤 향수를 설계합니다.
-            
-            [사용 가능한 재료]
-            %s
-            
-            [대화 원칙]
-            - 사용자의 취향, 감정, 기억, 상황을 세심하게 파악하세요
-            - 향수 전문 용어를 쉽게 설명하면서도 품격 있게 대화하세요
-            - 각 재료가 어떤 느낌을 주는지 시적으로 표현하세요
-            - 대화가 충분히 진행되면 조향 레시피를 제안하세요
-            - 한국어로 대화하되 향수 용어는 영어 병기 가능
-            
-            [레시피 제안 시 형식]
-            대화 중 레시피를 제안할 때는 반드시 아래 태그를 포함하세요:
-            <recipe>
-            탑노트: 재료명(비율%), 재료명(비율%)
-            미들노트: 재료명(비율%), 재료명(비율%)
-            베이스노트: 재료명(비율%)
-            농도: EDP/EDT/EDC
-            계절: 봄/여름/가을/겨울
-            </recipe>
-            """, ingList);
-    }
-
-    private String buildClaudeRecipeSystemPrompt(List<String> ingredients) {
-        String ingList = ingredients != null && !ingredients.isEmpty()
-                ? String.join(", ", ingredients)
-                : "베르가못, 레몬, 장미, 자스민, 라벤더, 샌달우드, 시더우드, 머스크, 바닐라, 앰버";
-
-        return String.format("""
-            당신은 전문 조향사입니다. 대화 내용을 바탕으로 최종 조향 레시피를 JSON으로 반환하세요.
-            
-            [사용 가능한 재료]
-            %s
-            
-            반드시 아래 JSON 형식으로만 응답하세요:
-            {
-              "perfumeName": "향수 이름 (창의적으로)",
-              "concept": "향수 콘셉트 한 줄",
-              "story": "향수 스토리 (2-3문장)",
-              "topNotes": [{"ingredientName":"재료명","ratio":0.3,"reason":"선택 이유"}],
-              "middleNotes": [{"ingredientName":"재료명","ratio":0.4,"reason":"선택 이유"}],
-              "baseNotes": [{"ingredientName":"재료명","ratio":0.3,"reason":"선택 이유"}],
-              "concentration": "EDP",
-              "recommendedSeason": "봄/가을",
-              "recommendedOccasion": "데이트, 산책",
-              "aiAnalysis": "전체 향수 분석 요약"
-            }
-            """, ingList);
-    }
-
-    private List<Map<String, Object>> buildClaudeMessages(List<ClaudeBlendRequest.ChatMessage> msgs) {
-        if (msgs == null || msgs.isEmpty()) {
-            return List.of(Map.of("role", "user",
-                    "content", "안녕하세요. 저만의 향수를 만들고 싶어요."));
-        }
-        return msgs.stream()
-                .map(m -> Map.<String, Object>of("role", m.getRole(), "content", m.getContent()))
-                .collect(Collectors.toList());
-    }
-
-    private ClaudeRecipeResponse parseClaudeRecipe(String text) throws Exception {
-        String clean = text.strip()
-                .replaceAll("^```json\\s*", "")
-                .replaceAll("^```\\s*", "")
-                .replaceAll("\\s*```$", "");
-        JsonNode node = objectMapper.readTree(clean);
-
-        return ClaudeRecipeResponse.builder()
-                .perfumeName(node.path("perfumeName").asText(""))
-                .concept(node.path("concept").asText(""))
-                .story(node.path("story").asText(""))
-                .concentration(node.path("concentration").asText("EDP"))
-                .recommendedSeason(node.path("recommendedSeason").asText(""))
-                .recommendedOccasion(node.path("recommendedOccasion").asText(""))
-                .aiAnalysis(node.path("aiAnalysis").asText(""))
-                .topNotes(parseRecipeItems(node.path("topNotes")))
-                .middleNotes(parseRecipeItems(node.path("middleNotes")))
-                .baseNotes(parseRecipeItems(node.path("baseNotes")))
-                .build();
-    }
-
-    private List<ClaudeRecipeResponse.RecipeItem> parseRecipeItems(JsonNode arr) {
-        List<ClaudeRecipeResponse.RecipeItem> list = new ArrayList<>();
-        if (arr.isArray()) {
-            arr.forEach(n -> list.add(ClaudeRecipeResponse.RecipeItem.builder()
-                    .ingredientName(n.path("ingredientName").asText(""))
-                    .ratio(n.path("ratio").asDouble(0.0))
-                    .reason(n.path("reason").asText(""))
-                    .build()));
-        }
-        return list;
-    }
-
-    // ── 유틸 ───────────────────────────────────────────────────
 
     private List<String> toStringList(JsonNode arr) {
         List<String> result = new ArrayList<>();
