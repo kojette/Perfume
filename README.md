@@ -27,7 +27,7 @@ App Store: [앱 링크]
 ## 7. 시연 동영상
 
 - <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
-  [안드로이드 시연 영상](https://youtube.com/shorts/f1BtZmJG9rE?si=1eE0ftALBwhNOy3a)
+  [안드로이드 시연 영상](https://youtube.com/shorts/qXiVS1LeMKA?si=TqOds68taxomAbfG)
 
 - <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
   [아이폰 시연 영상] https://youtube.com/shorts/-78CjKY0Bbg?si=USJmO4naypFdUQFr
