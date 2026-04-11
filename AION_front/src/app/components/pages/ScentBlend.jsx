@@ -1,12 +1,13 @@
-
+import ScentPerfumeCard from './ScentPerfumeCard';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   ShoppingBag, Save, ChevronDown, ChevronUp, X,
-  Loader2, RefreshCw, AlertCircle, Trash2, ListOrdered, Search
+  Loader2, RefreshCw, AlertCircle, Trash2, ListOrdered, Search, Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 
 // ── 카테고리별 고정 색상 팔레트 (displayOrder 순 인덱스 순환) ────────────────
 const CATEGORY_COLORS = [
@@ -258,6 +259,8 @@ const ScentBlend = () => {
   const [volume,        setVolume]         = useState(50);
   const [blendName,     setBlendName]      = useState('');
   const [saving,        setSaving]         = useState(false);
+
+  const [cardTargetBlend, setCardTargetBlend] = useState(null);// 향카드
 
   // 내 조합 목록 패널
   const [showMyBlends,  setShowMyBlends]  = useState(false);
@@ -653,6 +656,29 @@ const ScentBlend = () => {
                       <div className="mt-2 text-[9px] text-[#c9a961]/60 tracking-wider group-hover:text-[#c9a961] transition-colors">
                         클릭하여 불러오기 →
                       </div>
+                      <button  //향카드
+                        onClick={e => {
+                          e.stopPropagation();
+                          // blend.items에 ingredientName이 없으면 categories에서 조회하여 주입
+                          const enrichedItems = (blend.items || []).map(item => {
+                            if (item.ingredientName) return item;
+                            // categories에서 이름 찾기
+                            let foundName = `재료 ${item.ingredientId}`;
+                            for (const cat of categories) {
+                              const ing = cat.ingredients.find(
+                                g => String(g.ingredientId) === String(item.ingredientId)
+                              );
+                              if (ing) { foundName = ing.name; break; }
+                            }
+                            return { ...item, ingredientName: foundName };
+                          });
+                          setCardTargetBlend({ ...blend, items: enrichedItems });
+                        }}
+                        className="mt-1 mb-1 flex items-center gap-1.5 text-[9px] tracking-[0.2em] text-[#c9a961]/60 hover:text-[#c9a961] transition-colors group/card"
+                      >
+                        <Sparkles size={9} className="group-hover/card:animate-pulse" />
+                        향 카드 추출하기
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1115,6 +1141,12 @@ const ScentBlend = () => {
           </div>
         )}
       </div>
+      {cardTargetBlend && (
+        <ScentPerfumeCard
+          blend={cardTargetBlend}
+          onClose={() => setCardTargetBlend(null)}
+        />
+      )}
     </div>
   );
 };
