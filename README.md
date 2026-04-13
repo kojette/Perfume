@@ -30,7 +30,7 @@ App Store: [앱 링크]
   [안드로이드 시연 영상](https://youtube.com/shorts/qXiVS1LeMKA?si=TqOds68taxomAbfG)
 
 - <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
-  [아이폰 시연 영상] https://youtube.com/shorts/-78CjKY0Bbg?si=USJmO4naypFdUQFr
+  [아이폰 시연 영상] https://youtu.be/RT6HO9mhY6w
 
 - <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
   [리액트(PC) 시연 영상] https://youtu.be/FsEHbaUkvWA
