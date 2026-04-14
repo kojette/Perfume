@@ -17,6 +17,7 @@ dependencies:
   
   # HTTP & Network
   http: ^1.2.1  #기존의 1.2.0인데 일단 바꿈. 안되면 롤백 시도. 
+  http_parser: ^4.0.2   # multipart 이미지 업로드 (기존 dart 파일에서 사용)
   
   # Supabase
   supabase_flutter: ^2.5.0
