@@ -85,6 +85,110 @@ const uploadToSupabase = async (file) => {
   return supabase.storage.from('images').getPublicUrl(path).data.publicUrl;
 };
 
+// ─── 모바일 전용 하단 정보 패널 ───────────────────────────────────────────────
+function MobileInfoPanel({ perfume, notes, loadingNotes, geminiReview, loadingReview, layout: l, onWish, onBuy, isAddingToWish }) {
+  if (!perfume) return null;
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #1a0c04 0%, #2a1508 60%, #1a0c04 100%)',
+      borderTop: '1px solid rgba(201,169,97,0.3)',
+      padding: '20px 18px 24px',
+    }}>
+      {/* 향수 이름 / 브랜드 */}
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        {perfume.brand_name && (
+          <p style={{ fontSize: '0.62rem', letterSpacing: '0.4em', color: '#c9a961', textTransform: 'uppercase', margin: '0 0 6px' }}>
+            {perfume.brand_name}
+          </p>
+        )}
+        <h2 style={{ fontSize: '1.15rem', color: '#faf6ef', fontWeight: '600', letterSpacing: '0.08em', margin: 0, lineHeight: 1.3 }}>
+          {perfume.name}
+        </h2>
+      </div>
+
+      {/* 구분선 */}
+      <div style={{ height: '0.5px', background: 'rgba(201,169,97,0.25)', margin: '0 0 18px' }} />
+
+      {/* 노트 */}
+      {loadingNotes ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 0' }}>
+          <div style={{ width: '13px', height: '13px', borderRadius: '50%', border: '2px solid rgba(201,169,97,0.3)', borderTopColor: '#c9a961', animation: 'spin 0.8s linear infinite' }} />
+          <span style={{ fontSize: '0.78rem', color: 'rgba(201,169,97,0.6)', fontStyle: 'italic' }}>로딩 중…</span>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+          {[
+            { key: 'top',    label: 'Top',    items: notes.top },
+            { key: 'middle', label: 'Middle', items: notes.middle },
+            { key: 'base',   label: 'Base',   items: notes.base },
+          ].map(({ key, label, items }, idx) => (
+            <div key={key}>
+              {idx > 0 && <div style={{ height: '0.5px', background: 'rgba(201,169,97,0.15)', marginBottom: '12px' }} />}
+              <p style={{ fontSize: '0.7rem', fontWeight: '600', fontStyle: 'italic', color: '#c9a961', letterSpacing: '0.28em', margin: '0 0 5px' }}>
+                {label}
+              </p>
+              <p style={{ fontSize: '0.8rem', color: items.length ? '#faf6ef' : 'rgba(250,246,239,0.3)', fontStyle: items.length ? 'normal' : 'italic', lineHeight: '1.65', margin: 0 }}>
+                {items.length ? items.join('  ·  ') : '—'}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 한줄평 */}
+      {(loadingReview || geminiReview) && (
+        <div style={{ borderTop: '0.5px solid rgba(201,169,97,0.15)', paddingTop: '14px', marginBottom: '20px' }}>
+          {loadingReview ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid rgba(201,169,97,0.3)', borderTopColor: '#c9a961', animation: 'spin 0.8s linear infinite' }} />
+              <span style={{ fontSize: '0.72rem', color: 'rgba(201,169,97,0.5)', fontStyle: 'italic' }}>향수 감상 중…</span>
+            </div>
+          ) : (
+            <p style={{ fontSize: '0.82rem', color: '#faf6ef', fontStyle: 'italic', lineHeight: '1.6', margin: 0, opacity: 0.82 }}>
+              "{geminiReview}"
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 구분선 */}
+      <div style={{ height: '0.5px', background: 'rgba(201,169,97,0.25)', margin: '0 0 18px' }} />
+
+      {/* 버튼 */}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button
+          onClick={() => onWish(perfume)}
+          disabled={isAddingToWish}
+          style={{
+            flex: 1, padding: '12px 0',
+            background: 'transparent',
+            border: '1px solid rgba(201,169,97,0.6)',
+            color: '#c9a961',
+            fontSize: '0.72rem', letterSpacing: '0.2em',
+            cursor: isAddingToWish ? 'wait' : 'pointer',
+          }}
+        >
+          {isAddingToWish ? '담는 중...' : 'WISH'}
+        </button>
+        <button
+          onClick={() => onBuy(perfume)}
+          style={{
+            flex: 1, padding: '12px 0',
+            background: '#c9a961',
+            border: '1px solid #c9a961',
+            color: '#1a0c04',
+            fontSize: '0.72rem', letterSpacing: '0.2em', fontWeight: '600',
+            cursor: 'pointer',
+          }}
+        >
+          BUY NOW
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BgImagePanel({ currentUrl, onUploaded, onClose }) {
   const [mode, setMode] = useState('file');
   const [urlInput, setUrlInput] = useState('');
@@ -240,7 +344,6 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
         ['noteDividerColor',    '구분선 색', 'color'],
       ],
     },
-
     {
       title: '한줄평 (Gemini) — 위치',
       fields: [
@@ -270,7 +373,6 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(5px)', display: 'flex', gap: 0, overflow: 'hidden' }}>
-
       <div style={{ width: '420px', flexShrink: 0, background: '#0e0802', borderRight: '1px solid rgba(201,169,97,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid rgba(201,169,97,0.2)', flexShrink: 0 }}>
           <div>
@@ -322,61 +424,23 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', overflow: 'hidden' }}>
         <p style={{ fontSize: '0.52rem', letterSpacing: '0.45em', color: 'rgba(201,169,97,0.5)', marginBottom: '12px' }}>LIVE PREVIEW</p>
-
         <div style={{ position: 'relative', width: '100%', maxWidth: '860px', aspectRatio: `${bgRatio}/1`, overflow: 'hidden' }}>
           <div style={{
             position: 'absolute', inset: 0,
             background: l.bgContainerColor ?? '#2a1508',
-            ...(bgUrl ? {
-              backgroundImage: `url(${bgUrl})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
-            } : {}),
+            ...(bgUrl ? { backgroundImage: `url(${bgUrl})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' } : {}),
           }} />
-
           <div style={{ position: 'absolute', inset: 0 }}>
-
-            <div style={{
-              position: 'absolute',
-              left: `${l.imgLeft}%`, top: `${l.imgTop}%`,
-              transform: 'translate(-50%, -50%)',
-              width: l.imgMaxWidth, height: l.imgMaxHeight,
-              background: 'rgba(100,60,20,0.12)',
-              border: '2px dashed rgba(201,169,97,0.5)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <div style={{ position: 'absolute', left: `${l.imgLeft}%`, top: `${l.imgTop}%`, transform: 'translate(-50%, -50%)', width: l.imgMaxWidth, height: l.imgMaxHeight, background: 'rgba(100,60,20,0.12)', border: '2px dashed rgba(201,169,97,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ color: 'rgba(201,169,97,0.6)', fontSize: '1.2rem' }}>✦</span>
             </div>
-
-            <div style={{
-              position: 'absolute',
-              left: `${l.nameLeft}%`, top: `${l.nameTop}%`,
-              transform: 'translate(-50%, -50%)',
-              width: l.nameWidth, textAlign: l.nameAlign,
-            }}>
-              <h2 style={{ fontSize: l.nameFontSize, fontWeight: l.nameFontWeight, color: l.nameColor, letterSpacing: l.nameLetterSpacing, margin: '0 0 3px', lineHeight: 1.2 }}>
-                {PREVIEW.name}
-              </h2>
-              <p style={{ fontSize: l.brandFontSize, color: l.brandColor, letterSpacing: l.brandLetterSpacing, textTransform: 'uppercase', margin: 0 }}>
-                {PREVIEW.brand_name}
-              </p>
+            <div style={{ position: 'absolute', left: `${l.nameLeft}%`, top: `${l.nameTop}%`, transform: 'translate(-50%, -50%)', width: l.nameWidth, textAlign: l.nameAlign }}>
+              <h2 style={{ fontSize: l.nameFontSize, fontWeight: l.nameFontWeight, color: l.nameColor, letterSpacing: l.nameLetterSpacing, margin: '0 0 3px', lineHeight: 1.2 }}>{PREVIEW.name}</h2>
+              <p style={{ fontSize: l.brandFontSize, color: l.brandColor, letterSpacing: l.brandLetterSpacing, textTransform: 'uppercase', margin: 0 }}>{PREVIEW.brand_name}</p>
             </div>
-
-            <div style={{
-              position: 'absolute',
-              left: `${l.dividerLeft}%`,
-              top: `${l.dividerTopPct}%`,
-              bottom: `${100 - parseFloat(l.dividerBottomPct)}%`,
-              width: '1px',
-              background: `linear-gradient(to bottom, transparent, ${l.dividerColor} 15%, ${l.dividerColor} 85%, transparent)`,
-            }} />
-
+            <div style={{ position: 'absolute', left: `${l.dividerLeft}%`, top: `${l.dividerTopPct}%`, bottom: `${100 - parseFloat(l.dividerBottomPct)}%`, width: '1px', background: `linear-gradient(to bottom, transparent, ${l.dividerColor} 15%, ${l.dividerColor} 85%, transparent)` }} />
             <div style={{ position: 'absolute', left: `${l.noteLeft}%`, top: `${l.noteTop}%`, width: l.noteWidth }}>
-              {[
-                { key: 'top',    label: 'Top',    items: PREVIEW.notes.top },
-                { key: 'middle', label: 'Middle', items: PREVIEW.notes.middle },
-                { key: 'base',   label: 'Base',   items: PREVIEW.notes.base },
-              ].map(({ key, label, items }, idx) => (
+              {[{ key: 'top', label: 'Top', items: PREVIEW.notes.top }, { key: 'middle', label: 'Middle', items: PREVIEW.notes.middle }, { key: 'base', label: 'Base', items: PREVIEW.notes.base }].map(({ key, label, items }, idx) => (
                 <div key={key} style={{ marginBottom: idx < 2 ? l.noteGap : 0 }}>
                   {idx > 0 && <div style={{ height: '0.5px', background: l.noteDividerColor, marginBottom: l.noteGap }} />}
                   <p style={{ fontSize: l.noteLabelFontSize, fontWeight: '600', fontStyle: 'italic', color: l.noteLabelColor, letterSpacing: l.noteLabelLetterSpacing, margin: '0 0 3px' }}>{label}</p>
@@ -384,31 +448,23 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
                 </div>
               ))}
             </div>
-
             <div style={{ position: 'absolute', left: `${l.reviewLeft}%`, top: `${l.reviewTop}%`, width: l.reviewWidth }}>
               <div style={{ paddingTop: '10px', borderTop: `0.5px solid ${l.noteDividerColor}` }}>
-                <p style={{ fontSize: l.reviewFontSize, color: l.reviewColor, fontStyle: l.reviewFontStyle, lineHeight: l.reviewLineHeight, margin: 0, opacity: parseFloat(l.reviewOpacity) }}>
-                  "빛과 어둠 사이 피어난 향기"
-                </p>
+                <p style={{ fontSize: l.reviewFontSize, color: l.reviewColor, fontStyle: l.reviewFontStyle, lineHeight: l.reviewLineHeight, margin: 0, opacity: parseFloat(l.reviewOpacity) }}>"빛과 어둠 사이 피어난 향기"</p>
               </div>
             </div>
-
             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.25 }}>
               <rect x="13%" y="20%" width="74%" height="60%" fill="none" stroke="#c9a961" strokeWidth="0.8" strokeDasharray="4,4" />
               <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#c9a961" strokeWidth="0.5" strokeDasharray="2,6" />
               <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#c9a961" strokeWidth="0.5" strokeDasharray="2,6" />
             </svg>
           </div>
-
           <div style={{ position: 'absolute', bottom: '6px', left: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '16px', height: '1px', background: '#c9a961', opacity: 0.4, borderTop: '1px dashed #c9a961' }} />
             <span style={{ fontSize: '0.48rem', color: 'rgba(201,169,97,0.4)', letterSpacing: '0.2em' }}>양피지 글쓰기 영역 가이드</span>
           </div>
         </div>
-
-        <p style={{ fontSize: '0.52rem', color: 'rgba(250,246,239,0.2)', letterSpacing: '0.25em', marginTop: '10px' }}>
-          좌측 수치 변경 시 실시간 반영됩니다
-        </p>
+        <p style={{ fontSize: '0.52rem', color: 'rgba(250,246,239,0.2)', letterSpacing: '0.25em', marginTop: '10px' }}>좌측 수치 변경 시 실시간 반영됩니다</p>
       </div>
     </div>
   );
@@ -496,12 +552,24 @@ function SpineBook({ perfume, isSelected, onClick, globalIdx }) {
   );
 }
 
+// ─── useIsMobile hook ─────────────────────────────────────────────────────────
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= breakpoint);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= breakpoint);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function Collections() {
   const isAdmin = checkIsAdmin();
   const location = useLocation();
   const autoSelectDone = useRef(false);
   const navigate = useNavigate();
   const shelfRef = useRef(null);
+  const isMobile = useIsMobile();
 
   const [showWishPopup, setShowWishPopup] = useState(false);
   const [isAddingToWish, setIsAddingToWish] = useState(false);
@@ -521,72 +589,38 @@ export default function Collections() {
 
   const handleAddToWishlist = async (perfume) => {
     const token = sessionStorage.getItem('accessToken');
-    if (!token) {
-      alert('로그인이 필요한 서비스입니다.');
-      navigate('/login');
-      return;
-    }
-
+    if (!token) { alert('로그인이 필요한 서비스입니다.'); navigate('/login'); return; }
     setIsAddingToWish(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/wishlist/toggle`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          perfumeId: perfume.perfume_id 
-        })
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ perfumeId: perfume.perfume_id }),
       });
-
-      if (response.ok) {
-        setShowWishPopup(true);
-      } else {
-        const errData = await response.json();
-        alert(errData.message || '위시리스트 담기에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('위시리스트 에러:', error);
-      alert('서버와 통신 중 오류가 발생했습니다.');
-    } finally {
-      setIsAddingToWish(false);
-    }
+      if (response.ok) { setShowWishPopup(true); }
+      else { const errData = await response.json(); alert(errData.message || '위시리스트 담기에 실패했습니다.'); }
+    } catch (error) { console.error('위시리스트 에러:', error); alert('서버와 통신 중 오류가 발생했습니다.'); }
+    finally { setIsAddingToWish(false); }
   };
 
   const handleBuyNow = async (perfume) => {
     const token = sessionStorage.getItem('accessToken');
-    if (!token) {
-      alert('로그인이 필요한 서비스입니다.');
-      navigate('/login');
-      return;
-    }
-
+    if (!token) { alert('로그인이 필요한 서비스입니다.'); navigate('/login'); return; }
     try {
       const response = await fetch(`${API_BASE_URL}/api/cart/add`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ perfumeId: perfume.perfume_id, quantity: 1 })
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ perfumeId: perfume.perfume_id, quantity: 1 }),
       });
-
-      if (response.ok) {
-        navigate('/cart');
-      } else {
-        alert('구매 처리 중 문제가 발생했습니다.');
-      }
-    } catch (error) {
-      console.error('구매 에러:', error);
-    }
+      if (response.ok) { navigate('/cart'); }
+      else { alert('구매 처리 중 문제가 발생했습니다.'); }
+    } catch (error) { console.error('구매 에러:', error); }
   };
 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('Signature_config').select('value').eq('key', 'collections_layout_v6').maybeSingle();
+        const { data } = await supabase.from('Signature_config').select('value').eq('key', 'collections_layout_v6').maybeSingle();
         if (data?.value) {
           const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
           setLayout({ ...DEFAULT_LAYOUT, ...parsed });
@@ -598,8 +632,7 @@ export default function Collections() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from('Signature_config').select('value').eq('key', 'collections_bg_image').maybeSingle();
+        const { data } = await supabase.from('Signature_config').select('value').eq('key', 'collections_bg_image').maybeSingle();
         if (data?.value) setBgUrl(typeof data.value === 'string' ? data.value : null);
       } catch {}
     })();
@@ -610,7 +643,7 @@ export default function Collections() {
     try {
       const { data: ex } = await supabase.from('Signature_config').select('id').eq('key', 'collections_bg_image').maybeSingle();
       if (ex) await supabase.from('Signature_config').update({ value: url }).eq('key', 'collections_bg_image');
-      else await supabase.from('Signature_config').insert({ key: 'collections_bg_image', value: url });
+      else     await supabase.from('Signature_config').insert({ key: 'collections_bg_image', value: url });
     } catch (e) { console.error('배경 저장 실패:', e); }
   };
 
@@ -628,52 +661,37 @@ export default function Collections() {
     (async () => {
       setLoading(true);
       try {
-        const { data: perfumes } = await supabase
-          .from('Perfumes')
-          .select('perfume_id, name, name_en, description, price, sale_price, sale_rate, brand_id')
-          .eq('is_active', true).order('name');
+        const { data: perfumes } = await supabase.from('Perfumes').select('perfume_id, name, name_en, description, price, sale_price, sale_rate, brand_id').eq('is_active', true).order('name');
         if (!perfumes?.length) { setAllPerfumes([]); setLoading(false); return; }
-
         const brandIds = [...new Set(perfumes.map(p => p.brand_id).filter(Boolean))];
         const { data: brands } = await supabase.from('Brands').select('brand_id, brand_name').in('brand_id', brandIds);
         const brandMap = Object.fromEntries((brands || []).map(b => [b.brand_id, b.brand_name]));
-
         const pIds = perfumes.map(p => p.perfume_id);
         const { data: imgs } = await supabase.from('Perfume_Images').select('perfume_id, image_url').in('perfume_id', pIds).eq('is_thumbnail', true);
         const imgMap = Object.fromEntries((imgs || []).map(i => [i.perfume_id, i.image_url]));
-
         setAllPerfumes(perfumes.map(p => ({ ...p, brand_name: brandMap[p.brand_id] || '', thumbnail: imgMap[p.perfume_id] || null })));
       } catch (e) { console.error('향수 로드 실패:', e); }
       finally { setLoading(false); }
     })();
   }, []);
 
-  const notesCache   = useRef({});      
-
-  const isHandling   = useRef(false);  
+  const notesCache = useRef({});
+  const isHandling = useRef(false);
 
   const displayDescription = useCallback((perfume) => {
-
     const description = perfume.description || "등록된 향수 설명이 없습니다.";
     setGeminiReview(description);
   }, []);
 
   const loadNotes = useCallback(async (perfumeId) => {
-    if (notesCache.current[perfumeId]) {
-      setNotes(notesCache.current[perfumeId]);
-      return notesCache.current[perfumeId];
-    }
+    if (notesCache.current[perfumeId]) { setNotes(notesCache.current[perfumeId]); return notesCache.current[perfumeId]; }
     setLoadingNotes(true);
     setNotes({ top: [], middle: [], base: [] });
     try {
       const res = await fetch(`${API_BASE_URL}/api/collections/perfumes/${perfumeId}/notes`);
       if (!res.ok) throw new Error(`노트 API ${res.status}`);
       const json = await res.json();
-      const grouped = {
-        top:    json.data?.top    || [],
-        middle: json.data?.middle || [],
-        base:   json.data?.base   || [],
-      };
+      const grouped = { top: json.data?.top || [], middle: json.data?.middle || [], base: json.data?.base || [] };
       notesCache.current[perfumeId] = grouped;
       setNotes(grouped);
       return grouped;
@@ -686,15 +704,13 @@ export default function Collections() {
     if (isHandling.current) return;
     isHandling.current = true;
     setTimeout(() => { isHandling.current = false; }, 300);
-
     if (selectedPerfume?.perfume_id === p.perfume_id) {
       setSelectedPerfume(null);
       setNotes({ top: [], middle: [], base: [] });
       setGeminiReview('');
     } else {
       setSelectedPerfume(p);
-
-      displayDescription(p); 
+      displayDescription(p);
       loadNotes(p.perfume_id);
     }
   }, [selectedPerfume, loadNotes, displayDescription]);
@@ -704,20 +720,15 @@ export default function Collections() {
     const params = new URLSearchParams(window.location.search);
     const queryId = params.get('perfumeId') ? parseInt(params.get('perfumeId')) : null;
     const targetId = stateId || queryId;
-
     if (targetId && allPerfumes.length > 0 && !autoSelectDone.current) {
       const targetPerfume = allPerfumes.find(p => p.perfume_id === targetId);
       if (targetPerfume) {
         autoSelectDone.current = true;
         setSelectedPerfume(targetPerfume);
-
         displayDescription(targetPerfume);
         loadNotes(targetPerfume.perfume_id);
-
         window.history.replaceState({}, document.title);
-        setTimeout(() => {
-          shelfRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 500);
+        setTimeout(() => { shelfRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 500);
       }
     }
   }, [location.state, allPerfumes, loadNotes, displayDescription]);
@@ -726,38 +737,66 @@ export default function Collections() {
     const p = allPerfumes[idx];
     if (!p) return;
     setSelectedPerfume(p);
-
-    displayDescription(p); 
+    displayDescription(p);
     loadNotes(p.perfume_id);
   };
 
-  const selectedIdx = selectedPerfume
-    ? allPerfumes.findIndex(p => p.perfume_id === selectedPerfume.perfume_id)
-    : -1;
-
+  const selectedIdx = selectedPerfume ? allPerfumes.findIndex(p => p.perfume_id === selectedPerfume.perfume_id) : -1;
   const canPrev = selectedIdx > 0;
-
   const canNext = selectedIdx >= 0 && selectedIdx < allPerfumes.length - 1;
-
-    const shelves = [];
-
+  const shelves = [];
   for (let i = 0; i < allPerfumes.length; i += SHELF_SIZE) shelves.push(allPerfumes.slice(i, i + SHELF_SIZE));
   const l = layout;
 
+  // ─── 모바일: 배경 이미지를 세로 비율로 자름 (책 펼친 부분만 보이도록)
+  // 데스크탑은 그대로 aspectRatio 유지
+  const overlayStyle = isMobile
+    ? {
+        position: 'relative',
+        width: '100%',
+        // 모바일에서는 배경 이미지를 정사각형에 가까운 비율로 표시
+        // 배경 이미지의 왼쪽 절반(향수 이미지+이름)만 보이도록 높이 제한
+        aspectRatio: '1/1',
+        overflow: 'hidden',
+        containerType: 'inline-size',
+      }
+    : {
+        position: 'relative',
+        width: '100%',
+        aspectRatio: `${bgRatio}/1`,
+        overflow: 'hidden',
+        containerType: 'inline-size',
+      };
+
+  // 모바일에서 배경 이미지는 왼쪽(향수 이미지 영역)만 보이도록
+  const bgImageStyle = isMobile
+    ? {
+        position: 'absolute', inset: 0, zIndex: 1,
+        backgroundColor: l.bgContainerColor ?? '#2a1508',
+        backgroundImage: bgUrl ? `url(${bgUrl})` : undefined,
+        // 전체 이미지를 세로 꽉 채우고 왼쪽 정렬 → 책의 왼쪽 페이지(향수 이미지)만 노출
+        backgroundSize: 'auto 100%',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'left center',
+      }
+    : {
+        position: 'absolute', inset: 0, zIndex: 1,
+        backgroundColor: l.bgContainerColor ?? '#2a1508',
+        backgroundImage: bgUrl ? `url(${bgUrl})` : undefined,
+        backgroundSize: '100% 100%',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+      };
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f5ede0', fontFamily: "'Georgia', 'Times New Roman', serif" , marginTop: '-2px'}}>
+    <div style={{ minHeight: '100vh', background: '#f5ede0', fontFamily: "'Georgia', 'Times New Roman', serif", marginTop: '-2px' }}>
 
-      <div style={{ position: 'relative', width: '100%', aspectRatio: `${bgRatio}/1`, overflow: 'hidden', containerType: 'inline-size' }}>
+      {/* ── 상단 오버레이 영역 ── */}
+      <div style={overlayStyle}>
 
+        {/* 배경 */}
         {bgUrl ? (
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 1,
-            backgroundColor: l.bgContainerColor ?? '#2a1508',
-            backgroundImage: `url(${bgUrl})`,
-            backgroundSize: '100% 100%',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-          }}>
+          <div style={bgImageStyle}>
             <img src={bgUrl} alt="" onLoad={e => {
               const { naturalWidth, naturalHeight } = e.currentTarget;
               if (naturalWidth && naturalHeight) setBgRatio(naturalWidth / naturalHeight);
@@ -776,6 +815,7 @@ export default function Collections() {
           </div>
         )}
 
+        {/* 향수 미선택 안내 */}
         {!selectedPerfume && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
@@ -783,49 +823,24 @@ export default function Collections() {
               <span style={{ color: 'rgba(100,60,20,0.45)', fontSize: '11px' }}>✦</span>
               <div style={{ height: '1px', width: '44px', background: 'rgba(100,60,20,0.3)' }} />
             </div>
-            <p style={{ color: 'rgba(100,60,20,0.55)', fontSize: '1.25cqw', letterSpacing: '0.5em', fontStyle: 'italic', margin: 0 }}>
+            <p style={{ color: 'rgba(100,60,20,0.55)', fontSize: isMobile ? '3cqw' : '1.25cqw', letterSpacing: '0.5em', fontStyle: 'italic', margin: 0 }}>
               아래 향수를 선택하세요
             </p>
           </div>
         )}
 
-        {selectedPerfume && (
+        {/* 데스크탑 전용 오버레이 콘텐츠 (노트/이름/버튼) */}
+        {selectedPerfume && !isMobile && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
-
             <PerfumeImage perfume={selectedPerfume} layout={l} />
-
-            <div style={{
-              position: 'absolute',
-              left: `${l.nameLeft}%`, top: `${l.nameTop}%`,
-              transform: 'translate(-50%, -50%)',
-              width: l.nameWidth, textAlign: l.nameAlign,
-              pointerEvents: 'auto',
-            }}>
-              <h2 style={{ fontSize: l.nameFontSize, fontWeight: l.nameFontWeight, color: l.nameColor, letterSpacing: l.nameLetterSpacing, margin: '0 0 4px', lineHeight: 1.2 }}>
-                {selectedPerfume.name}
-              </h2>
+            <div style={{ position: 'absolute', left: `${l.nameLeft}%`, top: `${l.nameTop}%`, transform: 'translate(-50%, -50%)', width: l.nameWidth, textAlign: l.nameAlign, pointerEvents: 'auto' }}>
+              <h2 style={{ fontSize: l.nameFontSize, fontWeight: l.nameFontWeight, color: l.nameColor, letterSpacing: l.nameLetterSpacing, margin: '0 0 4px', lineHeight: 1.2 }}>{selectedPerfume.name}</h2>
               {selectedPerfume.brand_name && (
-                <p style={{ fontSize: l.brandFontSize, color: l.brandColor, letterSpacing: l.brandLetterSpacing, textTransform: 'uppercase', margin: 0 }}>
-                  {selectedPerfume.brand_name}
-                </p>
+                <p style={{ fontSize: l.brandFontSize, color: l.brandColor, letterSpacing: l.brandLetterSpacing, textTransform: 'uppercase', margin: 0 }}>{selectedPerfume.brand_name}</p>
               )}
             </div>
-
-            <div style={{
-              position: 'absolute',
-              left: `${l.dividerLeft}%`,
-              top: `${l.dividerTopPct}%`,
-              bottom: `${100 - parseFloat(l.dividerBottomPct)}%`,
-              width: '1px',
-              background: `linear-gradient(to bottom, transparent, ${l.dividerColor} 15%, ${l.dividerColor} 85%, transparent)`,
-            }} />
-
-            <div style={{
-              position: 'absolute',
-              left: `${l.noteLeft}%`, top: `${l.noteTop}%`,
-              width: l.noteWidth,
-              pointerEvents: 'auto',
-            }}>
+            <div style={{ position: 'absolute', left: `${l.dividerLeft}%`, top: `${l.dividerTopPct}%`, bottom: `${100 - parseFloat(l.dividerBottomPct)}%`, width: '1px', background: `linear-gradient(to bottom, transparent, ${l.dividerColor} 15%, ${l.dividerColor} 85%, transparent)` }} />
+            <div style={{ position: 'absolute', left: `${l.noteLeft}%`, top: `${l.noteTop}%`, width: l.noteWidth, pointerEvents: 'auto' }}>
               {loadingNotes ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '11px', height: '11px', borderRadius: '50%', border: '2px solid rgba(100,60,20,0.3)', borderTopColor: '#7a4a1e', animation: 'spin 0.8s linear infinite' }} />
@@ -833,16 +848,10 @@ export default function Collections() {
                 </div>
               ) : (
                 <div>
-                  {[
-                    { key: 'top',    label: 'Top',    items: notes.top },
-                    { key: 'middle', label: 'Middle', items: notes.middle },
-                    { key: 'base',   label: 'Base',   items: notes.base },
-                  ].map(({ key, label, items }, idx) => (
+                  {[{ key: 'top', label: 'Top', items: notes.top }, { key: 'middle', label: 'Middle', items: notes.middle }, { key: 'base', label: 'Base', items: notes.base }].map(({ key, label, items }, idx) => (
                     <div key={key} style={{ marginBottom: idx < 2 ? l.noteGap : 0 }}>
                       {idx > 0 && <div style={{ height: '0.5px', background: l.noteDividerColor, marginBottom: l.noteGap }} />}
-                      <p style={{ fontSize: l.noteLabelFontSize, fontWeight: '600', fontStyle: 'italic', color: l.noteLabelColor, letterSpacing: l.noteLabelLetterSpacing, margin: '0 0 4px' }}>
-                        {label}
-                      </p>
+                      <p style={{ fontSize: l.noteLabelFontSize, fontWeight: '600', fontStyle: 'italic', color: l.noteLabelColor, letterSpacing: l.noteLabelLetterSpacing, margin: '0 0 4px' }}>{label}</p>
                       <p style={{ fontSize: l.noteValueFontSize, color: items.length ? l.noteValueColor : 'rgba(100,60,20,0.3)', fontStyle: items.length ? 'normal' : 'italic', lineHeight: l.noteValueLineHeight, letterSpacing: '0.02em', margin: 0 }}>
                         {items.length ? items.join('  ·  ') : '—'}
                       </p>
@@ -851,15 +860,8 @@ export default function Collections() {
                 </div>
               )}
             </div>
-
             {(loadingReview || geminiReview) && (
-              <div style={{
-                position: 'absolute',
-                left: `${l.reviewLeft}%`, top: `${l.reviewTop}%`,
-                width: l.reviewWidth,
-                pointerEvents: 'auto',
-                zIndex: 3,
-              }}>
+              <div style={{ position: 'absolute', left: `${l.reviewLeft}%`, top: `${l.reviewTop}%`, width: l.reviewWidth, pointerEvents: 'auto', zIndex: 3 }}>
                 <div style={{ paddingTop: '10px', borderTop: `0.5px solid ${l.noteDividerColor}` }}>
                   {loadingReview ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -867,140 +869,107 @@ export default function Collections() {
                       <span style={{ fontSize: '0.85cqw', color: 'rgba(100,60,20,0.4)', fontStyle: 'italic' }}>향수 감상 중…</span>
                     </div>
                   ) : (
-                    <p style={{ fontSize: l.reviewFontSize, color: l.reviewColor, fontStyle: l.reviewFontStyle, lineHeight: l.reviewLineHeight, margin: 0, opacity: parseFloat(l.reviewOpacity) }}>
-                      "{geminiReview}"
-                    </p>
+                    <p style={{ fontSize: l.reviewFontSize, color: l.reviewColor, fontStyle: l.reviewFontStyle, lineHeight: l.reviewLineHeight, margin: 0, opacity: parseFloat(l.reviewOpacity) }}>"{geminiReview}"</p>
                   )}
                 </div>
               </div>
             )}
-
-            <div style={{
-              position: 'absolute',
-              right: '12%',
-              bottom: '15%',
-              display: 'flex',
-              gap: '10px',
-              flexWrap: 'wrap',
-              justifyContent: 'flex-end',
-              pointerEvents: 'auto',
-              zIndex: 5,
-              maxWidth: '240px',
-            }}>
-              <button 
-                onClick={() => handleAddToWishlist(selectedPerfume)}
-                disabled={isAddingToWish}
-                style={{ 
-                  padding: '8px 18px', 
-                  background: 'rgba(255, 255, 255, 0.1)', 
-                  border: '1px solid rgba(201,169,97,0.6)', 
-                  backdropFilter: 'blur(4px)',
-                  color: '#c9a961', 
-                  fontSize: '0.95cqw', 
-                  letterSpacing: '0.15em', 
-                  whiteSpace: 'nowrap',
-                  cursor: isAddingToWish ? 'wait' : 'pointer', 
-                  transition: 'all 0.3s' 
-                }}
+            {/* 데스크탑 버튼 */}
+            <div style={{ position: 'absolute', right: '12%', bottom: '15%', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', pointerEvents: 'auto', zIndex: 5, maxWidth: '240px' }}>
+              <button onClick={() => handleAddToWishlist(selectedPerfume)} disabled={isAddingToWish}
+                style={{ padding: '8px 18px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(201,169,97,0.6)', backdropFilter: 'blur(4px)', color: '#c9a961', fontSize: '0.95cqw', letterSpacing: '0.15em', whiteSpace: 'nowrap', cursor: isAddingToWish ? 'wait' : 'pointer', transition: 'all 0.3s' }}
                 onMouseOver={e => { e.currentTarget.style.background = 'rgba(201,169,97,0.2)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.color = '#c9a961'; }}
-              >
+                onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#c9a961'; }}>
                 {isAddingToWish ? '담는 중...' : 'WISH'}
               </button>
-
-              <button 
-                onClick={() => handleBuyNow(selectedPerfume)}
-                style={{ 
-                  padding: '8px 18px', 
-                  background: '#c9a961', 
-                  border: '1px solid #c9a961', 
-                  color: '#1a0c04', 
-                  fontSize: '0.95cqw', 
-                  letterSpacing: '0.15em', 
-                  fontWeight: '600',
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer', 
-                  transition: 'all 0.3s' 
-                }}
+              <button onClick={() => handleBuyNow(selectedPerfume)}
+                style={{ padding: '8px 18px', background: '#c9a961', border: '1px solid #c9a961', color: '#1a0c04', fontSize: '0.95cqw', letterSpacing: '0.15em', fontWeight: '600', whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.3s' }}
                 onMouseOver={e => { e.currentTarget.style.background = '#e0c070'; }}
-                onMouseOut={e => { e.currentTarget.style.background = '#c9a961'; }}
-              >
+                onMouseOut={e => { e.currentTarget.style.background = '#c9a961'; }}>
                 BUY NOW
               </button>
             </div>
-
           </div>
         )}
 
+        {/* 모바일: 배경 이미지 위에는 향수 이미지만 표시 */}
+        {selectedPerfume && isMobile && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
+            {/* 향수 이미지는 중앙에 크게 */}
+            <div style={{
+              position: 'absolute',
+              left: '50%', top: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '55%', height: '70%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {selectedPerfume.thumbnail ? (
+                <img src={selectedPerfume.thumbnail} alt={selectedPerfume.name}
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }} />
+              ) : (
+                <span style={{ color: 'rgba(100,60,20,0.3)', fontSize: '3rem' }}>✦</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 어드민 버튼 */}
         {isAdmin && (
           <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 30, display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-            <button
-              onClick={() => setShowBgPanel(p => !p)}
+            <button onClick={() => setShowBgPanel(p => !p)}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: showBgPanel ? '#c9a961' : 'rgba(0,0,0,0.72)', border: '1px solid rgba(201,169,97,0.5)', color: showBgPanel ? '#0e0802' : '#c9a961', fontSize: '0.58rem', letterSpacing: '0.28em', cursor: 'pointer' }}
               onMouseOver={e => { e.currentTarget.style.background = '#c9a961'; e.currentTarget.style.color = '#0e0802'; }}
-              onMouseOut={e => { if (!showBgPanel) { e.currentTarget.style.background = 'rgba(0,0,0,0.72)'; e.currentTarget.style.color = '#c9a961'; } }}
-            >
+              onMouseOut={e => { if (!showBgPanel) { e.currentTarget.style.background = 'rgba(0,0,0,0.72)'; e.currentTarget.style.color = '#c9a961'; } }}>
               <Upload size={10} /> 이미지 교체
             </button>
-            <button
-              onClick={() => setShowLayoutEditor(true)}
+            <button onClick={() => setShowLayoutEditor(true)}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'rgba(0,0,0,0.72)', border: '1px solid rgba(201,169,97,0.5)', color: '#c9a961', fontSize: '0.58rem', letterSpacing: '0.28em', cursor: 'pointer' }}
               onMouseOver={e => { e.currentTarget.style.background = '#c9a961'; e.currentTarget.style.color = '#0e0802'; }}
-              onMouseOut={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.72)'; e.currentTarget.style.color = '#c9a961'; }}
-            >
+              onMouseOut={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.72)'; e.currentTarget.style.color = '#c9a961'; }}>
               <Settings size={10} /> 레이아웃 수정
             </button>
-            {showBgPanel && (
-              <BgImagePanel currentUrl={bgUrl} onUploaded={saveBgUrl} onClose={() => setShowBgPanel(false)} />
-            )}
+            {showBgPanel && <BgImagePanel currentUrl={bgUrl} onUploaded={saveBgUrl} onClose={() => setShowBgPanel(false)} />}
           </div>
         )}
 
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '55px', background: 'linear-gradient(to bottom, transparent, rgba(10,5,0,0.72))' }} />
 
+        {/* 이전/다음 화살표 */}
         {selectedPerfume && (
           <>
-            <button
-              onClick={() => moveTo(selectedIdx - 1)} disabled={!canPrev}
-              style={{
-                position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 20,
-                width: '40px', height: '40px',
-                background: canPrev ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.2)',
-                border: `1px solid ${canPrev ? 'rgba(201,169,97,0.6)' : 'rgba(201,169,97,0.15)'}`,
-                color: canPrev ? '#c9a961' : 'rgba(201,169,97,0.2)',
-                cursor: canPrev ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.18s', fontSize: '18px', lineHeight: 1,
-              }}
+            <button onClick={() => moveTo(selectedIdx - 1)} disabled={!canPrev}
+              style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 20, width: '40px', height: '40px', background: canPrev ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.2)', border: `1px solid ${canPrev ? 'rgba(201,169,97,0.6)' : 'rgba(201,169,97,0.15)'}`, color: canPrev ? '#c9a961' : 'rgba(201,169,97,0.2)', cursor: canPrev ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s', fontSize: '18px', lineHeight: 1 }}
               onMouseOver={e => { if (canPrev) e.currentTarget.style.background = 'rgba(201,169,97,0.25)'; }}
-              onMouseOut={e => { if (canPrev) e.currentTarget.style.background = 'rgba(0,0,0,0.55)'; }}
-            >‹</button>
-
-            <button
-              onClick={() => moveTo(selectedIdx + 1)} disabled={!canNext}
-              style={{
-                position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 20,
-                width: '40px', height: '40px',
-                background: canNext ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.2)',
-                border: `1px solid ${canNext ? 'rgba(201,169,97,0.6)' : 'rgba(201,169,97,0.15)'}`,
-                color: canNext ? '#c9a961' : 'rgba(201,169,97,0.2)',
-                cursor: canNext ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.18s', fontSize: '18px', lineHeight: 1,
-              }}
+              onMouseOut={e => { if (canPrev) e.currentTarget.style.background = 'rgba(0,0,0,0.55)'; }}>‹</button>
+            <button onClick={() => moveTo(selectedIdx + 1)} disabled={!canNext}
+              style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 20, width: '40px', height: '40px', background: canNext ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.2)', border: `1px solid ${canNext ? 'rgba(201,169,97,0.6)' : 'rgba(201,169,97,0.15)'}`, color: canNext ? '#c9a961' : 'rgba(201,169,97,0.2)', cursor: canNext ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s', fontSize: '18px', lineHeight: 1 }}
               onMouseOver={e => { if (canNext) e.currentTarget.style.background = 'rgba(201,169,97,0.25)'; }}
-              onMouseOut={e => { if (canNext) e.currentTarget.style.background = 'rgba(0,0,0,0.55)'; }}
-            >›</button>
-
-            <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, fontSize: '0.85cqw', letterSpacing: '0.3em', color: 'rgba(201,169,97,0.6)' }}>
+              onMouseOut={e => { if (canNext) e.currentTarget.style.background = 'rgba(0,0,0,0.55)'; }}>›</button>
+            <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, fontSize: isMobile ? '3cqw' : '0.85cqw', letterSpacing: '0.3em', color: 'rgba(201,169,97,0.6)' }}>
               {selectedIdx + 1} / {allPerfumes.length}
             </div>
           </>
         )}
       </div>
 
+      {/* ── 모바일 전용: 향수 정보 패널 (배경 이미지 바로 아래) ── */}
+      {isMobile && selectedPerfume && (
+        <MobileInfoPanel
+          perfume={selectedPerfume}
+          notes={notes}
+          loadingNotes={loadingNotes}
+          geminiReview={geminiReview}
+          loadingReview={loadingReview}
+          layout={l}
+          onWish={handleAddToWishlist}
+          onBuy={handleBuyNow}
+          isAddingToWish={isAddingToWish}
+        />
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
+      {/* ── 책장 섹션 ── */}
       <div ref={shelfRef} style={{ background: 'linear-gradient(to bottom, #1a0c04 0%, #f5ede0 7%)', paddingBottom: '80px' }}>
         <div style={{ textAlign: 'center', padding: '50px 24px 22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', marginBottom: '14px' }}>
@@ -1009,9 +978,7 @@ export default function Collections() {
             <div style={{ height: '1px', width: '54px', background: 'linear-gradient(to left, transparent, #8b6030)' }} />
           </div>
           <h2 style={{ fontSize: '1.45rem', letterSpacing: '0.42em', color: '#3d2010', fontWeight: '400', margin: '0 0 6px' }}>FRAGRANCE LIBRARY</h2>
-          <p style={{ fontSize: '0.75rem', color: '#8b6030', fontStyle: 'italic', letterSpacing: '0.06em', margin: 0 }}>
-            {allPerfumes.length}개의 향수
-          </p>
+          <p style={{ fontSize: '0.75rem', color: '#8b6030', fontStyle: 'italic', letterSpacing: '0.06em', margin: 0 }}>{allPerfumes.length}개의 향수</p>
         </div>
 
         {loading && (
@@ -1067,40 +1034,26 @@ export default function Collections() {
       </div>
 
       {showLayoutEditor && (
-        <LayoutEditor
-          layout={layout}
-          bgUrl={bgUrl}
-          bgRatio={bgRatio}
-          onSave={handleSaveLayout}
-          onClose={() => setShowLayoutEditor(false)}
-        />
+        <LayoutEditor layout={layout} bgUrl={bgUrl} bgRatio={bgRatio} onSave={handleSaveLayout} onClose={() => setShowLayoutEditor(false)} />
       )}
 
       {showWishPopup && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>
           <div style={{ background: '#1a0c04', padding: '40px', border: '1px solid rgba(201,169,97,0.4)', textAlign: 'center', maxWidth: '400px', width: '90%', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
             <div style={{ color: '#c9a961', fontSize: '2.5rem', marginBottom: '16px', fontWeight: '300' }}>✧</div>
-            <h3 style={{ fontSize: '1.2rem', color: '#faf6ef', marginBottom: '12px', letterSpacing: '0.15em', fontWeight: '400' }}>
-              위시리스트에 담겼습니다.
-            </h3>
-            <p style={{ fontSize: '0.75rem', color: 'rgba(250,246,239,0.5)', marginBottom: '36px', letterSpacing: '0.05em' }}>
-              선택하신 신성한 향기가 위시리스트에 추가되었습니다.
-            </p>
+            <h3 style={{ fontSize: '1.2rem', color: '#faf6ef', marginBottom: '12px', letterSpacing: '0.15em', fontWeight: '400' }}>위시리스트에 담겼습니다.</h3>
+            <p style={{ fontSize: '0.75rem', color: 'rgba(250,246,239,0.5)', marginBottom: '36px', letterSpacing: '0.05em' }}>선택하신 신성한 향기가 위시리스트에 추가되었습니다.</p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button 
-                onClick={() => setShowWishPopup(false)}
+              <button onClick={() => setShowWishPopup(false)}
                 style={{ flex: 1, padding: '12px 0', background: 'transparent', border: '1px solid rgba(201,169,97,0.4)', color: 'rgba(201,169,97,0.8)', fontSize: '0.7rem', letterSpacing: '0.15em', cursor: 'pointer', transition: 'all 0.2s' }}
                 onMouseOver={e => { e.currentTarget.style.color = '#c9a961'; e.currentTarget.style.borderColor = '#c9a961'; }}
-                onMouseOut={e => { e.currentTarget.style.color = 'rgba(201,169,97,0.8)'; e.currentTarget.style.borderColor = 'rgba(201,169,97,0.4)'; }}
-              >
+                onMouseOut={e => { e.currentTarget.style.color = 'rgba(201,169,97,0.8)'; e.currentTarget.style.borderColor = 'rgba(201,169,97,0.4)'; }}>
                 CONTINUE
               </button>
-              <button 
-                onClick={() => navigate('/wishlist')}
+              <button onClick={() => navigate('/wishlist')}
                 style={{ flex: 1, padding: '12px 0', background: '#c9a961', border: '1px solid #c9a961', color: '#1a0c04', fontSize: '0.7rem', letterSpacing: '0.15em', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.background = '#e0c070'}
-                onMouseOut={e => e.currentTarget.style.background = '#c9a961'}
-              >
+                onMouseOut={e => e.currentTarget.style.background = '#c9a961'}>
                 VIEW WISH
               </button>
             </div>
