@@ -62,12 +62,15 @@ public class AiPerfumeService {
                   "mood": "이미지의 전반적인 분위기 (한 문장)",
                   "analysisText": "이미지 향수 분석 설명 (2-3문장, 한국어)",
                   "keywords": ["키워드1", "키워드2", "키워드3"],
-                  "topNotes": ["탑노트1", "탑노트2"],
-                  "middleNotes": ["미들노트1", "미들노트2"],
-                  "baseNotes": ["베이스노트1", "베이스노트2"]
+                  "topNotes": [{"name": "탑노트1", "ratio": 0.08}, {"name": "탑노트2", "ratio": 0.07}],
+                  "middleNotes": [{"name": "미들노트1", "ratio": 0.35}, {"name": "미들노트2", "ratio": 0.25}],
+                  "baseNotes": [{"name": "베이스노트1", "ratio": 0.15}, {"name": "베이스노트2", "ratio": 0.10}]
                 }
                 
-                노트는 반드시 실제 향수 재료명(예: 베르가못, 장미, 샌달우드, 머스크 등)으로 답하세요.
+                노트 작성 규칙:
+                - name은 반드시 실제 향수 재료명(예: 베르가못, 장미, 샌달우드, 머스크 등)으로 답하세요.
+                - ratio는 해당 재료의 전체 조향에서 차지하는 비율(0.0~1.0)이며, 모든 노트의 ratio 합계가 반드시 1.0이 되어야 합니다.
+                - 탑노트 합계 약 0.15, 미들노트 합계 약 0.60, 베이스노트 합계 약 0.25를 권장합니다.
                 """;
 
             Map<String, Object> body = Map.of(
@@ -500,12 +503,15 @@ public class AiPerfumeService {
                 .replaceAll("\\s*```$", "");
 
         JsonNode node = objectMapper.readTree(clean);
-        List<String> topNotes    = toStringList(node.path("topNotes"));
-        List<String> middleNotes = toStringList(node.path("middleNotes"));
-        List<String> keywords    = toStringList(node.path("keywords"));
+        List<ImageToScentResponse.NoteItem> topNotes    = toNoteItemList(node.path("topNotes"));
+        List<ImageToScentResponse.NoteItem> middleNotes = toNoteItemList(node.path("middleNotes"));
+        List<ImageToScentResponse.NoteItem> baseNotes   = toNoteItemList(node.path("baseNotes"));
+        List<String> keywords = toStringList(node.path("keywords"));
 
-        List<String> searchTerms = new ArrayList<>(topNotes);
-        searchTerms.addAll(middleNotes);
+        // 기성 향수 매칭은 기존과 동일하게 이름만 사용
+        List<String> searchTerms = new ArrayList<>();
+        topNotes.forEach(n -> searchTerms.add(n.getName()));
+        middleNotes.forEach(n -> searchTerms.add(n.getName()));
         searchTerms.addAll(keywords);
 
         List<ImageToScentResponse.RecommendedPerfume> matched =
@@ -516,10 +522,27 @@ public class AiPerfumeService {
                 .analysisText(node.path("analysisText").asText(""))
                 .topNotes(topNotes)
                 .middleNotes(middleNotes)
-                .baseNotes(toStringList(node.path("baseNotes")))
+                .baseNotes(baseNotes)
                 .keywords(keywords)
                 .recommendedPerfumes(matched)
                 .build();
+    }
+
+    /** 노트 배열 파싱: [{"name": "...", "ratio": 0.xx}, ...] */
+    private List<ImageToScentResponse.NoteItem> toNoteItemList(JsonNode arr) {
+        List<ImageToScentResponse.NoteItem> result = new ArrayList<>();
+        if (!arr.isArray()) return result;
+        for (JsonNode item : arr) {
+            String name  = item.path("name").asText("");
+            double ratio = item.path("ratio").asDouble(0.0);
+            if (!name.isBlank()) {
+                result.add(ImageToScentResponse.NoteItem.builder()
+                        .name(name)
+                        .ratio(ratio)
+                        .build());
+            }
+        }
+        return result;
     }
 
     private List<ImageToScentResponse.RecommendedPerfume> matchPerfumesFromDb(

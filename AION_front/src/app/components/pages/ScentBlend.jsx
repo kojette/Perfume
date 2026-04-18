@@ -236,41 +236,63 @@ const RatioSlider = ({ value, onChange, color }) => (
 );
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
+// ── sessionStorage 헬퍼 (AiScentStudio와 동일 패턴) ─────────────────────────
+const SS = {
+  get: (key) => {
+    try { const v = sessionStorage.getItem(key); return v ? JSON.parse(v) : null; }
+    catch { return null; }
+  },
+  set: (key, value) => {
+    try { sessionStorage.setItem(key, JSON.stringify(value)); }
+    catch { /* 용량 초과 시 무시 */ }
+  },
+};
+
 const ScentBlend = () => {
   const navigate   = useNavigate();
   const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
   const token      = sessionStorage.getItem('accessToken');
 
   // DB에서 로드한 카테고리+재료
-  const [categories,    setCategories]    = useState([]);
+  // 캐시 있으면 즉시 표시 → 백그라운드에서 최신 데이터로 교체 (stale-while-revalidate)
+  const [categories,    setCategories]    = useState(() => SS.get('sb_categories') || []);
   const [loadingScents, setLoadingScents] = useState(true);
   const [scentsError,   setScentsError]   = useState(null);
 
   // ── 검색 ────────────────────────────────────────────────────────
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => SS.get('sb_searchQuery') || '');
 
   // 선택된 재료 { "ingredientId": ratio(0-100) }
-  const [selectedIngredients, setSelectedIngredients] = useState({});
+  const [selectedIngredients, setSelectedIngredients] = useState(() => SS.get('sb_selectedIngredients') || {});
   // 열린 카테고리 아코디언
-  const [openCategories, setOpenCategories] = useState({});
+  const [openCategories, setOpenCategories] = useState(() => SS.get('sb_openCategories') || {});
 
   // 향수 설정
-  const [concentration, setConcentration] = useState(CONCENTRATION_TYPES[0]);
-  const [volume,        setVolume]         = useState(50);
-  const [blendName,     setBlendName]      = useState('');
+  const [concentration, setConcentration] = useState(() => SS.get('sb_concentration') || CONCENTRATION_TYPES[0]);
+  const [volume,        setVolume]         = useState(() => SS.get('sb_volume')        || 50);
+  const [blendName,     setBlendName]      = useState(() => SS.get('sb_blendName')     || '');
   const [saving,        setSaving]         = useState(false);
 
-  const [cardTargetBlend, setCardTargetBlend] = useState(null);// 향카드
+  const [cardTargetBlend, setCardTargetBlend] = useState(null); // 향카드 (UI 순간 상태라 캐시 불필요)
 
-  // 내 조합 목록 패널
+  // 내 조합 목록 패널 (서버 데이터 → 캐시 X, 항상 재요청)
   const [showMyBlends,  setShowMyBlends]  = useState(false);
   const [myBlends,      setMyBlends]      = useState([]);
   const [loadingBlends, setLoadingBlends] = useState(false);
 
-  // 병 선택
+  // 병 선택 (서버 데이터 → 캐시 X)
   const [myBottles,      setMyBottles]      = useState([]);
   const [loadingBottles, setLoadingBottles] = useState(false);
-  const [selectedBottle, setSelectedBottle] = useState(null);
+  const [selectedBottle, setSelectedBottle] = useState(() => SS.get('sb_selectedBottle') || null);
+
+  // ── sessionStorage 동기화 ────────────────────────────────────────
+  useEffect(() => { SS.set('sb_searchQuery',          searchQuery);          }, [searchQuery]);
+  useEffect(() => { SS.set('sb_selectedIngredients',  selectedIngredients);  }, [selectedIngredients]);
+  useEffect(() => { SS.set('sb_openCategories',       openCategories);       }, [openCategories]);
+  useEffect(() => { SS.set('sb_concentration',        concentration);        }, [concentration]);
+  useEffect(() => { SS.set('sb_volume',               volume);               }, [volume]);
+  useEffect(() => { SS.set('sb_blendName',            blendName);            }, [blendName]);
+  useEffect(() => { SS.set('sb_selectedBottle',       selectedBottle);       }, [selectedBottle]);
 
   // ────────────────────────────────────────────────────────────────
   // 검색 필터링: 검색어가 있으면 재료명/설명 매칭 카테고리+재료만 추출
@@ -308,20 +330,24 @@ const ScentBlend = () => {
   // ────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      setLoadingScents(true);
+      // 캐시 있으면 로딩 스피너 없이 바로 표시
+      const hasCached = (SS.get('sb_categories') || []).length > 0;
+      if (!hasCached) setLoadingScents(true);
       setScentsError(null);
       try {
         const res  = await fetch(`${API_BASE_URL}/api/custom/scents`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const data = json.data ?? json;
+        SS.set('sb_categories', data);
         setCategories(data);
-        if (data.length > 0) {
+        // 아코디언 초기값: 캐시된 열림 상태 없으면 첫 카테고리만 열기
+        if (data.length > 0 && !SS.get('sb_openCategories')) {
           setOpenCategories({ [data[0].categoryId]: true });
         }
       } catch (e) {
         console.error('향 카테고리 로드 실패:', e);
-        setScentsError('향 재료 목록을 불러오지 못했습니다.');
+        if (!hasCached) setScentsError('향 재료 목록을 불러오지 못했습니다.');
       } finally {
         setLoadingScents(false);
       }
@@ -469,9 +495,12 @@ const ScentBlend = () => {
         setVolume(50);
         setSelectedBottle(null);
         setSearchQuery('');
-        if (categories.length > 0) {
-          setOpenCategories({ [categories[0].categoryId]: true });
-        }
+        const firstOpen = categories.length > 0 ? { [categories[0].categoryId]: true } : {};
+        setOpenCategories(firstOpen);
+        // 작업 완료 후 캐시 초기화 (재료 목록은 유지)
+        ['sb_selectedIngredients','sb_concentration','sb_volume',
+         'sb_blendName','sb_selectedBottle','sb_searchQuery','sb_openCategories']
+          .forEach(k => sessionStorage.removeItem(k));
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const err = await res.json().catch(() => ({}));
@@ -538,9 +567,12 @@ const ScentBlend = () => {
         setVolume(50);
         setSelectedBottle(null);
         setSearchQuery('');
-        if (categories.length > 0) {
-          setOpenCategories({ [categories[0].categoryId]: true });
-        }
+        const firstOpen = categories.length > 0 ? { [categories[0].categoryId]: true } : {};
+        setOpenCategories(firstOpen);
+        // 작업 완료 후 캐시 초기화 (재료 목록은 유지)
+        ['sb_selectedIngredients','sb_concentration','sb_volume',
+         'sb_blendName','sb_selectedBottle','sb_searchQuery','sb_openCategories']
+          .forEach(k => sessionStorage.removeItem(k));
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const err = await cartRes.json().catch(() => ({}));

@@ -9,12 +9,20 @@ import java.util.List;
 @Builder
 public class ImageToScentResponse {
     private String analysisText;
-    private List<String> topNotes;
-    private List<String> middleNotes;
-    private List<String> baseNotes;
+    private List<NoteItem> topNotes;
+    private List<NoteItem> middleNotes;
+    private List<NoteItem> baseNotes;
     private List<String> keywords;
     private String mood;
     private List<RecommendedPerfume> recommendedPerfumes;
+
+    /** 탭2 이미지 분석 결과 노트 아이템 (이름 + Gemini가 산정한 비율) */
+    @Getter
+    @Builder
+    public static class NoteItem {
+        private String name;
+        private double ratio; // 0.0 ~ 1.0, 전체 노트 합계 = 1.0
+    }
 
     @Getter
     @Builder
