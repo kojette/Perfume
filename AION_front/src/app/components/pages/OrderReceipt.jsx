@@ -236,12 +236,21 @@ const OrderReceipt = () => {
                 </div>
 
                 
-                <button
-                    onClick={() => navigate('/')}
-                    className="w-full py-5 bg-[#1a1a1a] text-white text-[10px] tracking-[0.4em] hover:bg-[#c9a961] transition-all duration-500 cursor-pointer uppercase"
-                >
-                    Continue Shopping
-                </button>
+                {/* 버튼 */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => navigate(`/orders/${id}/return-exchange`)}
+                        className="flex-1 py-5 border border-[#c9a961]/40 text-[#8b8278] text-[10px] tracking-[0.4em] hover:border-[#c9a961] hover:text-[#c9a961] transition-all duration-500 cursor-pointer uppercase"
+                    >
+                        반품 / 교환
+                    </button>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="flex-1 py-5 bg-[#1a1a1a] text-white text-[10px] tracking-[0.4em] hover:bg-[#c9a961] transition-all duration-500 cursor-pointer uppercase"
+                    >
+                        Continue Shopping
+                    </button>
+                </div>
 
                 <div className="mt-12 text-center text-[10px] text-[#eee] tracking-[1em]">••••••••••••••••••••</div>
             </div>

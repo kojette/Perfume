@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Droplets, Megaphone, Calendar, Ticket, BarChart2, BookOpen, Package } from 'lucide-react';
+import { Users, Droplets, Megaphone, Calendar, Ticket, BarChart2, BookOpen, Package, Warehouse } from 'lucide-react';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -13,6 +13,7 @@ const AdminDashboard = () => {
         { title: '쿠폰/포인트 관리',  icon: <Ticket />,    path: '/admin/coupons'       },
         { title: '스토리 관리',       icon: <BookOpen />,  path: '/admin/story'         },
         { title: '공병 관리',         icon: <Package />,   path: '/admin/bottles'       },
+        { title: '재고 입고 관리',    icon: <Warehouse />, path: '/admin/stock'         },
     ];
 
     return (

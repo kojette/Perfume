@@ -115,10 +115,11 @@ function GoldDivider() {
 }
 
 function PerfumeCard({ perfume, onClick }) {
+  const isSoldOut = perfume.totalStock === 0;
   return (
     <div
       onClick={() => onClick?.(perfume)}
-      className="
+      className={`
       group flex items-center gap-5 p-5
       bg-white/90 backdrop-blur-sm
       border border-[#e8e2d6]
@@ -126,13 +127,19 @@ function PerfumeCard({ perfume, onClick }) {
       hover:shadow-[0_10px_30px_rgba(201,169,97,0.12)]
       transition-all duration-300
       cursor-pointer
-      "
+      ${isSoldOut ? 'opacity-60' : ''}
+      `}
     >
-      <div className="w-20 h-20 shadow-md flex-shrink-0 bg-gradient-to-br from-[#f5f0e8] to-[#e8ddc8] flex items-center justify-center group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+      <div className="relative w-20 h-20 shadow-md flex-shrink-0 bg-gradient-to-br from-[#f5f0e8] to-[#e8ddc8] flex items-center justify-center group-hover:scale-105 transition-transform duration-300 overflow-hidden">
         {perfume.imageUrl ? (
           <img src={perfume.imageUrl} alt={perfume.name} className="w-full h-full object-cover" />
         ) : (
           <span className="font-serif text-xl text-[#c9a961]/40">{perfume.name?.charAt(0)}</span>
+        )}
+        {isSoldOut && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="text-[9px] text-white tracking-widest font-bold">SOLD OUT</span>
+          </div>
         )}
       </div>
 

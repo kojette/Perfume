@@ -326,11 +326,13 @@ export default function PerfumeDetail() {
   const [ingredientItems,    setIngredientItems]    = useState([]);
   const [ingredientsLoading, setIngredientsLoading] = useState(true);
 
-  const [qty,         setQty]         = useState(1);
-  const [isWished,    setIsWished]    = useState(false);
-  const [wishLoading, setWishLoading] = useState(false);
-  const [cartLoading, setCartLoading] = useState(false);
-  const [toast,       setToast]       = useState(null);
+  const [qty,            setQty]            = useState(1);
+  const [isWished,       setIsWished]       = useState(false);
+  const [wishLoading,    setWishLoading]    = useState(false);
+  const [cartLoading,    setCartLoading]    = useState(false);
+  const [toast,          setToast]          = useState(null);
+  const [restockLoading, setRestockLoading] = useState(false);
+  const [restockDone,    setRestockDone]    = useState(false);
 
   // ── 향수 기본 정보 ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -473,6 +475,30 @@ export default function PerfumeDetail() {
     else { navigator.clipboard?.writeText(window.location.href); setToast('링크가 복사되었습니다'); }
   }, [perfume]);
 
+  // ── 재입고 알림 신청 ─────────────────────────────────────────────────────
+  const handleRestock = useCallback(async () => {
+    if (!isLoggedIn()) { navigate('/login'); return; }
+    setRestockLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/restock/notify`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ perfumeId: Number(id) }),
+      });
+      if (res.ok) {
+        setRestockDone(true);
+        setToast('재입고 알림이 신청되었습니다');
+      } else {
+        const err = await res.json();
+        setToast(err.message || '이미 신청하셨거나 오류가 발생했습니다');
+      }
+    } catch {
+      setToast('오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setRestockLoading(false);
+    }
+  }, [id, navigate]);
+
   // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -601,7 +627,7 @@ export default function PerfumeDetail() {
             </div>
 
             {/* 장바구니 / BUY NOW */}
-            <div style={{ display:'flex', gap:10, marginBottom:28 }}>
+            <div style={{ display:'flex', gap:10, marginBottom: inStock ? 28 : 12 }}>
               <button onClick={handleCart} disabled={cartLoading||!inStock} style={{
                 flex:1, padding:'13px 0',
                 border:'1px solid rgba(201,169,97,0.55)', background:'transparent', color:'#c9a961',
@@ -627,6 +653,34 @@ export default function PerfumeDetail() {
                 {inStock ? 'BUY NOW' : '품절'}
               </button>
             </div>
+
+            {/* 재입고 알림 신청 (품절 시만 표시) */}
+            {!inStock && (
+              <div style={{ marginBottom:28 }}>
+                <button
+                  onClick={handleRestock}
+                  disabled={restockLoading || restockDone}
+                  style={{
+                    width:'100%', padding:'12px 0',
+                    border:'1px solid rgba(201,169,97,0.4)',
+                    background: restockDone ? 'rgba(201,169,97,0.08)' : 'transparent',
+                    color: restockDone ? '#c9a961' : 'rgba(201,169,97,0.7)',
+                    fontSize:'0.65rem', letterSpacing:'0.3em',
+                    cursor: restockDone ? 'default' : 'pointer',
+                    display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                    transition:'all 0.2s',
+                  }}
+                  onMouseOver={e => { if(!restockDone) e.currentTarget.style.background='rgba(201,169,97,0.08)'; }}
+                  onMouseOut={e => { if(!restockDone) e.currentTarget.style.background='transparent'; }}
+                >
+                  <span style={{ fontSize:'0.75rem' }}>{restockDone ? '✓' : '🔔'}</span>
+                  {restockLoading ? '신청 중…' : restockDone ? '재입고 알림 신청 완료' : '재입고 알림 신청'}
+                </button>
+                <p style={{ fontSize:'0.58rem', color:'rgba(139,96,48,0.45)', letterSpacing:'0.1em', textAlign:'center', marginTop:6 }}>
+                  재입고 시 이메일로 알려드립니다
+                </p>
+              </div>
+            )}
 
             <GoldDivider my={0} />
 

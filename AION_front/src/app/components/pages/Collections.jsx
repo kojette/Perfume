@@ -511,19 +511,21 @@ function SpineBook({ perfume, isSelected, onClick, globalIdx }) {
   const [hovered, setHovered] = useState(false);
   const pal = SPINE_PALETTE[globalIdx % SPINE_PALETTE.length];
   const h = SPINE_HEIGHTS[globalIdx % SPINE_HEIGHTS.length];
+  const isSoldOut = (perfume.total_stock ?? 1) === 0;
 
   return (
     <div
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      title={`${perfume.brand_name ? perfume.brand_name + ' · ' : ''}${perfume.name}`}
+      title={`${perfume.brand_name ? perfume.brand_name + ' · ' : ''}${perfume.name}${isSoldOut ? ' [품절]' : ''}`}
       style={{
         width: '54px', height: `${h + 20}px`,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
         cursor: 'pointer', flexShrink: 0, position: 'relative',
         transform: isSelected ? 'translateY(-14px) scale(1.05)' : hovered ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)',
         transition: 'transform 0.28s cubic-bezier(0.34,1.56,0.64,1)',
+        opacity: isSoldOut ? 0.5 : 1,
       }}
     >
       <div style={{
@@ -553,6 +555,12 @@ function SpineBook({ perfume, isSelected, onClick, globalIdx }) {
         </div>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px', background: pal.accent, opacity: 0.7 }} />
         {isSelected && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: '#c9a961' }} />}
+        {/* 품절 오버레이 */}
+        {isSoldOut && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ writingMode: 'vertical-rl', fontSize: '7px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.7)', fontWeight: '600', margin: 0 }}>SOLD</p>
+          </div>
+        )}
       </div>
       <div style={{ width: '100%', height: '5px', background: `linear-gradient(to bottom, ${pal.bg}, ${pal.grain})`, borderBottom: `1.5px solid ${pal.accent}55`, boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }} />
     </div>
@@ -668,7 +676,7 @@ export default function Collections() {
     (async () => {
       setLoading(true);
       try {
-        const { data: perfumes } = await supabase.from('Perfumes').select('perfume_id, name, name_en, description, price, sale_price, sale_rate, brand_id').eq('is_active', true).order('name');
+        const { data: perfumes } = await supabase.from('Perfumes').select('perfume_id, name, name_en, description, price, sale_price, sale_rate, brand_id, total_stock').eq('is_active', true).order('name');
         if (!perfumes?.length) { setAllPerfumes([]); setLoading(false); return; }
         const brandIds = [...new Set(perfumes.map(p => p.brand_id).filter(Boolean))];
         const { data: brands } = await supabase.from('Brands').select('brand_id, brand_name').in('brand_id', brandIds);

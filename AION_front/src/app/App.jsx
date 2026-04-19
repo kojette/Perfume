@@ -26,6 +26,8 @@ import Cart from './components/pages/Cart';
 import Wishlist from './components/pages/Wishlist';
 import SearchResult from './components/pages/SearchResult';
 import OrderReceipt from "./components/pages/OrderReceipt";
+import OrderTracking from "./components/pages/OrderTracking";
+import ReturnExchange from "./components/pages/ReturnExchange";
 import Terms from './components/pages/Terms';
 import Privacy from './components/pages/Privacy';
 
@@ -45,6 +47,7 @@ import Customization from './components/pages/Customization';
 import BottleManagement from './components/pages/BottleManagement';
 
 import AdminStatistics from './components/pages/AdminStatistics';
+import StockManagement from './components/pages/StockManagement';
 
 import PerfumeDetail from "./components/pages/PerfumeDetail";
 
@@ -97,6 +100,8 @@ function AppLayout() {
             <Route path="/wishlist"   element={<Wishlist />} />
             <Route path="/search"     element={<SearchResult />} />
             <Route path="/orders/:id" element={<OrderReceipt />} />
+            <Route path="/orders/:id/tracking" element={<OrderTracking />} />
+            <Route path="/orders/:id/return-exchange" element={<ReturnExchange />} />
 
             <Route path="/login"          element={<Login />} />
             <Route path="/signup"         element={<Signup />} />
@@ -117,6 +122,7 @@ function AppLayout() {
             <Route path="/admin/story"         element={<AdminRoute><StoryManagement /></AdminRoute>} />
             <Route path="/admin/bottles"       element={<AdminRoute><BottleManagement /></AdminRoute>} />
             <Route path="/admin/statistics"    element={<AdminRoute><AdminStatistics /></AdminRoute>} />
+            <Route path="/admin/stock"         element={<AdminRoute><StockManagement /></AdminRoute>} />
 
             <Route path="/terms"   element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />

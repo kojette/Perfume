@@ -722,13 +722,29 @@ const Mypage = () => {
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => navigate(`/orders/${order.orderId}`)}
                           className="text-[10px] text-white bg-[#1a1a1a] px-4 py-2 hover:bg-[#c9a961] transition-colors cursor-pointer tracking-widest"
                         >
                           영수증 보기
                         </button>
+                        {['PAID', 'CONFIRMED', 'PREPARING', 'SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.orderStatus) && (
+                          <button
+                            onClick={() => navigate(`/orders/${order.orderId}/tracking`)}
+                            className="text-[10px] text-[#2a2620] border border-[#2a2620]/30 px-4 py-2 hover:bg-[#2a2620] hover:text-white transition-colors cursor-pointer tracking-widest"
+                          >
+                            배송 추적
+                          </button>
+                        )}
+                        {['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.orderStatus) && (
+                          <button
+                            onClick={() => navigate(`/orders/${order.orderId}/return-exchange`)}
+                            className="text-[10px] text-red-500 border border-red-200 px-4 py-2 hover:bg-red-500 hover:text-white transition-colors cursor-pointer tracking-widest"
+                          >
+                            반품/교환
+                          </button>
+                        )}
                         <button
                           onClick={() => toggleOrderDetails(order.orderId)}
                           className="text-[10px] text-[#c9a961] border border-[#c9a961] px-4 py-2 hover:bg-[#c9a961] hover:text-white transition-colors cursor-pointer tracking-widest"
