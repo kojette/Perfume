@@ -485,7 +485,7 @@ export default function Recommend() {
   const [ageLoading, setAgeLoading] = useState(false);
 
   const handlePerfumeClick = (perfume) => {
-    navigate('/collections', { state: { targetPerfumeId: perfume.id } });
+    navigate(`/perfumes/${perfume.id}`);
   };
 
   useEffect(() => { fetchPerfumes(); }, [sortBy]);

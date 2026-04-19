@@ -900,7 +900,7 @@ export default function Signature() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {perfumes.map((p) => (
               <div key={p.perfumeId} className="group cursor-pointer"
-                onClick={() => navigate('/collections', { state: { targetPerfumeId: p.perfumeId } })}>
+                onClick={() => navigate(`/perfumes/${p.perfumeId}`)}>
                 <div className="relative overflow-hidden mb-4 bg-white shadow-sm border border-[#c9a961]/10">
                   <div className="aspect-square">
                     {p.thumbnail ? (

@@ -46,6 +46,8 @@ import BottleManagement from './components/pages/BottleManagement';
 
 import AdminStatistics from './components/pages/AdminStatistics';
 
+import PerfumeDetail from "./components/pages/PerfumeDetail";
+
 // Hero를 표시할 경로 (정확히 일치하는 경로만)
 const HERO_PATHS = ['/', '/admin'];
 
@@ -81,6 +83,7 @@ function AppLayout() {
             <Route path="/" element={<><FeaturedProducts /><About /><Newsletter /></>} />
 
             <Route path="/collections" element={<Collections />} />
+            <Route path="/perfumes/:id" element={<PerfumeDetail />} />
             <Route path="/signature"   element={<Signature />} />
             <Route path="/recommend"   element={<Recommend />} />
 

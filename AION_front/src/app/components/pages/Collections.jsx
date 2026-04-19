@@ -86,7 +86,8 @@ const uploadToSupabase = async (file) => {
 };
 
 // ─── 모바일 전용 하단 정보 패널 ───────────────────────────────────────────────
-function MobileInfoPanel({ perfume, notes, loadingNotes, geminiReview, loadingReview, layout: l, onWish, onBuy, isAddingToWish }) {
+// 이렇게 바꿔
+function MobileInfoPanel({ perfume, notes, loadingNotes, geminiReview, loadingReview, layout: l, onWish, onBuy, isAddingToWish, onDetail }) {
   if (!perfume) return null;
 
   return (
@@ -157,6 +158,12 @@ function MobileInfoPanel({ perfume, notes, loadingNotes, geminiReview, loadingRe
 
       {/* 버튼 */}
       <div style={{ display: 'flex', gap: '10px' }}>
+        <button
+          onClick={() => navigate(`/perfumes/${perfume.perfume_id}`)}
+          style={{ flex: 1, padding: '12px 0', background: 'transparent', border: '1px solid rgba(201,169,97,0.4)', color: '#c9a961', fontSize: '0.72rem', letterSpacing: '0.2em', cursor: 'pointer' }}
+          >
+          상세보기
+        </button>
         <button
           onClick={() => onWish(perfume)}
           disabled={isAddingToWish}
@@ -708,12 +715,13 @@ export default function Collections() {
       setSelectedPerfume(null);
       setNotes({ top: [], middle: [], base: [] });
       setGeminiReview('');
+      navigate(`/perfumes/${p.perfume_id}`);
     } else {
       setSelectedPerfume(p);
       displayDescription(p);
       loadNotes(p.perfume_id);
     }
-  }, [selectedPerfume, loadNotes, displayDescription]);
+  }, [selectedPerfume, loadNotes, displayDescription, navigate]);
 
   useEffect(() => {
     const stateId = location.state?.targetPerfumeId;
@@ -875,7 +883,13 @@ export default function Collections() {
               </div>
             )}
             {/* 데스크탑 버튼 */}
-            <div style={{ position: 'absolute', right: '12%', bottom: '15%', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', pointerEvents: 'auto', zIndex: 5, maxWidth: '240px' }}>
+            <div style={{ position: 'absolute', right: '12%', bottom: '15%', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', pointerEvents: 'auto', zIndex: 5, maxWidth: '360px' }}>
+              <button onClick={() => navigate(`/perfumes/${selectedPerfume.perfume_id}`)}
+                style={{ padding: '8px 18px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(201,169,97,0.6)', backdropFilter: 'blur(4px)', color: '#c9a961', fontSize: '0.95cqw', letterSpacing: '0.15em', whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.3s' }}
+                onMouseOver={e => { e.currentTarget.style.background = 'rgba(201,169,97,0.2)'; e.currentTarget.style.color = '#fff'; }}
+                onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#c9a961'; }}>
+                상세보기
+              </button>
               <button onClick={() => handleAddToWishlist(selectedPerfume)} disabled={isAddingToWish}
                 style={{ padding: '8px 18px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(201,169,97,0.6)', backdropFilter: 'blur(4px)', color: '#c9a961', fontSize: '0.95cqw', letterSpacing: '0.15em', whiteSpace: 'nowrap', cursor: isAddingToWish ? 'wait' : 'pointer', transition: 'all 0.3s' }}
                 onMouseOver={e => { e.currentTarget.style.background = 'rgba(201,169,97,0.2)'; e.currentTarget.style.color = '#fff'; }}
