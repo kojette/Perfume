@@ -107,7 +107,9 @@ export default function AiScentStudio() {
 function GeminiPanel({ onSaved }) {
   const navigate = useNavigate();
 
-  const [image,          setImage]          = useState(null);
+  const [image, setImage] = useState(() => {  const cached = SS.get('gemini_image_preview');
+    return cached ? { file: null, preview: cached } : null;
+  });
   const [result,         setResult]         = useState(() => SS.get('gemini_result'));
   const [loading,        setLoading]        = useState(false);
   const [error,          setError]          = useState('');
@@ -155,7 +157,13 @@ function GeminiPanel({ onSaved }) {
     if (!file) return;
     if (!file.type.startsWith('image/')) { setError('이미지 파일만 가능합니다.'); return; }
     if (file.size > 10 * 1024 * 1024)   { setError('10MB 이하 파일만 가능합니다.'); return; }
-    setImage({ file, preview: URL.createObjectURL(file) });
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result;
+      SS.set('gemini_image_preview', base64);
+      setImage({ file, preview: base64 });
+    };
+    reader.readAsDataURL(file);
     setError('');
     // 이미 분석된 이미지면 캐시에서 바로 복원
     const cached = SS.get(imageKey(file));
@@ -272,7 +280,7 @@ function GeminiPanel({ onSaved }) {
     setResult(null); setImage(null); setError('');
     setShowBlendPanel(false); setBlendSliders([]); setBlendName('');
     setSavedOk(false); setEvaluation('');
-    ['gemini_result','gemini_sliders','gemini_blendName','gemini_eval','gemini_showBlend']
+    ['gemini_result','gemini_sliders','gemini_blendName','gemini_eval','gemini_showBlend','gemini_image_preview']
       .forEach(k => SS.del(k));
   }, []);
 
@@ -444,7 +452,7 @@ function GeminiPanel({ onSaved }) {
               <div className="space-y-2">
                 {result.recommendedPerfumes.map(p => (
                   <button key={p.id}
-                    onClick={() => navigate('/collections', { state: { targetPerfumeId: p.id } })}
+                    onClick={() => navigate(`/perfumes/${p.id}`)}
                     className="w-full flex items-center gap-4 p-4 bg-white border border-[#e8e2d6] hover:border-[#c9a961]/60 hover:shadow-sm transition-all text-left group">
                     <div className="w-12 h-12 bg-[#f0ece4] flex-shrink-0 overflow-hidden">
                       {p.imageUrl
