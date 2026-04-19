@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
 @RestController
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
@@ -185,6 +184,48 @@ public class CartController {
         cartRepository.save(cart);
 
         return ApiResponse.success("수량이 변경되었습니다.");
+    }
+
+    /**
+     * 선택된 장바구니 항목 조회 (결제 전 검증용)
+     * POST /api/cart/selected
+     * body: { cartItemIds: [1, 2, 3] }
+     */
+    @PostMapping("/selected")
+    public ApiResponse<List<Map<String, Object>>> getSelectedCartItems(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, Object> request
+    ) {
+        Member member = memberService.getMemberEntityByToken(token);
+
+        @SuppressWarnings("unchecked")
+        List<Integer> rawIds = (List<Integer>) request.get("cartItemIds");
+        List<Long> cartItemIds = rawIds.stream().map(Long::valueOf).collect(Collectors.toList());
+
+        List<Cart> carts = cartRepository.findByCartIdInAndMember(cartItemIds, member);
+
+        List<Map<String, Object>> result = carts.stream().map(cart -> {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("cartId", cart.getCartId());
+            map.put("quantity", cart.getQuantity());
+            map.put("isCustom", cart.getIsCustom());
+
+            if (Boolean.TRUE.equals(cart.getIsCustom())) {
+                map.put("perfumeId", null);
+                map.put("name", cart.getCustomName());
+                map.put("price", cart.getCustomPrice());
+            } else {
+                if (cart.getPerfume() == null) return null;
+                map.put("perfumeId", cart.getPerfume().getPerfumeId());
+                map.put("name", cart.getPerfume().getName());
+                map.put("price", cart.getPerfume().getSalePrice() != null
+                        ? cart.getPerfume().getSalePrice()
+                        : cart.getPerfume().getPrice());
+            }
+            return map;
+        }).filter(Objects::nonNull).collect(Collectors.toList());
+
+        return ApiResponse.success("선택 항목 조회 성공", result);
     }
 
     @DeleteMapping("/{cartId}")

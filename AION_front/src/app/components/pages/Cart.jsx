@@ -37,6 +37,22 @@ const Cart = () => {
     const [expandedItems, setExpandedItems] = useState({});
     const toggleExpand = (cartId) => setExpandedItems(prev => ({ ...prev, [cartId]: !prev[cartId] }));
 
+    // 선택 구매
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const toggleSelect = (cartId) => setSelectedIds(prev => {
+        const next = new Set(prev);
+        next.has(cartId) ? next.delete(cartId) : next.add(cartId);
+        return next;
+    });
+    const toggleSelectAll = () => {
+        if (selectedIds.size === cartItems.length) setSelectedIds(new Set());
+        else setSelectedIds(new Set(cartItems.map(i => i.cartId)));
+    };
+    const isAllSelected = cartItems.length > 0 && selectedIds.size === cartItems.length;
+
+    // 기본 배송지로 저장 체크박스
+    const [saveAsDefault, setSaveAsDefault] = useState(false);
+
     const isScentBlend = (item) => item.isCustom && item.name?.startsWith('[향조합]');
     const getBlendDisplayName = (item) => item.name?.replace('[향조합] ', '') || item.name;
     const getBlendMeta = (item) => {
@@ -166,6 +182,7 @@ const Cart = () => {
                 setCartItems(items);
                 const total = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
                 setTotalPrice(total);
+                setSelectedIds(new Set(items.map(i => i.cartId)));
             }
         } catch (error) {
             console.error('장바구니 조회 에러:', error);
@@ -284,17 +301,25 @@ const Cart = () => {
 
     const handleCheckout = async () => {
 
+        if (selectedIds.size === 0) {
+            alert('구매할 상품을 선택해주세요.');
+            return;
+        }
+
         if (!shippingInfo.address) {
             const goToProfile = window.confirm(
                 '등록된 배송지가 없습니다.\n프로필에서 배송지를 먼저 등록해주세요.\n\n프로필 페이지로 이동하시겠습니까?'
             );
-            if (goToProfile) navigate('/mypage/edit');
+            if (goToProfile) navigate('/profile/edit');
             return;
         }
 
-        const finalAmount = Math.max(0, totalPrice - couponDiscount - pointsToUse);
+        const selectedTotal = cartItems
+            .filter(i => selectedIds.has(i.cartId))
+            .reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        const finalAmt = Math.max(0, selectedTotal - couponDiscount - pointsToUse);
         const fullAddress = `(${shippingInfo.zipcode}) ${shippingInfo.address}${shippingInfo.addressDetail ? ' ' + shippingInfo.addressDetail : ''}`;
-        const msg = `결제 금액: ₩${finalAmount.toLocaleString()}\n쿠폰 할인: -₩${couponDiscount.toLocaleString()}\n포인트 사용: -${pointsToUse.toLocaleString()}P\n\n배송지: ${fullAddress}\n\n결제를 진행하시겠습니까?`;
+        const msg = `선택 상품: ${selectedIds.size}개\n결제 금액: ₩${finalAmt.toLocaleString()}\n쿠폰 할인: -₩${couponDiscount.toLocaleString()}\n포인트 사용: -${pointsToUse.toLocaleString()}P\n\n배송지: ${fullAddress}\n\n결제를 진행하시겠습니까?`;
         if (!window.confirm(msg)) return;
 
         try {
@@ -306,9 +331,9 @@ const Cart = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    cartItemIds: Array.from(selectedIds),
                     userCouponId: selectedCoupon?.userCouponId || null,
                     pointsToUse: pointsToUse,
-
                     receiverName: shippingInfo.name,
                     receiverPhone: shippingInfo.phone,
                     shippingZipcode: shippingInfo.zipcode,
@@ -334,7 +359,10 @@ const Cart = () => {
         }
     };
 
-    const finalAmount = Math.max(0, totalPrice - couponDiscount - pointsToUse);
+    const selectedTotal = cartItems
+        .filter(i => selectedIds.has(i.cartId))
+        .reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const finalAmount = Math.max(0, selectedTotal - couponDiscount - pointsToUse);
     const estimatedEarn = Math.floor(finalAmount * 0.001);
 
     if (loading) return <div className="text-center pt-40 italic tracking-widest">PREPARING YOUR BAG...</div>;
@@ -357,9 +385,23 @@ const Cart = () => {
                     <div className="space-y-8">
 
                         <div className="bg-white border border-[#c9a961]/20 p-8 shadow-sm">
+                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#f0ebe0]">
+                                <label className="flex items-center gap-3 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={isAllSelected}
+                                        onChange={toggleSelectAll}
+                                        className="w-4 h-4 accent-[#c9a961] cursor-pointer"
+                                    />
+                                    <span className="text-[10px] tracking-[0.2em] text-[#555] uppercase">
+                                        전체 선택 ({selectedIds.size}/{cartItems.length})
+                                    </span>
+                                </label>
+                            </div>
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-[#c9a961]/30 text-[10px] tracking-widest text-[#8b8278]">
+                                        <th className="pb-4 w-6"></th>
                                         <th className="pb-4 pl-2 font-normal uppercase">Product</th>
                                         <th className="pb-4 font-normal text-center uppercase">Price</th>
                                         <th className="pb-4 font-normal text-center uppercase">Qty</th>
@@ -368,7 +410,15 @@ const Cart = () => {
                                 </thead>
                                 <tbody>
                                     {cartItems.map((item) => (
-                                        <tr key={item.cartId} className="border-b border-[#eee] last:border-0">
+                                        <tr key={item.cartId} className={`border-b border-[#eee] last:border-0 transition-opacity ${selectedIds.has(item.cartId) ? 'opacity-100' : 'opacity-40'}`}>
+                                            <td className="py-6 w-6">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.has(item.cartId)}
+                                                    onChange={() => toggleSelect(item.cartId)}
+                                                    className="w-4 h-4 accent-[#c9a961] cursor-pointer"
+                                                />
+                                            </td>
                                             <td className="py-6 pl-2">
                                                 <div className="flex items-center gap-6">
                                                     <div
@@ -563,13 +613,44 @@ const Cart = () => {
                                             className="w-full border-b border-[#c9a961]/30 py-2 text-sm outline-none focus:border-[#c9a961] bg-transparent transition-colors"
                                         />
                                     </div>
+                                    {/* 기본 배송지로 저장 */}
+                                    <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={saveAsDefault}
+                                            onChange={e => setSaveAsDefault(e.target.checked)}
+                                            className="w-4 h-4 accent-[#c9a961]"
+                                        />
+                                        <span className="text-[10px] text-[#555] tracking-wider">기본 배송지로 저장</span>
+                                    </label>
+
                                     <div className="flex gap-3 pt-2">
                                         <button
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 if (!tempShipping.name.trim()) return alert('수령인을 입력해주세요.');
                                                 if (!tempShipping.address.trim()) return alert('주소를 입력해주세요.');
                                                 setShippingInfo({ ...tempShipping });
                                                 setIsEditingShipping(false);
+                                                if (saveAsDefault) {
+                                                    try {
+                                                        const token = sessionStorage.getItem('accessToken');
+                                                        await fetch(`${API_BASE_URL}/api/members/profile`, {
+                                                            method: 'PATCH',
+                                                            headers: {
+                                                                'Authorization': `Bearer ${token}`,
+                                                                'Content-Type': 'application/json',
+                                                            },
+                                                            body: JSON.stringify({
+                                                                zipcode:       tempShipping.zipcode,
+                                                                address:       tempShipping.address,
+                                                                addressDetail: tempShipping.addressDetail,
+                                                            }),
+                                                        });
+                                                    } catch (e) {
+                                                        console.error('기본 배송지 저장 실패:', e);
+                                                    }
+                                                    setSaveAsDefault(false);
+                                                }
                                             }}
                                             className="flex-1 py-3 bg-[#1a1a1a] text-white text-[10px] tracking-[0.3em] hover:bg-[#c9a961] transition-all uppercase"
                                         >
@@ -579,6 +660,7 @@ const Cart = () => {
                                             onClick={() => {
                                                 setTempShipping({ ...shippingInfo });
                                                 setIsEditingShipping(false);
+                                                setSaveAsDefault(false);
                                             }}
                                             className="px-6 py-3 border border-[#c9a961]/30 text-[#8b8278] text-[10px] tracking-widest hover:bg-[#faf8f3] transition-all uppercase"
                                         >
@@ -652,7 +734,7 @@ const Cart = () => {
                                 <div className="w-full md:w-64 space-y-3 border-t md:border-t-0 md:border-l border-[#c9a961]/10 pt-6 md:pt-0 md:pl-10">
                                     <div className="flex justify-between text-[11px] tracking-widest text-[#8b8278]">
                                         <span>SUBTOTAL</span>
-                                        <span>₩{totalPrice.toLocaleString()}</span>
+                                        <span>₩{selectedTotal.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between text-[11px] tracking-widest text-red-400">
                                         <span>COUPON</span>

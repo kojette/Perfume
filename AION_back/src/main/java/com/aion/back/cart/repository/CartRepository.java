@@ -13,4 +13,7 @@ public interface CartRepository extends JpaRepository<Cart, Long>{
     Optional<Cart> findByMemberAndPerfume(Member member, Perfume perfume);
 
     Optional<Cart> findByMemberAndCustomDesignId(Member member, Long customDesignId);
+
+    // 선택 구매: 특정 cartId 목록 + 본인 소유 검증
+    List<Cart> findByCartIdInAndMember(List<Long> cartIds, Member member);
 }
