@@ -86,7 +86,6 @@ const uploadToSupabase = async (file) => {
 };
 
 // ─── 모바일 전용 하단 정보 패널 ───────────────────────────────────────────────
-// 이렇게 바꿔
 function MobileInfoPanel({ perfume, notes, loadingNotes, geminiReview, loadingReview, layout: l, onWish, onBuy, isAddingToWish, onDetail }) {
   if (!perfume) return null;
 
@@ -477,15 +476,17 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
   );
 }
 
+// ─── PerfumeImage: 타원형 클리핑 + 테두리 그라데이션 블렌딩 ──────────────────
 function PerfumeImage({ perfume, layout: l }) {
   const strength = parseFloat(l.imgBlendStrength || 0);
-  const ellipseX = Math.max(40, 100 - strength * 0.8);
-  const ellipseY = Math.max(35, 100 - strength * 0.6);
 
-  const maskStyle = strength > 0 ? {
-    WebkitMaskImage: `radial-gradient(ellipse ${ellipseX}% ${ellipseY}% at 50% 50%, black 45%, transparent 100%)`,
-    maskImage:       `radial-gradient(ellipse ${ellipseX}% ${ellipseY}% at 50% 50%, black 45%, transparent 100%)`,
-  } : {};
+  // 향수병은 세로로 긴 형태 → 타원의 X반경 < Y반경
+  // imgBlendStrength 값으로 페이드 시작점 조절 (강도가 클수록 더 많이 블렌딩)
+  const fadeStart = Math.max(20, 80 - strength * 1.2); // 불투명 유지 구간 (%)
+
+  // CSS mask로 타원형 클리핑 + 가장자리 그라데이션 처리
+  // ellipse 48% 50% → X반경 48%, Y반경 50% → 세로로 살짝 긴 타원
+  const ellipseMask = `radial-gradient(ellipse 48% 50% at 50% 50%, black ${fadeStart}%, transparent 100%)`;
 
   return (
     <div style={{
@@ -495,11 +496,24 @@ function PerfumeImage({ perfume, layout: l }) {
       pointerEvents: 'auto',
       width: l.imgMaxWidth, height: l.imgMaxHeight,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      ...maskStyle,
     }}>
       {perfume.thumbnail ? (
-        <img src={perfume.thumbnail} alt={perfume.name}
-          style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block', transition: 'opacity 0.3s' }} />
+        <img
+          src={perfume.thumbnail}
+          alt={perfume.name}
+          style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'contain',
+            display: 'block',
+            transition: 'opacity 0.3s',
+            // 타원형 클리핑 + 테두리 그라데이션 블렌딩
+            WebkitMaskImage: ellipseMask,
+            maskImage: ellipseMask,
+          }}
+        />
       ) : (
         <span style={{ color: 'rgba(100,60,20,0.3)', fontSize: '1.5rem' }}>✦</span>
       )}
@@ -764,14 +778,10 @@ export default function Collections() {
   for (let i = 0; i < allPerfumes.length; i += SHELF_SIZE) shelves.push(allPerfumes.slice(i, i + SHELF_SIZE));
   const l = layout;
 
-  // ─── 모바일: 배경 이미지를 세로 비율로 자름 (책 펼친 부분만 보이도록)
-  // 데스크탑은 그대로 aspectRatio 유지
   const overlayStyle = isMobile
     ? {
         position: 'relative',
         width: '100%',
-        // 모바일에서는 배경 이미지를 정사각형에 가까운 비율로 표시
-        // 배경 이미지의 왼쪽 절반(향수 이미지+이름)만 보이도록 높이 제한
         aspectRatio: '1/1',
         overflow: 'hidden',
         containerType: 'inline-size',
@@ -784,13 +794,11 @@ export default function Collections() {
         containerType: 'inline-size',
       };
 
-  // 모바일에서 배경 이미지는 왼쪽(향수 이미지 영역)만 보이도록
   const bgImageStyle = isMobile
     ? {
         position: 'absolute', inset: 0, zIndex: 1,
         backgroundColor: l.bgContainerColor ?? '#2a1508',
         backgroundImage: bgUrl ? `url(${bgUrl})` : undefined,
-        // 전체 이미지를 세로 꽉 채우고 왼쪽 정렬 → 책의 왼쪽 페이지(향수 이미지)만 노출
         backgroundSize: 'auto 100%',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'left center',
@@ -803,6 +811,11 @@ export default function Collections() {
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
       };
+
+  // ─── 모바일 향수 이미지용 타원 마스크 (동일 로직) ────────────────────────
+  const mobileBlendStrength = parseFloat(l.imgBlendStrength || 0);
+  const mobileFadeStart = Math.max(20, 80 - mobileBlendStrength * 1.2);
+  const mobileEllipseMask = `radial-gradient(ellipse 48% 50% at 50% 50%, black ${mobileFadeStart}%, transparent 100%)`;
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5ede0', fontFamily: "'Georgia', 'Times New Roman', serif", marginTop: '-2px' }}>
@@ -914,10 +927,9 @@ export default function Collections() {
           </div>
         )}
 
-        {/* 모바일: 배경 이미지 위에는 향수 이미지만 표시 */}
+        {/* 모바일: 배경 이미지 위에는 향수 이미지만 표시 — 타원 마스크 적용 */}
         {selectedPerfume && isMobile && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
-            {/* 향수 이미지는 중앙에 크게 */}
             <div style={{
               position: 'absolute',
               left: '50%', top: '50%',
@@ -926,8 +938,19 @@ export default function Collections() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {selectedPerfume.thumbnail ? (
-                <img src={selectedPerfume.thumbnail} alt={selectedPerfume.name}
-                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }} />
+                <img
+                  src={selectedPerfume.thumbnail}
+                  alt={selectedPerfume.name}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    display: 'block',
+                    // 타원형 클리핑 + 테두리 그라데이션 블렌딩 (모바일)
+                    WebkitMaskImage: mobileEllipseMask,
+                    maskImage: mobileEllipseMask,
+                  }}
+                />
               ) : (
                 <span style={{ color: 'rgba(100,60,20,0.3)', fontSize: '3rem' }}>✦</span>
               )}
