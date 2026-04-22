@@ -127,6 +127,143 @@ const BottleSVG = React.forwardRef(function BottleSVG(
   );
 });
 
+/* ─────────────────────────────────────────
+   병 미리보기 패널 (데스크탑 좌측 / 모바일 상단)
+───────────────────────────────────────── */
+const BottlePreviewPanel = ({
+  selectedBottle, bottleColor, setBottleColor,
+  activeTab, drawMode,
+  canvasRef, bottleSvgRef,
+  startDraw, draw, endDraw,
+  objects, selectedObjId, onObjMouseDown,
+  deleteObject, resizeObject,
+  engravingEnabled, engravingText,
+  prices,
+  isMobile,
+}) => {
+  /* 모바일/데스크탑 모두 동일 크기 — 잘림 없도록 */
+  const W = 200;
+  const H = 280;
+
+  return (
+    <div className={`
+      bg-[#f0ece4] flex flex-col items-center border-[#c9a961]/20 select-none
+      ${isMobile
+        ? 'w-full border-b py-6 px-4 gap-3'
+        : 'w-72 min-w-[280px] border-r justify-center py-8'
+      }
+    `}>
+      {/* 병 캔버스 영역 */}
+      <div className="relative flex-shrink-0" style={{ width: W, height: H }}>
+        <div className="absolute inset-0 pointer-events-none">
+          <BottleSVG ref={bottleSvgRef} shape={selectedBottle.shape} fillColor={bottleColor} width={W} height={H} />
+        </div>
+
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          className="absolute inset-0"
+          style={{
+            cursor: activeTab === 'draw' ? (drawMode === 'eraser' ? 'cell' : 'crosshair') : 'default',
+            zIndex: activeTab === 'draw' ? 10 : 2,
+            touchAction: 'none',
+          }}
+          onMouseDown={activeTab === 'draw' ? startDraw : undefined}
+          onMouseMove={activeTab === 'draw' ? draw : undefined}
+          onMouseUp={activeTab === 'draw' ? endDraw : undefined}
+          onMouseLeave={activeTab === 'draw' ? endDraw : undefined}
+          onTouchStart={activeTab === 'draw' ? startDraw : undefined}
+          onTouchMove={activeTab === 'draw' ? draw : undefined}
+          onTouchEnd={activeTab === 'draw' ? endDraw : undefined}
+        />
+
+        {objects.map(obj => {
+          /* 모바일에서 오브젝트 위치 스케일 */
+          const scaleX = W / 200;
+          const scaleY = H / 280;
+          return (
+            <div
+              key={obj.id}
+              style={{
+                position: 'absolute',
+                left: obj.x * scaleX,
+                top: obj.y * scaleY,
+                width: obj.w * scaleX,
+                height: obj.h * scaleY,
+                zIndex: 20,
+                cursor: 'move',
+                border: selectedObjId === obj.id ? '1.5px dashed #c9a961' : 'none',
+                boxSizing: 'border-box',
+                userSelect: 'none',
+              }}
+              onMouseDown={(e) => onObjMouseDown(e, obj.id)}
+            >
+              {obj.type === 'image' ? (
+                <img src={obj.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} draggable={false} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.min(obj.w, obj.h) * 0.75 * Math.min(scaleX, scaleY), lineHeight: 1, pointerEvents: 'none' }}>
+                  {obj.text}
+                </div>
+              )}
+
+              {selectedObjId === obj.id && (
+                <>
+                  <button onClick={() => deleteObject(obj.id)}
+                    style={{ position: 'absolute', top: -10, right: -10, background: '#ff4444', color: 'white', borderRadius: '50%', width: 20, height: 20, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', zIndex: 30 }}>
+                    ×
+                  </button>
+                  <button onClick={() => resizeObject(obj.id, 10)}
+                    style={{ position: 'absolute', bottom: -10, right: -10, background: '#c9a961', color: 'white', borderRadius: '50%', width: 20, height: 20, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'se-resize', border: 'none', zIndex: 30 }}
+                    title="크게">+</button>
+                  <button onClick={() => resizeObject(obj.id, -10)}
+                    style={{ position: 'absolute', bottom: -10, left: -10, background: '#8b8278', color: 'white', borderRadius: '50%', width: 20, height: 20, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', zIndex: 30 }}
+                    title="작게">-</button>
+                </>
+              )}
+            </div>
+          );
+        })}
+
+        {engravingEnabled && engravingText && (
+          <div style={{
+            position: 'absolute', bottom: isMobile ? 28 : 40, left: 0, right: 0,
+            textAlign: 'center', fontSize: isMobile ? 8 : 11, color: '#a08040',
+            fontFamily: 'Georgia, serif', fontStyle: 'italic',
+            letterSpacing: 2, pointerEvents: 'none', zIndex: 5,
+            textShadow: '0 0 4px rgba(255,255,255,0.5)',
+          }}>
+            {engravingText}
+          </div>
+        )}
+      </div>
+
+      {/* 병 정보 + 색상 선택 */}
+      <div className="flex flex-col items-center mt-1 gap-1">
+        <div className="text-xs tracking-widest text-[#8b8278] italic text-center">
+          {selectedBottle.name}
+        </div>
+        <div className="text-[#c9a961] text-xs">₩{selectedBottle.basePrice.toLocaleString()}</div>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-[9px] tracking-widest text-[#8b8278]">병 색상</span>
+          <input type="color" value={bottleColor} onChange={e => setBottleColor(e.target.value)}
+            className="w-8 h-6 border border-[#c9a961]/30 cursor-pointer bg-transparent" />
+        </div>
+        {/* 모바일에서만: 예상 금액 인라인 표시 */}
+        {isMobile && (
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[9px] tracking-widest text-[#8b8278]">예상 금액</span>
+            <span className="text-[#c9a961] text-xs font-bold">₩{prices.total.toLocaleString()}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────
+   메인 에디터
+───────────────────────────────────────── */
 const CustomizationEditor = ({ onClose, onSave, initialData }) => {
   const [activeTab, setActiveTab] = useState('bottle');
 
@@ -152,6 +289,14 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
 
   const [designName, setDesignName] = useState('');
 
+  /* 반응형: 모바일 여부 */
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
   const token = sessionStorage.getItem('accessToken');
 
   useEffect(() => {
@@ -162,7 +307,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
         });
         if (res.ok) {
           const json = await res.json();
-
           setAdminBottles(
             (json.data || []).map(b => ({
               id: `admin-${b.bottleId}`,
@@ -211,7 +355,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
   const draw = (e) => {
     if (!isDrawing || !lastPos) return;
     const pos = getCanvasPos(e);
-
     const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
     ctx.globalCompositeOperation = drawMode === 'eraser' ? 'destination-out' : 'source-over';
     ctx.strokeStyle = penColor;
@@ -231,6 +374,7 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     setLastPos(null);
     updateHasDrawing();
   };
+
   const clearCanvas = () => {
     canvasRef.current.getContext('2d', { willReadFrequently: true }).clearRect(0, 0, 200, 280);
     hasDrawingRef.current = false;
@@ -324,17 +468,9 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     const stickerCount = objects.filter(o => o.type === 'sticker').length;
     const stickerPrice = stickerCount * PRICE_CONFIG.stickerPack;
     const engravingPrice = engravingEnabled && engravingText ? PRICE_CONFIG.engraving : 0;
-
     const drawingPrice = hasDrawingRef.current ? PRICE_CONFIG.printing : 0;
-
     const total = bottlePrice + Math.max(printingPrice, drawingPrice) + stickerPrice + engravingPrice;
-    return {
-      bottlePrice,
-      printingPrice: Math.max(printingPrice, drawingPrice),
-      stickerPrice,
-      engravingPrice,
-      total,
-    };
+    return { bottlePrice, printingPrice: Math.max(printingPrice, drawingPrice), stickerPrice, engravingPrice, total };
   };
 
   const generatePreviewImage = () => new Promise((resolve) => {
@@ -348,29 +484,20 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     ctx.fillRect(0, 0, W, H);
 
     const svgEl = bottleSvgRef.current;
-    const svgData = svgEl
-      ? new XMLSerializer().serializeToString(svgEl)
-      : null;
+    const svgData = svgEl ? new XMLSerializer().serializeToString(svgEl) : null;
 
     const drawRest = () => {
-
       try {
-        if (canvasRef.current) {
-          ctx.drawImage(canvasRef.current, 0, 0);
-        }
+        if (canvasRef.current) ctx.drawImage(canvasRef.current, 0, 0);
       } catch {}
 
       const imagePromises = objects.map(obj => new Promise((res) => {
         if (obj.type === 'image') {
           const img = new Image();
-          img.onload = () => {
-            ctx.drawImage(img, obj.x, obj.y, obj.w, obj.h);
-            res();
-          };
+          img.onload = () => { ctx.drawImage(img, obj.x, obj.y, obj.w, obj.h); res(); };
           img.onerror = () => res();
           img.src = obj.src;
         } else if (obj.type === 'sticker') {
-
           const fontSize = Math.min(obj.w, obj.h) * 0.75;
           ctx.font = `${fontSize}px serif`;
           ctx.textAlign = 'center';
@@ -383,7 +510,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
       }));
 
       Promise.all(imagePromises).then(() => {
-
         if (engravingEnabled && engravingText) {
           ctx.font = 'italic 11px Georgia, serif';
           ctx.fillStyle = '#a08040';
@@ -392,7 +518,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
           ctx.letterSpacing = '2px';
           ctx.fillText(engravingText, W / 2, H - 40);
         }
-
         try {
           const raw = offscreen.toDataURL('image/jpeg', 0.5);
           resolve(raw.length < 400_000 ? raw : null);
@@ -406,11 +531,7 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
       const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(svgBlob);
       const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, W, H);
-        URL.revokeObjectURL(url);
-        drawRest();
-      };
+      img.onload = () => { ctx.drawImage(img, 0, 0, W, H); URL.revokeObjectURL(url); drawRest(); };
       img.onerror = () => drawRest();
       img.src = url;
     } else {
@@ -420,13 +541,9 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
 
   const handleSave = async () => {
     if (!designName.trim()) { alert('디자인 이름을 입력해주세요.'); return; }
-
     const prices = calcPrices();
-
     let previewUrl = null;
-    try {
-      previewUrl = await generatePreviewImage();
-    } catch {}
+    try { previewUrl = await generatePreviewImage(); } catch {}
 
     const body = {
       name: designName.trim(),
@@ -450,10 +567,7 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
     try {
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
@@ -476,32 +590,47 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
   const tabs = [
     { id: 'bottle',    label: '공병 선택' },
     { id: 'draw',      label: '그림판' },
-    { id: 'upload',    label: '이미지 업로드' },
+    { id: 'upload',    label: '이미지' },
     { id: 'sticker',   label: '스티커' },
     { id: 'engraving', label: '각인' },
     { id: 'save',      label: '저장' },
   ];
 
-  return (
-    <div className="fixed inset-0 z-[200] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-[#faf8f3] w-full max-w-6xl max-h-[95vh] flex flex-col shadow-2xl border border-[#c9a961]/30 overflow-hidden">
+  /* 공통 병 미리보기 props */
+  const previewProps = {
+    selectedBottle, bottleColor, setBottleColor,
+    activeTab, drawMode,
+    canvasRef, bottleSvgRef,
+    startDraw, draw, endDraw,
+    objects, selectedObjId, onObjMouseDown,
+    deleteObject, resizeObject,
+    engravingEnabled, engravingText,
+    prices,
+    isMobile,
+  };
 
-        <div className="flex items-center justify-between px-8 py-4 border-b border-[#c9a961]/20 bg-white">
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/70 flex items-start md:items-center justify-center p-2 md:p-4 backdrop-blur-sm overflow-y-auto">
+      <div className={`bg-[#faf8f3] w-full max-w-6xl shadow-2xl border border-[#c9a961]/30 flex flex-col ${isMobile ? 'min-h-screen' : 'max-h-[95vh] overflow-hidden'}`}>
+
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-4 md:px-8 py-3 md:py-4 border-b border-[#c9a961]/20 bg-white flex-shrink-0">
           <div>
-            <div className="text-[9px] tracking-[0.4em] text-[#c9a961] italic mb-1">DESIGN STUDIO</div>
-            <h2 className="font-serif text-xl text-[#1a1a1a] tracking-widest">CUSTOMIZING</h2>
+            <div className="text-[9px] tracking-[0.4em] text-[#c9a961] italic mb-0.5">DESIGN STUDIO</div>
+            <h2 className="font-serif text-base md:text-xl text-[#1a1a1a] tracking-widest">CUSTOMIZING</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:text-[#c9a961] transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        <div className="flex border-b border-[#c9a961]/20 bg-white overflow-x-auto">
+        {/* 탭 바 */}
+        <div className="flex border-b border-[#c9a961]/20 bg-white overflow-x-auto flex-shrink-0">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 text-[11px] tracking-widest whitespace-nowrap transition-all border-b-2 ${
+              className={`px-3 md:px-5 py-3 text-[10px] md:text-[11px] tracking-widest whitespace-nowrap transition-all border-b-2 ${
                 activeTab === tab.id
                   ? 'border-[#c9a961] text-[#c9a961]'
                   : 'border-transparent text-[#8b8278] hover:text-[#2a2620]'
@@ -512,330 +641,385 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
           ))}
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        {/* 본문 영역 */}
+        {isMobile ? (
+          /* ── 모바일: 세로 스택 (스크롤은 바깥 오버레이가 담당) ── */
+          <div className="flex flex-col">
+            {/* 상단: 병 미리보기 — 잘리지 않고 온전히 표시 */}
+            <BottlePreviewPanel {...previewProps} />
 
-          <div className="relative w-72 min-w-[280px] bg-[#f0ece4] flex flex-col items-center justify-center border-r border-[#c9a961]/20 select-none">
-            <div className="relative" style={{ width: 200, height: 280 }}>
-
-              <div className="absolute inset-0 pointer-events-none">
-                <BottleSVG ref={bottleSvgRef} shape={selectedBottle.shape} fillColor={bottleColor} width={200} height={280} />
-              </div>
-
-              <canvas
-                ref={canvasRef}
-                width={200}
-                height={280}
-                className="absolute inset-0"
-                style={{
-                  cursor: activeTab === 'draw' ? (drawMode === 'eraser' ? 'cell' : 'crosshair') : 'default',
-                  zIndex: activeTab === 'draw' ? 10 : 2,
-                  touchAction: 'none',
-                }}
-                onMouseDown={activeTab === 'draw' ? startDraw : undefined}
-                onMouseMove={activeTab === 'draw' ? draw : undefined}
-                onMouseUp={activeTab === 'draw' ? endDraw : undefined}
-                onMouseLeave={activeTab === 'draw' ? endDraw : undefined}
-                onTouchStart={activeTab === 'draw' ? startDraw : undefined}
-                onTouchMove={activeTab === 'draw' ? draw : undefined}
-                onTouchEnd={activeTab === 'draw' ? endDraw : undefined}
+            {/* 하단: 탭 컨텐츠 */}
+            <div className="p-4">
+              <MobileTabContent
+                activeTab={activeTab}
+                allBottles={allBottles}
+                bottleColor={bottleColor}
+                selectedBottle={selectedBottle}
+                setSelectedBottle={setSelectedBottle}
+                drawMode={drawMode}
+                setDrawMode={setDrawMode}
+                penColor={penColor}
+                setPenColor={setPenColor}
+                penSize={penSize}
+                setPenSize={setPenSize}
+                clearCanvas={clearCanvas}
+                handleImageUpload={handleImageUpload}
+                objects={objects}
+                deleteObject={deleteObject}
+                addSticker={addSticker}
+                handleStickerFileUpload={handleStickerFileUpload}
+                engravingEnabled={engravingEnabled}
+                setEngravingEnabled={setEngravingEnabled}
+                engravingText={engravingText}
+                setEngravingText={setEngravingText}
+                designName={designName}
+                setDesignName={setDesignName}
+                prices={prices}
+                selectedBottle={selectedBottle}
+                handleSave={handleSave}
               />
-
-              {objects.map(obj => (
-                <div
-                  key={obj.id}
-                  style={{
-                    position: 'absolute', left: obj.x, top: obj.y,
-                    width: obj.w, height: obj.h, zIndex: 20,
-                    cursor: 'move',
-                    border: selectedObjId === obj.id ? '1.5px dashed #c9a961' : 'none',
-                    boxSizing: 'border-box', userSelect: 'none',
-                  }}
-                  onMouseDown={(e) => onObjMouseDown(e, obj.id)}
-                >
-                  {obj.type === 'image' ? (
-                    <img src={obj.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} draggable={false} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.min(obj.w, obj.h) * 0.75, lineHeight: 1, pointerEvents: 'none' }}>
-                      {obj.text}
-                    </div>
-                  )}
-
-                  {selectedObjId === obj.id && (
-                    <>
-                      <button onClick={() => deleteObject(obj.id)}
-                        style={{ position: 'absolute', top: -10, right: -10, background: '#ff4444', color: 'white', borderRadius: '50%', width: 20, height: 20, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', zIndex: 30 }}>
-                        ×
-                      </button>
-                      <button onClick={() => resizeObject(obj.id, 10)}
-                        style={{ position: 'absolute', bottom: -10, right: -10, background: '#c9a961', color: 'white', borderRadius: '50%', width: 20, height: 20, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'se-resize', border: 'none', zIndex: 30 }}
-                        title="크게">
-                        +
-                      </button>
-                      <button onClick={() => resizeObject(obj.id, -10)}
-                        style={{ position: 'absolute', bottom: -10, left: -10, background: '#8b8278', color: 'white', borderRadius: '50%', width: 20, height: 20, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', zIndex: 30 }}
-                        title="작게">
-                        -
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
-
-              {engravingEnabled && engravingText && (
-                <div style={{
-                  position: 'absolute', bottom: 40, left: 0, right: 0,
-                  textAlign: 'center', fontSize: 11, color: '#a08040',
-                  fontFamily: 'Georgia, serif', fontStyle: 'italic',
-                  letterSpacing: 2, pointerEvents: 'none', zIndex: 5,
-                  textShadow: '0 0 4px rgba(255,255,255,0.5)',
-                }}>
-                  {engravingText}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 text-center">
-              <div className="text-xs tracking-widest text-[#8b8278] italic">{selectedBottle.name}</div>
-              <div className="text-[#c9a961] text-xs mt-1">₩{selectedBottle.basePrice.toLocaleString()}</div>
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-[9px] tracking-widest text-[#8b8278]">병 색상</span>
-              <input type="color" value={bottleColor} onChange={e => setBottleColor(e.target.value)}
-                className="w-8 h-6 border border-[#c9a961]/30 cursor-pointer bg-transparent" />
             </div>
           </div>
-
-          <div className="flex-1 overflow-y-auto p-6">
-
-            {activeTab === 'bottle' && (
-              <div>
-                <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">공병 디자인 선택</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {allBottles.map(bottle => (
-                    <button
-                      key={bottle.id}
-                      onClick={() => setSelectedBottle(bottle)}
-                      className={`flex flex-col items-center p-4 border transition-all ${
-                        selectedBottle.id === bottle.id
-                          ? 'border-[#c9a961] bg-[#c9a961]/5'
-                          : 'border-[#c9a961]/20 hover:border-[#c9a961]/60 bg-white'
-                      }`}
-                    >
-                      <BottleSVG shape={bottle.shape} fillColor={bottleColor} width={70} height={100} />
-                      <span className="text-[10px] tracking-wider text-[#2a2620] mt-2">{bottle.name}</span>
-                      <span className="text-[9px] text-[#c9a961] mt-1">₩{bottle.basePrice.toLocaleString()}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'draw' && (
-              <div>
-                <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">그림판</h3>
-                <div className="bg-white border border-[#c9a961]/20 p-5 space-y-5">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <button onClick={() => setDrawMode('pen')}
-                      className={`flex items-center gap-2 px-4 py-2 text-[11px] tracking-wider border transition-all ${drawMode === 'pen' ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'border-[#c9a961]/30 text-[#8b8278]'}`}>
-                      <Pen size={13} /> 펜
-                    </button>
-                    <button onClick={() => setDrawMode('eraser')}
-                      className={`flex items-center gap-2 px-4 py-2 text-[11px] tracking-wider border transition-all ${drawMode === 'eraser' ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'border-[#c9a961]/30 text-[#8b8278]'}`}>
-                      <Eraser size={13} /> 지우개
-                    </button>
-                    <button onClick={clearCanvas}
-                      className="flex items-center gap-2 px-4 py-2 text-[11px] tracking-wider border border-red-200 text-red-300 hover:bg-red-50 transition-all">
-                      <RotateCcw size={13} /> 전체 지우기
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-6 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] tracking-wider text-[#8b8278]">색상</span>
-                      <input type="color" value={penColor} onChange={e => setPenColor(e.target.value)}
-                        className="w-8 h-8 cursor-pointer border border-[#c9a961]/30" disabled={drawMode === 'eraser'} />
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] tracking-wider text-[#8b8278]">굵기</span>
-                      <input type="range" min={1} max={20} value={penSize}
-                        onChange={e => setPenSize(Number(e.target.value))}
-                        className="w-28 accent-[#c9a961]" />
-                      <span className="text-[10px] text-[#c9a961] w-4">{penSize}px</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] tracking-wider text-[#8b8278] mr-2">빠른 색상</span>
-                    {['#c9a961', '#1a1a1a', '#ffffff', '#8b8278', '#2a2620', '#e8dcc8', '#ff6b6b', '#74b9ff', '#55efc4', '#fd79a8', '#a29bfe'].map(c => (
-                      <button key={c}
-                        onClick={() => { setPenColor(c); setDrawMode('pen'); }}
-                        style={{ background: c, border: penColor === c ? '2px solid #c9a961' : '1.5px solid #ddd' }}
-                        className="w-7 h-7 rounded-full transition-transform hover:scale-110" />
-                    ))}
-                  </div>
-
-                  <p className="text-[9px] text-[#8b8278] italic tracking-widest">
-                    ✦ 왼쪽 공병 위에서 직접 그리세요.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'upload' && (
-              <div>
-                <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">이미지 업로드</h3>
-                <div
-                  className="border-2 border-dashed border-[#c9a961]/40 bg-white p-12 text-center cursor-pointer hover:border-[#c9a961] hover:bg-[#c9a961]/5 transition-all"
-                  onDrop={(e) => { e.preventDefault(); handleImageUpload(e.dataTransfer.files[0]); }}
-                  onDragOver={e => e.preventDefault()}
-                  onClick={() => document.getElementById('img-upload-input').click()}
-                >
-                  <Upload size={32} className="mx-auto mb-4 text-[#c9a961]/60" />
-                  <p className="text-[12px] tracking-widest text-[#8b8278] mb-2">이미지를 드래그하거나 클릭하여 업로드</p>
-                  <p className="text-[9px] text-[#c9a961]/60 italic">PNG, JPG, SVG, WEBP 지원</p>
-                  <input id="img-upload-input" type="file" accept="image/*" className="hidden"
-                    onChange={e => handleImageUpload(e.target.files[0])} />
-                </div>
-
-                {objects.filter(o => o.type === 'image').length > 0 && (
-                  <div className="mt-6">
-                    <div className="text-[10px] tracking-widest text-[#8b8278] mb-3">업로드된 이미지</div>
-                    <div className="flex flex-wrap gap-3">
-                      {objects.filter(o => o.type === 'image').map(obj => (
-                        <div key={obj.id} className="relative w-16 h-16 border border-[#c9a961]/20 overflow-hidden">
-                          <img src={obj.src} alt="" className="w-full h-full object-cover" />
-                          <button onClick={() => deleteObject(obj.id)}
-                            className="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 text-[10px] flex items-center justify-center">×</button>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="mt-3 text-[9px] text-[#8b8278] italic">왼쪽 미리보기에서 드래그로 위치를 조절하세요.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'sticker' && (
-              <div>
-                <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">스티커</h3>
-
-                <div className="bg-white border border-[#c9a961]/20 p-5 mb-5">
-                  <div className="text-[10px] tracking-widest text-[#8b8278] mb-3">기본 스티커 팩</div>
-                  <div className="flex flex-wrap gap-3">
-                    {BUILT_IN_STICKERS.map(s => (
-                      <button key={s} onClick={() => addSticker(s)}
-                        className="w-12 h-12 text-2xl flex items-center justify-center border border-[#c9a961]/20 hover:border-[#c9a961] hover:bg-[#c9a961]/5 transition-all hover:scale-110">
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-white border border-[#c9a961]/20 p-5">
-                  <div className="text-[10px] tracking-widest text-[#8b8278] mb-3">커스텀 스티커 파일 업로드</div>
-                  <label className="flex items-center gap-3 px-5 py-3 border border-dashed border-[#c9a961]/40 cursor-pointer hover:border-[#c9a961] hover:bg-[#c9a961]/5 transition-all w-fit">
-                    <Upload size={14} className="text-[#c9a961]/60" />
-                    <span className="text-[11px] tracking-wider text-[#8b8278]">이미지 파일 선택</span>
-                    <input type="file" accept="image/*" className="hidden"
-                      onChange={e => handleStickerFileUpload(e.target.files[0])} />
-                  </label>
-                  <p className="text-[9px] text-[#8b8278]/60 italic mt-2">PNG (투명배경) 권장</p>
-                </div>
-
-                <p className="mt-3 text-[9px] text-[#8b8278] italic">
-                  ✦ 스티커 클릭 시 공병 위에 추가됩니다. 미리보기에서 드래그로 위치 조절.
-                </p>
-              </div>
-            )}
-
-            {activeTab === 'engraving' && (
-              <div>
-                <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">각인 (Engraving)</h3>
-                <div className="bg-white border border-[#c9a961]/20 p-6 space-y-5">
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" id="engraving-toggle" checked={engravingEnabled}
-                      onChange={e => setEngravingEnabled(e.target.checked)}
-                      className="accent-[#c9a961] w-4 h-4" />
-                    <label htmlFor="engraving-toggle" className="text-[11px] tracking-widest text-[#2a2620] cursor-pointer">
-                      각인 추가하기 (+₩{PRICE_CONFIG.engraving.toLocaleString()})
-                    </label>
-                  </div>
-                  {engravingEnabled && (
-                    <div className="space-y-3 pl-7">
-                      <label className="text-[10px] tracking-wider text-[#8b8278] block">각인 문구 (최대 20자)</label>
-                      <input type="text" value={engravingText} maxLength={20}
-                        onChange={e => setEngravingText(e.target.value)}
-                        placeholder="예: My Signature..."
-                        className="w-full max-w-sm border-b border-[#c9a961]/40 bg-transparent text-sm text-[#2a2620] pb-2 outline-none placeholder-[#8b8278]/50 focus:border-[#c9a961]" />
-                      <p className="text-[9px] text-[#8b8278] italic">{engravingText.length}/20자</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'save' && (
-              <div>
-                <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">저장 및 가격</h3>
-                <div className="bg-white border border-[#c9a961]/20 p-6 space-y-6">
-                  <div>
-                    <label className="text-[10px] tracking-wider text-[#8b8278] block mb-2">디자인 이름 *</label>
-                    <input type="text" value={designName}
-                      onChange={e => setDesignName(e.target.value)}
-                      placeholder="나만의 디자인 이름"
-                      className="w-full max-w-sm border-b border-[#c9a961]/40 bg-transparent text-sm text-[#2a2620] pb-2 outline-none placeholder-[#8b8278]/50 focus:border-[#c9a961]" />
-                  </div>
-
-                  <div className="space-y-2 border-t border-[#c9a961]/10 pt-5">
-                    <div className="text-[10px] tracking-widest text-[#8b8278] mb-3">가격 내역</div>
-                    <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
-                      <span>공병 ({selectedBottle.name})</span>
-                      <span>₩{prices.bottlePrice.toLocaleString()}</span>
-                    </div>
-                    {prices.printingPrice > 0 && (
-                      <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
-                        <span>이미지/프린팅</span>
-                        <span>₩{prices.printingPrice.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {prices.stickerPrice > 0 && (
-                      <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
-                        <span>스티커 ({objects.filter(o => o.type === 'sticker').length}개)</span>
-                        <span>₩{prices.stickerPrice.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {prices.engravingPrice > 0 && (
-                      <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
-                        <span>각인</span>
-                        <span>₩{prices.engravingPrice.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="h-[1px] bg-[#c9a961]/20 my-3" />
-                    <div className="flex justify-between items-center">
-                      <span className="font-serif italic text-[#c9a961] text-sm">Total</span>
-                      <span className="text-xl font-bold text-[#1a1a1a]">₩{prices.total.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  <button onClick={handleSave}
-                    className="w-full py-4 bg-[#1a1a1a] text-white text-[10px] tracking-[0.3em] hover:bg-[#c9a961] transition-all flex items-center justify-center gap-2">
-                    <Save size={14} />
-                    SAVE DESIGN
-                  </button>
-                </div>
-              </div>
-            )}
-
+        ) : (
+          /* ── 데스크탑: 가로 분할 ── */
+          <div className="flex flex-1 overflow-hidden">
+            <BottlePreviewPanel {...previewProps} />
+            <div className="flex-1 overflow-y-auto p-6">
+              <DesktopTabContent
+                activeTab={activeTab}
+                allBottles={allBottles}
+                bottleColor={bottleColor}
+                selectedBottle={selectedBottle}
+                setSelectedBottle={setSelectedBottle}
+                drawMode={drawMode}
+                setDrawMode={setDrawMode}
+                penColor={penColor}
+                setPenColor={setPenColor}
+                penSize={penSize}
+                setPenSize={setPenSize}
+                clearCanvas={clearCanvas}
+                handleImageUpload={handleImageUpload}
+                objects={objects}
+                deleteObject={deleteObject}
+                addSticker={addSticker}
+                handleStickerFileUpload={handleStickerFileUpload}
+                engravingEnabled={engravingEnabled}
+                setEngravingEnabled={setEngravingEnabled}
+                engravingText={engravingText}
+                setEngravingText={setEngravingText}
+                designName={designName}
+                setDesignName={setDesignName}
+                prices={prices}
+                handleSave={handleSave}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center justify-between px-8 py-3 bg-white border-t border-[#c9a961]/20 text-[11px] tracking-widest">
-          <span className="text-[#8b8278]">현재 예상 금액</span>
-          <span className="text-[#c9a961] font-bold">₩{prices.total.toLocaleString()}</span>
-        </div>
+        {/* 하단 가격 바 (데스크탑만) */}
+        {!isMobile && (
+          <div className="flex items-center justify-between px-8 py-3 bg-white border-t border-[#c9a961]/20 text-[11px] tracking-widest flex-shrink-0">
+            <span className="text-[#8b8278]">현재 예상 금액</span>
+            <span className="text-[#c9a961] font-bold">₩{prices.total.toLocaleString()}</span>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+/* ─────────────────────────────────────────
+   데스크탑 탭 컨텐츠 (기존과 동일)
+───────────────────────────────────────── */
+const DesktopTabContent = ({
+  activeTab, allBottles, bottleColor, selectedBottle, setSelectedBottle,
+  drawMode, setDrawMode, penColor, setPenColor, penSize, setPenSize, clearCanvas,
+  handleImageUpload, objects, deleteObject,
+  addSticker, handleStickerFileUpload,
+  engravingEnabled, setEngravingEnabled, engravingText, setEngravingText,
+  designName, setDesignName, prices, handleSave,
+}) => (
+  <>
+    {activeTab === 'bottle' && (
+      <div>
+        <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">공병 디자인 선택</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {allBottles.map(bottle => (
+            <button key={bottle.id} onClick={() => setSelectedBottle(bottle)}
+              className={`flex flex-col items-center p-4 border transition-all ${
+                selectedBottle.id === bottle.id
+                  ? 'border-[#c9a961] bg-[#c9a961]/5'
+                  : 'border-[#c9a961]/20 hover:border-[#c9a961]/60 bg-white'
+              }`}>
+              <BottleSVG shape={bottle.shape} fillColor={bottleColor} width={70} height={100} />
+              <span className="text-[10px] tracking-wider text-[#2a2620] mt-2">{bottle.name}</span>
+              <span className="text-[9px] text-[#c9a961] mt-1">₩{bottle.basePrice.toLocaleString()}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {activeTab === 'draw' && (
+      <DrawPanel drawMode={drawMode} setDrawMode={setDrawMode} penColor={penColor} setPenColor={setPenColor} penSize={penSize} setPenSize={setPenSize} clearCanvas={clearCanvas} />
+    )}
+
+    {activeTab === 'upload' && (
+      <UploadPanel handleImageUpload={handleImageUpload} objects={objects} deleteObject={deleteObject} />
+    )}
+
+    {activeTab === 'sticker' && (
+      <StickerPanel addSticker={addSticker} handleStickerFileUpload={handleStickerFileUpload} />
+    )}
+
+    {activeTab === 'engraving' && (
+      <EngravingPanel engravingEnabled={engravingEnabled} setEngravingEnabled={setEngravingEnabled} engravingText={engravingText} setEngravingText={setEngravingText} />
+    )}
+
+    {activeTab === 'save' && (
+      <SavePanel designName={designName} setDesignName={setDesignName} prices={prices} selectedBottle={selectedBottle} objects={objects} handleSave={handleSave} />
+    )}
+  </>
+);
+
+/* ─────────────────────────────────────────
+   모바일 탭 컨텐츠 (그리드 축소 버전)
+───────────────────────────────────────── */
+const MobileTabContent = (props) => {
+  const { activeTab, allBottles, bottleColor, selectedBottle, setSelectedBottle } = props;
+
+  return (
+    <>
+      {activeTab === 'bottle' && (
+        <div>
+          <h3 className="text-[10px] tracking-[0.3em] text-[#8b8278] mb-3 uppercase">공병 선택</h3>
+          {/* 모바일: 가로 스크롤 가능한 행 */}
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {allBottles.map(bottle => (
+              <button key={bottle.id} onClick={() => setSelectedBottle(bottle)}
+                className={`flex flex-col items-center p-3 border transition-all flex-shrink-0 ${
+                  selectedBottle.id === bottle.id
+                    ? 'border-[#c9a961] bg-[#c9a961]/5'
+                    : 'border-[#c9a961]/20 hover:border-[#c9a961]/60 bg-white'
+                }`}>
+                <BottleSVG shape={bottle.shape} fillColor={bottleColor} width={50} height={72} />
+                <span className="text-[9px] tracking-wide text-[#2a2620] mt-1.5 whitespace-nowrap">{bottle.name}</span>
+                <span className="text-[8px] text-[#c9a961] mt-0.5">₩{bottle.basePrice.toLocaleString()}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'draw' && (
+        <DrawPanel {...props} compact />
+      )}
+
+      {activeTab === 'upload' && (
+        <UploadPanel {...props} compact />
+      )}
+
+      {activeTab === 'sticker' && (
+        <StickerPanel {...props} compact />
+      )}
+
+      {activeTab === 'engraving' && (
+        <EngravingPanel {...props} />
+      )}
+
+      {activeTab === 'save' && (
+        <SavePanel {...props} compact />
+      )}
+    </>
+  );
+};
+
+/* ─────────────────────────────────────────
+   공통 패널 컴포넌트들
+───────────────────────────────────────── */
+const DrawPanel = ({ drawMode, setDrawMode, penColor, setPenColor, penSize, setPenSize, clearCanvas, compact }) => (
+  <div>
+    {!compact && <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">그림판</h3>}
+    <div className={`bg-white border border-[#c9a961]/20 ${compact ? 'p-3' : 'p-5'} space-y-4`}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={() => setDrawMode('pen')}
+          className={`flex items-center gap-1.5 px-3 py-2 text-[11px] tracking-wider border transition-all ${drawMode === 'pen' ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'border-[#c9a961]/30 text-[#8b8278]'}`}>
+          <Pen size={12} /> 펜
+        </button>
+        <button onClick={() => setDrawMode('eraser')}
+          className={`flex items-center gap-1.5 px-3 py-2 text-[11px] tracking-wider border transition-all ${drawMode === 'eraser' ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'border-[#c9a961]/30 text-[#8b8278]'}`}>
+          <Eraser size={12} /> 지우개
+        </button>
+        <button onClick={clearCanvas}
+          className="flex items-center gap-1.5 px-3 py-2 text-[11px] tracking-wider border border-red-200 text-red-300 hover:bg-red-50 transition-all">
+          <RotateCcw size={12} /> 전체 지우기
+        </button>
+      </div>
+
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] tracking-wider text-[#8b8278]">색상</span>
+          <input type="color" value={penColor} onChange={e => setPenColor(e.target.value)}
+            className="w-8 h-8 cursor-pointer border border-[#c9a961]/30" disabled={drawMode === 'eraser'} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] tracking-wider text-[#8b8278]">굵기</span>
+          <input type="range" min={1} max={20} value={penSize}
+            onChange={e => setPenSize(Number(e.target.value))}
+            className="w-24 accent-[#c9a961]" />
+          <span className="text-[10px] text-[#c9a961] w-4">{penSize}px</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] tracking-wider text-[#8b8278] mr-1">빠른 색상</span>
+        {['#c9a961', '#1a1a1a', '#ffffff', '#8b8278', '#2a2620', '#e8dcc8', '#ff6b6b', '#74b9ff', '#55efc4', '#fd79a8', '#a29bfe'].map(c => (
+          <button key={c}
+            onClick={() => { setPenColor(c); setDrawMode('pen'); }}
+            style={{ background: c, border: penColor === c ? '2px solid #c9a961' : '1.5px solid #ddd' }}
+            className="w-6 h-6 rounded-full transition-transform hover:scale-110" />
+        ))}
+      </div>
+
+      <p className="text-[9px] text-[#8b8278] italic tracking-widest">✦ 위 공병 위에서 직접 그리세요.</p>
+    </div>
+  </div>
+);
+
+const UploadPanel = ({ handleImageUpload, objects, deleteObject, compact }) => (
+  <div>
+    {!compact && <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-5 uppercase">이미지 업로드</h3>}
+    <div
+      className={`border-2 border-dashed border-[#c9a961]/40 bg-white text-center cursor-pointer hover:border-[#c9a961] hover:bg-[#c9a961]/5 transition-all ${compact ? 'p-6' : 'p-12'}`}
+      onDrop={(e) => { e.preventDefault(); handleImageUpload(e.dataTransfer.files[0]); }}
+      onDragOver={e => e.preventDefault()}
+      onClick={() => document.getElementById('img-upload-input').click()}
+    >
+      <Upload size={compact ? 24 : 32} className="mx-auto mb-3 text-[#c9a961]/60" />
+      <p className="text-[11px] tracking-widest text-[#8b8278] mb-1">이미지를 드래그하거나 클릭하여 업로드</p>
+      <p className="text-[9px] text-[#c9a961]/60 italic">PNG, JPG, SVG, WEBP 지원</p>
+      <input id="img-upload-input" type="file" accept="image/*" className="hidden"
+        onChange={e => handleImageUpload(e.target.files[0])} />
+    </div>
+
+    {objects?.filter(o => o.type === 'image').length > 0 && (
+      <div className="mt-4">
+        <div className="text-[10px] tracking-widest text-[#8b8278] mb-2">업로드된 이미지</div>
+        <div className="flex flex-wrap gap-2">
+          {objects.filter(o => o.type === 'image').map(obj => (
+            <div key={obj.id} className="relative w-14 h-14 border border-[#c9a961]/20 overflow-hidden">
+              <img src={obj.src} alt="" className="w-full h-full object-cover" />
+              <button onClick={() => deleteObject(obj.id)}
+                className="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 text-[10px] flex items-center justify-center">×</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+const StickerPanel = ({ addSticker, handleStickerFileUpload, compact }) => (
+  <div className="space-y-4">
+    {!compact && <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-1 uppercase">스티커</h3>}
+    <div className="bg-white border border-[#c9a961]/20 p-4">
+      <div className="text-[10px] tracking-widest text-[#8b8278] mb-3">기본 스티커 팩</div>
+      <div className="flex flex-wrap gap-2">
+        {BUILT_IN_STICKERS.map(s => (
+          <button key={s} onClick={() => addSticker(s)}
+            className="w-10 h-10 text-xl flex items-center justify-center border border-[#c9a961]/20 hover:border-[#c9a961] hover:bg-[#c9a961]/5 transition-all hover:scale-110">
+            {s}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div className="bg-white border border-[#c9a961]/20 p-4">
+      <div className="text-[10px] tracking-widest text-[#8b8278] mb-2">커스텀 스티커 파일 업로드</div>
+      <label className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#c9a961]/40 cursor-pointer hover:border-[#c9a961] hover:bg-[#c9a961]/5 transition-all w-fit">
+        <Upload size={13} className="text-[#c9a961]/60" />
+        <span className="text-[11px] tracking-wider text-[#8b8278]">이미지 파일 선택</span>
+        <input type="file" accept="image/*" className="hidden" onChange={e => handleStickerFileUpload(e.target.files[0])} />
+      </label>
+      <p className="text-[9px] text-[#8b8278]/60 italic mt-1">PNG (투명배경) 권장</p>
+    </div>
+  </div>
+);
+
+const EngravingPanel = ({ engravingEnabled, setEngravingEnabled, engravingText, setEngravingText }) => (
+  <div>
+    <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-4 uppercase">각인 (Engraving)</h3>
+    <div className="bg-white border border-[#c9a961]/20 p-5 space-y-4">
+      <div className="flex items-center gap-3">
+        <input type="checkbox" id="engraving-toggle" checked={engravingEnabled}
+          onChange={e => setEngravingEnabled(e.target.checked)}
+          className="accent-[#c9a961] w-4 h-4" />
+        <label htmlFor="engraving-toggle" className="text-[11px] tracking-widest text-[#2a2620] cursor-pointer">
+          각인 추가하기 (+₩{PRICE_CONFIG.engraving.toLocaleString()})
+        </label>
+      </div>
+      {engravingEnabled && (
+        <div className="space-y-2 pl-7">
+          <label className="text-[10px] tracking-wider text-[#8b8278] block">각인 문구 (최대 20자)</label>
+          <input type="text" value={engravingText} maxLength={20}
+            onChange={e => setEngravingText(e.target.value)}
+            placeholder="예: My Signature..."
+            className="w-full max-w-sm border-b border-[#c9a961]/40 bg-transparent text-sm text-[#2a2620] pb-2 outline-none placeholder-[#8b8278]/50 focus:border-[#c9a961]" />
+          <p className="text-[9px] text-[#8b8278] italic">{engravingText.length}/20자</p>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const SavePanel = ({ designName, setDesignName, prices, selectedBottle, objects, handleSave }) => (
+  <div>
+    <h3 className="text-[11px] tracking-[0.3em] text-[#8b8278] mb-4 uppercase">저장 및 가격</h3>
+    <div className="bg-white border border-[#c9a961]/20 p-5 space-y-5">
+      <div>
+        <label className="text-[10px] tracking-wider text-[#8b8278] block mb-2">디자인 이름 *</label>
+        <input type="text" value={designName}
+          onChange={e => setDesignName(e.target.value)}
+          placeholder="나만의 디자인 이름"
+          className="w-full max-w-sm border-b border-[#c9a961]/40 bg-transparent text-sm text-[#2a2620] pb-2 outline-none placeholder-[#8b8278]/50 focus:border-[#c9a961]" />
+      </div>
+
+      <div className="space-y-2 border-t border-[#c9a961]/10 pt-4">
+        <div className="text-[10px] tracking-widest text-[#8b8278] mb-2">가격 내역</div>
+        <div className="flex justify-between text-[11px] tracking-wider text-[#2a2620]">
+          <span>공병 ({selectedBottle.name})</span>
+          <span>₩{prices.bottlePrice.toLocaleString()}</span>
+        </div>
+        {prices.printingPrice > 0 && (
+          <div className="flex justify-between text-[11px] text-[#2a2620]">
+            <span>이미지/프린팅</span><span>₩{prices.printingPrice.toLocaleString()}</span>
+          </div>
+        )}
+        {prices.stickerPrice > 0 && (
+          <div className="flex justify-between text-[11px] text-[#2a2620]">
+            <span>스티커 ({objects?.filter(o => o.type === 'sticker').length || 0}개)</span>
+            <span>₩{prices.stickerPrice.toLocaleString()}</span>
+          </div>
+        )}
+        {prices.engravingPrice > 0 && (
+          <div className="flex justify-between text-[11px] text-[#2a2620]">
+            <span>각인</span><span>₩{prices.engravingPrice.toLocaleString()}</span>
+          </div>
+        )}
+        <div className="h-px bg-[#c9a961]/20 my-2" />
+        <div className="flex justify-between items-center">
+          <span className="font-serif italic text-[#c9a961] text-sm">Total</span>
+          <span className="text-xl font-bold text-[#1a1a1a]">₩{prices.total.toLocaleString()}</span>
+        </div>
+      </div>
+
+      <button onClick={handleSave}
+        className="w-full py-4 bg-[#1a1a1a] text-white text-[10px] tracking-[0.3em] hover:bg-[#c9a961] transition-all flex items-center justify-center gap-2">
+        <Save size={14} />
+        SAVE DESIGN
+      </button>
+    </div>
+  </div>
+);
 
 export default CustomizationEditor;
