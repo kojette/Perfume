@@ -742,7 +742,6 @@ const CustomizationEditor = ({ onClose, onSave, initialData }) => {
                 designName={designName}
                 setDesignName={setDesignName}
                 prices={prices}
-                selectedBottle={selectedBottle}
                 handleSave={handleSave}
               />
             </div>
