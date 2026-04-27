@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'profile_edit_screen.dart';
 import 'start_screen.dart';
 import 'order_receipt_screen.dart';
+import 'order_tracking_screen.dart';
+import 'return_exchange_screen.dart';
 import '../services/api_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -691,6 +693,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   // ── ORDERS ──────────────────────────────────────────────────
 
+   /// 배송 추적 가능한 주문 상태
+  static const _trackableStatuses = {
+    'PAID', 'CONFIRMED', 'PREPARING', 'SHIPPED', 'DELIVERED', 'COMPLETED'
+  };
+ 
+  /// 반품/교환 가능한 주문 상태
+  static const _returnableStatuses = {
+    'SHIPPED', 'DELIVERED', 'COMPLETED'
+  };
+ 
   Widget _buildOrdersTab() {
     if (_orders.isEmpty) {
       return _buildEmptyState(icon: Icons.shopping_bag_outlined, message: '주문 내역이 없습니다.');
@@ -699,10 +711,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
       children: _orders.map((order) {
         final orderId = order['orderId'] as int? ?? 0;
         final isExpanded = _expandedOrderId == orderId;
+        final orderStatus = (order['orderStatus'] as String?) ?? 'COMPLETED';
+        final canTrack = _trackableStatuses.contains(orderStatus);
+        final canReturn = _returnableStatuses.contains(orderStatus);
+        final pointsUsed = (order['pointsUsed'] as num?)?.toInt() ?? 0;
+        final pointsEarned = (order['pointsEarned'] as num?)?.toInt() ?? 0;
+ 
         return _buildCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ─ 상단: 주문일/번호 + 상태 ─
               Row(
                 children: [
                   Expanded(
@@ -710,7 +729,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _formatDate(order['createdAt'] as String? ?? '') + ' 결제',
+                          '${_formatDate(order['createdAt'] as String? ?? '')} 결제',
                           style: const TextStyle(fontSize: 11, color: _grey),
                         ),
                         const SizedBox(height: 2),
@@ -725,64 +744,108 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     color: _gold.withOpacity(0.15),
                     child: Text(
-                      order['orderStatus'] as String? ?? 'COMPLETED',
+                      orderStatus,
                       style: const TextStyle(fontSize: 9, color: _gold, letterSpacing: 1),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
+ 
+              // ─ 가격 + 포인트 ─
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  const Text('Total Amount',
+                      style: TextStyle(fontSize: 10, color: _grey, letterSpacing: 1)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '₩${(order['finalAmount'] as num?)?.toStringAsFixed(0) ?? '-'}',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _dark),
+                  ),
+                  if (pointsUsed > 0 || pointsEarned > 0) ...[
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
                       children: [
-                        const Text('Total Amount', style: TextStyle(fontSize: 10, color: _grey, letterSpacing: 1)),
-                        const SizedBox(height: 2),
-                        Text(
-                          '₩${(order['finalAmount'] as num?)?.toStringAsFixed(0) ?? '-'}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _dark),
-                        ),
+                        if (pointsUsed > 0)
+                          Text('-${pointsUsed.toString()}P 사용',
+                              style: TextStyle(fontSize: 10, color: Colors.red.shade400)),
+                        if (pointsEarned > 0)
+                          Text('+${pointsEarned.toString()}P 적립',
+                              style: const TextStyle(fontSize: 10, color: _gold)),
                       ],
                     ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+ 
+              // ─ 액션 버튼들 (Wrap으로 감싸 줄바꿈 허용) ─
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                alignment: WrapAlignment.end,
+                children: [
+                  // 영수증 보기
+                  _orderActionButton(
+                    label: '영수증',
+                    color: _gold,
+                    bgColor: _dark,
+                    isFilled: true,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OrderReceiptScreen(orderId: orderId.toString()),
+                        ),
+                      );
+                    },
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      OutlinedButton(
-                        onPressed: () => setState(() => _expandedOrderId = isExpanded ? null : orderId),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: _gold),
-                          shape: const RoundedRectangleBorder(),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        child: Text(
-                          isExpanded ? '닫기' : '상세',
-                          style: const TextStyle(fontSize: 10, color: _gold),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      OutlinedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => OrderReceiptScreen(orderId: orderId.toString()),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: _gold.withOpacity(0.4)),
-                          shape: const RoundedRectangleBorder(),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        child: const Text('영수증', style: TextStyle(fontSize: 10, color: _gold)),
-                      ),
-                    ],
+                  // 배송 추적 (조건부)
+                  if (canTrack)
+                    _orderActionButton(
+                      label: '배송 추적',
+                      color: _dark,
+                      bgColor: _dark,
+                      isFilled: false,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => OrderTrackingScreen(orderId: orderId.toString()),
+                          ),
+                        );
+                      },
+                    ),
+                  // 반품/교환 (조건부)
+                  if (canReturn)
+                    _orderActionButton(
+                      label: '반품/교환',
+                      color: Colors.red.shade400,
+                      bgColor: Colors.red.shade400,
+                      isFilled: false,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ReturnExchangeScreen(orderId: orderId.toString()),
+                          ),
+                        );
+                      },
+                    ),
+                  // 상세 보기 토글
+                  _orderActionButton(
+                    label: isExpanded ? '닫기' : '상세',
+                    color: _gold,
+                    bgColor: _gold,
+                    isFilled: false,
+                    onTap: () => setState(() => _expandedOrderId = isExpanded ? null : orderId),
                   ),
                 ],
               ),
+ 
+              // ─ 상세 (확장 시) ─
               if (isExpanded) ...[
                 const SizedBox(height: 16),
                 const Divider(color: Color(0xFFE5D9C0)),
@@ -802,6 +865,34 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+ 
+  /// 주문 액션 버튼 (가로 공간 절약을 위해 작게)
+  Widget _orderActionButton({
+    required String label,
+    required Color color,
+    required Color bgColor,
+    required bool isFilled,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: isFilled ? bgColor : Colors.transparent,
+          border: Border.all(color: isFilled ? bgColor : color),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: isFilled ? Colors.white : color,
+            letterSpacing: 1,
+          ),
+        ),
+      ),
     );
   }
 

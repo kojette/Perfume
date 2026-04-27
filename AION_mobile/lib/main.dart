@@ -59,6 +59,7 @@ class AionApp extends StatelessWidget {
       ),
       home: const StartScreen(),
       routes: routes,
+      onGenerateRoute: onGenerateRoute, 
     );
   }
 }

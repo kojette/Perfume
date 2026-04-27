@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import 'order_tracking_screen.dart';
+import 'return_exchange_screen.dart';
 
 const _gold = Color(0xFFC9A961);
 const _dark = Color(0xFF1A1A1A);
@@ -21,6 +23,11 @@ class _OrderReceiptScreenState extends State<OrderReceiptScreen> {
   Map<String, dynamic>? _order;
   bool _loading = true;
 
+  /// 배송추적 가능한 상태
+  static const _trackableStatuses = {
+    'PAID', 'CONFIRMED', 'PREPARING', 'SHIPPED', 'DELIVERED', 'COMPLETED'
+  };
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +37,10 @@ class _OrderReceiptScreenState extends State<OrderReceiptScreen> {
   Future<void> _fetchOrder() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('accessToken') ?? '';
-    if (token.isEmpty) { if (mounted) Navigator.pushReplacementNamed(context, '/login'); return; }
+    if (token.isEmpty) {
+      if (mounted) Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
     try {
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/orders/${widget.orderId}'),
@@ -40,8 +50,11 @@ class _OrderReceiptScreenState extends State<OrderReceiptScreen> {
         final json = jsonDecode(utf8.decode(res.bodyBytes));
         if (mounted) setState(() => _order = json['data'] as Map<String, dynamic>?);
       }
-    } catch (e) { debugPrint('주문 조회 오류: $e'); }
-    finally { if (mounted) setState(() => _loading = false); }
+    } catch (e) {
+      debugPrint('주문 조회 오류: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   String _numFmt(dynamic v) {
@@ -52,13 +65,19 @@ class _OrderReceiptScreenState extends State<OrderReceiptScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(backgroundColor: _bg, body: Center(child: CircularProgressIndicator(color: _gold)));
+      return const Scaffold(
+        backgroundColor: _bg,
+        body: Center(child: CircularProgressIndicator(color: _gold)),
+      );
     }
     if (_order == null) {
       return Scaffold(
         backgroundColor: _bg,
-        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0,
-            iconTheme: const IconThemeData(color: _dark)),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: _dark),
+        ),
         body: const Center(child: Text('주문 정보를 찾을 수 없습니다')),
       );
     }
@@ -69,7 +88,10 @@ class _OrderReceiptScreenState extends State<OrderReceiptScreen> {
     final finalAmount = o['finalAmount'] ?? totalAmount;
     final discountAmount = o['discountAmount'] ?? 0;
     final pointsUsed = o['pointsUsed'] ?? 0;
-    final pointsEarned = o['pointsEarned'] ?? ((finalAmount is num ? finalAmount * 0.001 : 0).toInt());
+    final pointsEarned = o['pointsEarned'] ??
+        ((finalAmount is num ? finalAmount * 0.001 : 0).toInt());
+    final orderStatus = (o['orderStatus'] as String?) ?? 'PAID';
+    final canTrack = _trackableStatuses.contains(orderStatus);
 
     return Scaffold(
       backgroundColor: _bg,
@@ -182,7 +204,57 @@ class _OrderReceiptScreenState extends State<OrderReceiptScreen> {
               ),
               const SizedBox(height: 28),
 
-              // ─ 버튼 ─
+              // ─ 액션 버튼들 (배송추적 / 반품·교환) ─
+              // 프론트와 동일하게 RETURN/EXCHANGE는 항상 표시.
+              // TRACK ORDER는 배송 가능 상태일 때만 표시 (프론트엔 없지만 모바일 UX상 추가).
+              Row(
+                children: [
+                  if (canTrack) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OrderTrackingScreen(orderId: widget.orderId),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: _dark),
+                          shape: const RoundedRectangleBorder(),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('TRACK ORDER',
+                            style: TextStyle(fontSize: 10, letterSpacing: 3, color: _dark)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ReturnExchangeScreen(orderId: widget.orderId),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.red.shade300),
+                        shape: const RoundedRectangleBorder(),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text('RETURN / EXCHANGE',
+                          style: TextStyle(fontSize: 10, letterSpacing: 3, color: Colors.red.shade400)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // ─ 메인 버튼 ─
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
