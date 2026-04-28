@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 
 class CustomerInquiryScreen extends StatefulWidget {
   const CustomerInquiryScreen({super.key});
@@ -10,7 +13,6 @@ class CustomerInquiryScreen extends StatefulWidget {
 
 class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
     with SingleTickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
   late TabController _tabController;
 
   String? selectedType;
@@ -19,6 +21,9 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
 
   List<Map<String, dynamic>> myInquiries = [];
   int notifications = 0;
+
+  bool _submitting = false;
+  bool _loadingList = false;
 
   final List<Map<String, String>> inquiryTypes = [
     {'value': 'product', 'label': '상품문의', 'icon': '🛍️'},
@@ -44,72 +49,99 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
     super.dispose();
   }
 
+  // ────────────────────────────────────────────────────────────
+  // 토큰 헬퍼 — 백엔드 API용 (Bearer token)
+  // 다른 화면들과 동일하게 SharedPreferences 사용
+  // ────────────────────────────────────────────────────────────
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('accessToken');
+  }
+
+  Map<String, String> _authHeaders(String token) => {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json; charset=utf-8',
+  };
+
   Future<void> _checkLoginAndFetch() async {
-    final session = supabase.auth.currentSession;
-    if (session == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인이 필요합니다.')),
-        );
-        Navigator.of(context).pop();
-      }
+    final token = await _getToken();
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      _snack('로그인이 필요합니다');
+      Navigator.of(context).pop();
       return;
     }
     await _fetchMyInquiries();
   }
 
+  // ────────────────────────────────────────────────────────────
+  // 내 문의 목록 — GET /api/inquiries/my
+  // ────────────────────────────────────────────────────────────
   Future<void> _fetchMyInquiries() async {
-    final session = supabase.auth.currentSession;
-    if (session == null) return;
+    final token = await _getToken();
+    if (token == null || token.isEmpty) return;
+
+    if (mounted) setState(() => _loadingList = true);
 
     try {
-      final response = await supabase
-          .from('Inquiries')
-          .select()
-          .eq('customer_email', session.user?.email ?? '')
-          .order('created_at', ascending: false);
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/inquiries/my'),
+        headers: _authHeaders(token),
+      );
 
-      setState(() {
-        myInquiries = (response as List).cast<Map<String, dynamic>>();
-        notifications = myInquiries
-            .where((inq) => inq['status'] == 'completed' && inq['read'] == false)
-            .length;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터 로드 에러: $e')),
-        );
+      if (response.statusCode == 200) {
+        final json = jsonDecode(utf8.decode(response.bodyBytes));
+        final List data = (json['data'] as List?) ?? const [];
+        if (!mounted) return;
+        setState(() {
+          myInquiries = data.cast<Map<String, dynamic>>();
+          notifications = myInquiries
+              .where((inq) => inq['status'] == 'completed' && inq['read'] == false)
+              .length;
+        });
+      } else {
+        debugPrint('문의 내역 조회 실패: ${response.statusCode}');
       }
+    } catch (e) {
+      debugPrint('데이터 로드 에러: $e');
+    } finally {
+      if (mounted) setState(() => _loadingList = false);
     }
   }
 
+  // ────────────────────────────────────────────────────────────
+  // 문의 접수 — POST /api/inquiries
+  // ────────────────────────────────────────────────────────────
   Future<void> _handleSubmit() async {
-    if (selectedType == null || titleController.text.isEmpty || contentController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('모든 항목을 입력해주세요.')),
-      );
+    if (selectedType == null ||
+        titleController.text.trim().isEmpty ||
+        contentController.text.trim().isEmpty) {
+      _snack('모든 항목을 입력해주세요');
       return;
     }
 
-    final session = supabase.auth.currentSession;
-    if (session == null) return;
+    final token = await _getToken();
+    if (token == null || token.isEmpty) {
+      _snack('로그인이 필요합니다');
+      return;
+    }
 
+    setState(() => _submitting = true);
     try {
-      await supabase.from('Inquiries').insert({
-        'type': selectedType,
-        'title': titleController.text,
-        'content': contentController.text,
-        'customer_name': session.user?.userMetadata?['name'] ?? '고객',
-        'customer_email': session.user?.email ?? '',
-        'status': 'pending',
-        'read': false,
-      });
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/inquiries'),
+        headers: _authHeaders(token),
+        body: jsonEncode({
+          'type': selectedType,
+          'title': titleController.text.trim(),
+          'content': contentController.text.trim(),
+        }),
+      );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('문의가 접수되었습니다.')),
-        );
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _snack('문의가 접수되었습니다');
         setState(() {
           selectedType = null;
           titleController.clear();
@@ -117,25 +149,43 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
         });
         _tabController.animateTo(1);
         await _fetchMyInquiries();
+      } else {
+        _snack('문의 접수 중 오류가 발생했습니다', isError: true);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('문의 접수 중 오류가 발생했습니다: $e')),
-        );
-      }
+      debugPrint('저장 에러: $e');
+      if (mounted) _snack('서버 통신 중 오류가 발생했습니다', isError: true);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
+  // ────────────────────────────────────────────────────────────
+  // 읽음 처리 — PATCH /api/inquiries/{id}/read
+  // ────────────────────────────────────────────────────────────
   Future<void> _markAsRead(int inquiryId) async {
+    final token = await _getToken();
+    if (token == null || token.isEmpty) return;
+
     try {
-      await supabase.from('Inquiries').update({'read': true}).eq('id', inquiryId);
-      await _fetchMyInquiries();
+      final response = await http.patch(
+        Uri.parse('${ApiConfig.baseUrl}/api/inquiries/$inquiryId/read'),
+        headers: _authHeaders(token),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        await _fetchMyInquiries();
+      } else {
+        debugPrint('읽음 처리 실패: ${response.statusCode}');
+      }
     } catch (e) {
-      // ignore errors
+      debugPrint('읽음 처리 실패: $e');
     }
   }
 
+  // ────────────────────────────────────────────────────────────
+  // 문의 취소 — PATCH /api/inquiries/{id}/cancel
+  // ────────────────────────────────────────────────────────────
   Future<void> _handleCancelInquiry(int inquiryId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -149,31 +199,39 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('예'),
+            child: const Text('예', style: TextStyle(color: Colors.orange)),
           ),
         ],
       ),
     );
-
     if (confirm != true) return;
 
+    final token = await _getToken();
+    if (token == null || token.isEmpty) return;
+
     try {
-      await supabase.from('Inquiries').update({'status': 'cancelled'}).eq('id', inquiryId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('문의가 취소되었습니다.')),
-        );
+      final response = await http.patch(
+        Uri.parse('${ApiConfig.baseUrl}/api/inquiries/$inquiryId/cancel'),
+        headers: _authHeaders(token),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        _snack('문의가 취소되었습니다');
         await _fetchMyInquiries();
+      } else {
+        _snack('취소 처리 중 오류가 발생했습니다', isError: true);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('취소 처리 중 오류가 발생했습니다: $e')),
-        );
-      }
+      debugPrint('취소 실패: $e');
+      if (mounted) _snack('취소 처리 중 오류가 발생했습니다', isError: true);
     }
   }
 
+  // ────────────────────────────────────────────────────────────
+  // 문의 삭제 — DELETE /api/inquiries/{id}
+  // ────────────────────────────────────────────────────────────
   Future<void> _handleDeleteInquiry(int inquiryId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -187,56 +245,69 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('예'),
+            child: const Text('예', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
-
     if (confirm != true) return;
 
+    final token = await _getToken();
+    if (token == null || token.isEmpty) return;
+
     try {
-      await supabase.from('Inquiries').delete().eq('id', inquiryId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('삭제되었습니다.')),
-        );
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}/api/inquiries/$inquiryId'),
+        headers: _authHeaders(token),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        _snack('삭제되었습니다');
         await _fetchMyInquiries();
+      } else {
+        _snack('오류가 발생했습니다', isError: true);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('오류가 발생했습니다: $e')),
-        );
-      }
+      debugPrint('삭제 실패: $e');
+      if (mounted) _snack('오류가 발생했습니다', isError: true);
     }
   }
 
-  String _getStatusLabel(String status) {
+  void _snack(String msg, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red : const Color(0xFF2A2620),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  String _getStatusLabel(String? status) {
     switch (status) {
-      case 'pending':
-        return '대기중';
-      case 'processing':
-        return '처리중';
-      case 'completed':
-        return '답변완료';
-      default:
-        return '대기중';
+      case 'pending': return '대기중';
+      case 'processing': return '처리중';
+      case 'completed': return '답변완료';
+      default: return '대기중';
     }
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(String? status) {
     switch (status) {
-      case 'pending':
-        return Colors.amber;
-      case 'processing':
-        return Colors.blue;
-      case 'completed':
-        return Colors.green;
-      default:
-        return Colors.grey;
+      case 'pending': return Colors.amber;
+      case 'processing': return Colors.blue;
+      case 'completed': return Colors.green;
+      default: return Colors.grey;
     }
   }
+
+  // ════════════════════════════════════════════════════════════
+  // BUILD
+  // ════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
@@ -264,17 +335,11 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
                         color: Colors.red,
                         shape: BoxShape.circle,
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 20,
-                        minHeight: 20,
-                      ),
+                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
                       child: Center(
                         child: Text(
                           '$notifications',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
                         ),
                       ),
                     ),
@@ -301,34 +366,17 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'CUSTOMER SERVICE',
-            style: TextStyle(
-              fontSize: 10,
-              letterSpacing: 4,
-              color: Color(0xFFC9A961),
-              fontStyle: FontStyle.italic,
-            ),
-          ),
+          const Text('CUSTOMER SERVICE',
+              style: TextStyle(fontSize: 10, letterSpacing: 4,
+                  color: Color(0xFFC9A961), fontStyle: FontStyle.italic)),
           const SizedBox(height: 16),
-          const Text(
-            '무엇을 도와드릴까요?',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF8B8278),
-              fontStyle: FontStyle.italic,
-            ),
-          ),
+          const Text('무엇을 도와드릴까요?',
+              style: TextStyle(fontSize: 14, color: Color(0xFF8B8278), fontStyle: FontStyle.italic)),
           const SizedBox(height: 32),
+
           // 문의 유형
-          const Text(
-            '문의 유형 선택',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 2,
-              color: Color(0xFF8B8278),
-            ),
-          ),
+          const Text('문의 유형 선택',
+              style: TextStyle(fontSize: 12, letterSpacing: 2, color: Color(0xFF8B8278))),
           const SizedBox(height: 12),
           GridView.builder(
             shrinkWrap: true,
@@ -343,13 +391,8 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
             itemBuilder: (context, index) {
               final type = inquiryTypes[index];
               final isSelected = selectedType == type['value'];
-              
               return InkWell(
-                onTap: () {
-                  setState(() {
-                    selectedType = type['value'];
-                  });
-                },
+                onTap: () => setState(() => selectedType = type['value']),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -366,20 +409,13 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
                   ),
                   child: Row(
                     children: [
-                      Text(
-                        type['icon']!,
-                        style: const TextStyle(fontSize: 24),
-                      ),
+                      Text(type['icon']!, style: const TextStyle(fontSize: 24)),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          type['label']!,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            letterSpacing: 1,
-                            color: Color(0xFF2A2620),
-                          ),
-                        ),
+                        child: Text(type['label']!,
+                            style: const TextStyle(
+                              fontSize: 14, letterSpacing: 1, color: Color(0xFF2A2620),
+                            )),
                       ),
                     ],
                   ),
@@ -388,17 +424,14 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
             },
           ),
           const SizedBox(height: 16),
+
           // FAQ 버튼
           InkWell(
-            onTap: () {
-              Navigator.of(context).pushNamed('/faq');
-            },
+            onTap: () => Navigator.of(context).pushNamed('/faq'),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                border: Border.all(
-                  color: const Color(0xFF7BA8D4).withOpacity(0.3),
-                ),
+                border: Border.all(color: const Color(0xFF7BA8D4).withOpacity(0.3)),
                 borderRadius: BorderRadius.circular(8),
                 color: const Color(0xFFE8F4FF).withOpacity(0.3),
               ),
@@ -410,54 +443,34 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '자주 묻는 질문',
-                          style: TextStyle(
-                            fontSize: 14,
-                            letterSpacing: 1,
-                            color: Color(0xFF2A5580),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        Text('자주 묻는 질문',
+                            style: TextStyle(
+                              fontSize: 14, letterSpacing: 1,
+                              color: Color(0xFF2A5580), fontWeight: FontWeight.w500,
+                            )),
                         SizedBox(height: 4),
-                        Text(
-                          '빠른 답변이 필요하신가요?',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF6B8FAE),
-                          ),
-                        ),
+                        Text('빠른 답변이 필요하신가요?',
+                            style: TextStyle(fontSize: 12, color: Color(0xFF6B8FAE))),
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.arrow_forward,
-                    color: Color(0xFF7BA8D4),
-                    size: 16,
-                  ),
+                  const Icon(Icons.arrow_forward, color: Color(0xFF7BA8D4), size: 16),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 32),
+
           // 제목
-          const Text(
-            '제목',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 2,
-              color: Color(0xFF8B8278),
-            ),
-          ),
+          const Text('제목',
+              style: TextStyle(fontSize: 12, letterSpacing: 2, color: Color(0xFF8B8278))),
           const SizedBox(height: 8),
           TextField(
             controller: titleController,
             decoration: InputDecoration(
               hintText: '문의 제목을 입력해주세요',
               border: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: const Color(0xFFC9A961).withOpacity(0.3),
-                ),
+                borderSide: BorderSide(color: const Color(0xFFC9A961).withOpacity(0.3)),
               ),
               focusedBorder: const OutlineInputBorder(
                 borderSide: BorderSide(color: Color(0xFFC9A961)),
@@ -465,15 +478,10 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
             ),
           ),
           const SizedBox(height: 24),
+
           // 내용
-          const Text(
-            '문의 내용',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 2,
-              color: Color(0xFF8B8278),
-            ),
-          ),
+          const Text('문의 내용',
+              style: TextStyle(fontSize: 12, letterSpacing: 2, color: Color(0xFF8B8278))),
           const SizedBox(height: 8),
           TextField(
             controller: contentController,
@@ -481,9 +489,7 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
             decoration: InputDecoration(
               hintText: '문의하실 내용을 자세히 입력해주세요',
               border: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: const Color(0xFFC9A961).withOpacity(0.3),
-                ),
+                borderSide: BorderSide(color: const Color(0xFFC9A961).withOpacity(0.3)),
               ),
               focusedBorder: const OutlineInputBorder(
                 borderSide: BorderSide(color: Color(0xFFC9A961)),
@@ -491,19 +497,26 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
             ),
           ),
           const SizedBox(height: 32),
+
           // 제출 버튼
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _handleSubmit,
-              icon: const Icon(Icons.send, size: 16),
-              label: const Text(
-                '문의 접수하기',
-                style: TextStyle(letterSpacing: 4, fontSize: 12),
+              onPressed: _submitting ? null : _handleSubmit,
+              icon: _submitting
+                  ? const SizedBox(
+                      width: 14, height: 14,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5),
+                    )
+                  : const Icon(Icons.send, size: 16),
+              label: Text(
+                _submitting ? '접수 중...' : '문의 접수하기',
+                style: const TextStyle(letterSpacing: 4, fontSize: 12),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2A2620),
                 padding: const EdgeInsets.symmetric(vertical: 16),
+                disabledBackgroundColor: const Color(0xFF8B8278),
               ),
             ),
           ),
@@ -513,40 +526,35 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
   }
 
   Widget _buildMyInquiriesTab() {
-    final activeInquiries = myInquiries.where((inq) => inq['status'] != 'cancelled').toList();
+    if (_loadingList && myInquiries.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFFC9A961)));
+    }
+
+    final activeInquiries =
+        myInquiries.where((inq) => inq['status'] != 'cancelled').toList();
 
     if (activeInquiries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      return RefreshIndicator(
+        onRefresh: _fetchMyInquiries,
+        color: const Color(0xFFC9A961),
+        child: ListView(
           children: [
-            const Icon(
-              Icons.chat_bubble_outline,
-              size: 60,
-              color: Color(0xFFC9A961),
-            ),
+            const SizedBox(height: 80),
+            const Icon(Icons.chat_bubble_outline, size: 60, color: Color(0xFFC9A961)),
             const SizedBox(height: 16),
-            const Text(
-              '문의 내역이 없습니다',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF8B8278),
-                fontStyle: FontStyle.italic,
-              ),
+            const Center(
+              child: Text('문의 내역이 없습니다',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF8B8278), fontStyle: FontStyle.italic)),
             ),
             const SizedBox(height: 24),
-            OutlinedButton(
-              onPressed: () => _tabController.animateTo(0),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFFC9A961)),
-              ),
-              child: const Text(
-                '새 문의 작성하기',
-                style: TextStyle(
-                  color: Color(0xFFC9A961),
-                  letterSpacing: 2,
-                  fontSize: 12,
+            Center(
+              child: OutlinedButton(
+                onPressed: () => _tabController.animateTo(0),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFC9A961)),
                 ),
+                child: const Text('새 문의 작성하기',
+                    style: TextStyle(color: Color(0xFFC9A961), letterSpacing: 2, fontSize: 12)),
               ),
             ),
           ],
@@ -554,221 +562,212 @@ class _CustomerInquiryScreenState extends State<CustomerInquiryScreen>
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: activeInquiries.length,
-      itemBuilder: (context, index) {
-        final inquiry = activeInquiries[index];
-        final typeInfo = inquiryTypes.firstWhere(
-          (t) => t['value'] == inquiry['type'],
-          orElse: () => {'icon': '❓', 'label': '기타'},
-        );
+    return RefreshIndicator(
+      onRefresh: _fetchMyInquiries,
+      color: const Color(0xFFC9A961),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: activeInquiries.length,
+        itemBuilder: (context, index) {
+          final inquiry = activeInquiries[index];
+          return _buildInquiryCard(inquiry);
+        },
+      ),
+    );
+  }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(
-              color: const Color(0xFFC9A961).withOpacity(0.2),
-            ),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+  Widget _buildInquiryCard(Map<String, dynamic> inquiry) {
+    final typeInfo = inquiryTypes.firstWhere(
+      (t) => t['value'] == inquiry['type'],
+      orElse: () => {'icon': '❓', 'label': '기타'},
+    );
+
+    // 백엔드 API 응답 — id는 inquiryId로 올 수도 있음
+    final inquiryId = (inquiry['inquiryId'] ?? inquiry['id']) as int;
+    final status = inquiry['status'] as String?;
+    final isUnread = status == 'completed' && inquiry['read'] == false;
+
+    // 날짜 — createdAt(camel) 또는 created_at(snake) 모두 대응
+    final createdAtRaw = inquiry['createdAt'] ?? inquiry['created_at'];
+    String dateStr = '';
+    if (createdAtRaw is String) {
+      try {
+        final dt = DateTime.parse(createdAtRaw);
+        dateStr = dt.toString().substring(0, 19);
+      } catch (_) {
+        dateStr = createdAtRaw;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFC9A961).withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Text(
-                    typeInfo['icon']!,
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              Text(typeInfo['icon']!, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                inquiry['title'],
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2A2620),
-                                ),
-                              ),
+                        Expanded(
+                          child: Text(
+                            inquiry['title'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600,
+                              color: Color(0xFF2A2620),
                             ),
-                            if (inquiry['status'] == 'completed' && inquiry['read'] == false)
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateTime.parse(inquiry['created_at']).toString().substring(0, 19),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF8B8278),
                           ),
                         ),
+                        if (isUnread)
+                          Container(
+                            width: 8, height: 8,
+                            decoration: const BoxDecoration(
+                                color: Colors.red, shape: BoxShape.circle),
+                          ),
                       ],
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(inquiry['status']).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _getStatusLabel(inquiry['status']),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: _getStatusColor(inquiry['status']),
-                      ),
-                    ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(dateStr,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF8B8278))),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFAF8F3),
-                  borderRadius: BorderRadius.circular(8),
+                  color: _getStatusColor(status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  inquiry['content'],
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF555555),
-                    height: 1.5,
+                  _getStatusLabel(status),
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w600,
+                    color: _getStatusColor(status),
                   ),
                 ),
               ),
-              if (inquiry['status'] == 'completed' && inquiry['answer'] != null) ...[
-                const SizedBox(height: 16),
-                const Divider(color: Color(0xFFC9A961)),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFC9A961).withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: Color(0xFFC9A961),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '답변 완료',
-                          style: TextStyle(
-                            fontSize: 10,
-                            letterSpacing: 1,
-                            color: Color(0xFFC9A961),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          inquiry['assignedTo'] ?? '관리자',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: Color(0xFF8B8278),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(
-                      color: const Color(0xFFC9A961).withOpacity(0.2),
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    inquiry['answer'],
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF2A2620),
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    if (inquiry['read'] == false)
-                      TextButton(
-                        onPressed: () => _markAsRead(inquiry['id']),
-                        child: const Text(
-                          '확인 완료',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFFC9A961),
-                            decoration: TextDecoration.underline,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                    TextButton.icon(
-                      onPressed: () => _handleDeleteInquiry(inquiry['id']),
-                      icon: const Icon(Icons.delete, size: 14, color: Colors.red),
-                      label: const Text(
-                        '삭제',
-                        style: TextStyle(fontSize: 12, color: Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              if (inquiry['status'] == 'pending' || inquiry['status'] == 'processing') ...[
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: () => _handleCancelInquiry(inquiry['id']),
-                    icon: const Icon(Icons.close, size: 14, color: Colors.orange),
-                    label: const Text(
-                      '문의 취소',
-                      style: TextStyle(fontSize: 12, color: Colors.orange),
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAF8F3),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              inquiry['content'] ?? '',
+              style: const TextStyle(
+                fontSize: 14, color: Color(0xFF555555), height: 1.5,
+              ),
+            ),
+          ),
+
+          // 답변
+          if (status == 'completed' && inquiry['answer'] != null) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Color(0xFFC9A961)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC9A961).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_circle,
+                      size: 16, color: Color(0xFFC9A961)),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('답변 완료',
+                        style: TextStyle(
+                          fontSize: 10, letterSpacing: 1,
+                          color: Color(0xFFC9A961), fontWeight: FontWeight.w500,
+                        )),
+                    Text(
+                      (inquiry['assignedTo'] ?? '관리자').toString(),
+                      style: const TextStyle(fontSize: 9, color: Color(0xFF8B8278)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFC9A961).withOpacity(0.2)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                inquiry['answer'].toString(),
+                style: const TextStyle(
+                  fontSize: 14, color: Color(0xFF2A2620), height: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (inquiry['read'] == false)
+                  TextButton(
+                    onPressed: () => _markAsRead(inquiryId),
+                    child: const Text('확인 완료',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFC9A961),
+                          decoration: TextDecoration.underline,
+                          fontStyle: FontStyle.italic,
+                        )),
+                  ),
+                TextButton.icon(
+                  onPressed: () => _handleDeleteInquiry(inquiryId),
+                  icon: const Icon(Icons.delete, size: 14, color: Colors.red),
+                  label: const Text('삭제',
+                      style: TextStyle(fontSize: 12, color: Colors.red)),
+                ),
+              ],
+            ),
+          ],
+
+          // 처리중/대기중 — 취소 버튼
+          if (status == 'pending' || status == 'processing') ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _handleCancelInquiry(inquiryId),
+                icon: const Icon(Icons.close, size: 14, color: Colors.orange),
+                label: const Text('문의 취소',
+                    style: TextStyle(fontSize: 12, color: Colors.orange)),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

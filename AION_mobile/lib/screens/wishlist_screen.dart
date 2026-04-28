@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 import '../services/api_service_extended.dart';
 import '../models/perfume.dart';
 
@@ -13,6 +17,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
   List<Perfume> _wishlist = [];
   bool _loading = true;
 
+  // 장바구니 담기 진행 중인 perfumeId(중복 클릭 방지)
+  final Set<int> _addingToCart = {};
+
   static const _gold = Color(0xFFC9A961);
   static const _dark = Color(0xFF2A2620);
   static const _bg = Color(0xFFFAF8F3);
@@ -22,6 +29,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
   void initState() {
     super.initState();
     _loadWishlist();
+  }
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('accessToken');
   }
 
   Future<void> _loadWishlist() async {
@@ -64,23 +76,103 @@ class _WishlistScreenState extends State<WishlistScreen> {
       final success = await ApiService.removeFromWishlist(perfume.id);
       if (success && mounted) {
         setState(() => _wishlist.removeWhere((p) => p.id == perfume.id));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('위시리스트에서 삭제되었습니다'),
-            backgroundColor: _dark,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        _snack('위시리스트에서 삭제되었습니다');
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('삭제 중 오류가 발생했습니다'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        _snack('삭제 중 오류가 발생했습니다', isError: true);
       }
     }
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // 장바구니 담기 — /api/cart/add 호출 + 성공 시 이동 confirm 모달
+  // (Wishlist.jsx의 handleAddToCart와 동일 동작)
+  // ────────────────────────────────────────────────────────────
+  Future<void> _addToCart(Perfume perfume) async {
+    if (_addingToCart.contains(perfume.id)) return; // 중복 클릭 방지
+
+    final token = await _getToken();
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      _snack('로그인이 필요한 서비스입니다');
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+
+    setState(() => _addingToCart.add(perfume.id));
+
+    try {
+      final res = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/cart/add'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'perfumeId': perfume.id,
+          'quantity': 1,
+        }),
+      );
+
+      if (!mounted) return;
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        // 성공 시 — 장바구니 이동 confirm 모달
+        final goCart = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: Colors.white,
+            title: const Text(
+              '장바구니에 담겼습니다',
+              style: TextStyle(fontSize: 15, color: _dark, fontWeight: FontWeight.w600),
+            ),
+            content: const Text(
+              '장바구니로 이동하시겠습니까?',
+              style: TextStyle(fontSize: 13, color: _grey),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('계속 둘러보기', style: TextStyle(color: _grey)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('장바구니로 이동', style: TextStyle(color: _gold)),
+              ),
+            ],
+          ),
+        );
+
+        if (goCart == true && mounted) {
+          Navigator.pushNamed(context, '/cart');
+        }
+      } else {
+        String msg = '장바구니 담기에 실패했습니다';
+        try {
+          final body = jsonDecode(utf8.decode(res.bodyBytes));
+          if (body is Map && body['message'] is String) {
+            msg = body['message'] as String;
+          }
+        } catch (_) {}
+        _snack(msg, isError: true);
+      }
+    } catch (e) {
+      debugPrint('장바구니 담기 오류: $e');
+      if (mounted) _snack('네트워크 오류가 발생했습니다', isError: true);
+    } finally {
+      if (mounted) setState(() => _addingToCart.remove(perfume.id));
+    }
+  }
+
+  void _snack(String msg, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red : _dark,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -170,9 +262,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
   }
 
   Widget _buildWishlistCard(Perfume perfume) {
+    final isAdding = _addingToCart.contains(perfume.id);
+
     return GestureDetector(
       onTap: () {
-        // TODO: 향수 상세 페이지
+        // 향수 상세 페이지 — 동적 라우트
+        Navigator.pushNamed(context, '/perfumes/${perfume.id}');
       },
       child: Container(
         decoration: BoxDecoration(
@@ -307,33 +402,34 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
                     const SizedBox(height: 8),
 
-                    // 장바구니 담기 버튼
+                    // 장바구니 담기 버튼 — /api/cart/add 실제 호출
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // TODO: 장바구니 추가
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('장바구니에 추가되었습니다'),
-                              backgroundColor: _dark,
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
+                        onPressed: isAdding ? null : () => _addToCart(perfume),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _dark,
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           shape: const RoundedRectangleBorder(),
+                          disabledBackgroundColor: _grey.withOpacity(0.4),
                         ),
-                        child: const Text(
-                          '장바구니',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            letterSpacing: 1,
-                          ),
-                        ),
+                        child: isAdding
+                            ? const SizedBox(
+                                height: 14,
+                                width: 14,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 1.5,
+                                ),
+                              )
+                            : const Text(
+                                '장바구니',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  letterSpacing: 1,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -376,7 +472,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: () {
-              // TODO: 향수 목록으로 이동
+              // 향수 둘러보기 — collections로 이동
+              Navigator.pushNamed(context, '/collections');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _dark,

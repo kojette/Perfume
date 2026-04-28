@@ -10,6 +10,85 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 
+// ════════════════════════════════════════════════════════════════
+// 영속화 헬퍼 (AiScentStudio.jsx의 SS 객체와 동일 역할)
+// SharedPreferences를 통해 Gemini 결과/Claude 채팅/레시피/슬라이더를
+// 앱 재시작·탭 전환 후에도 보존한다.
+// 키 prefix는 'studio_'로 통일 — 충돌 방지.
+// ════════════════════════════════════════════════════════════════
+class _SP {
+  static const _prefix = 'studio_';
+
+  static Future<Map<String, dynamic>?> getJson(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_prefix$key');
+      if (raw == null) return null;
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) { return null; }
+  }
+
+  static Future<List<dynamic>?> getList(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_prefix$key');
+      if (raw == null) return null;
+      final decoded = jsonDecode(raw);
+      return decoded is List ? decoded : null;
+    } catch (_) { return null; }
+  }
+
+  static Future<String?> getString(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('$_prefix$key');
+    } catch (_) { return null; }
+  }
+
+  static Future<void> setJson(String key, dynamic value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (value == null) {
+        await prefs.remove('$_prefix$key');
+      } else {
+        await prefs.setString('$_prefix$key', jsonEncode(value));
+      }
+    } catch (_) { /* 용량 초과/직렬화 실패 시 무시 */ }
+  }
+
+  static Future<void> remove(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_prefix$key');
+    } catch (_) {}
+  }
+
+  /// 여러 키 일괄 삭제 (초기화용)
+  static Future<void> removeAll(List<String> keys) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final k in keys) {
+        await prefs.remove('$_prefix$k');
+      }
+    } catch (_) {}
+  }
+}
+
+/// 같은 이미지 재분석 방지용 캐시 키
+/// (이름+크기+수정일이 동일하면 동일 이미지로 간주)
+String _imageCacheKey(File file) {
+  final name = file.path.split(Platform.pathSeparator).last;
+  final size = file.lengthSync();
+  final modified = file.lastModifiedSync().millisecondsSinceEpoch;
+  return 'gemini_img_${name}_${size}_$modified';
+}
+
+/// 웹 환경(byte 데이터)용 캐시 키 — XFile 정보 활용
+String _webImageCacheKey(String name, int size, int? lastModified) {
+  return 'gemini_img_${name}_${size}_${lastModified ?? 0}';
+}
+
 const _gold  = Color(0xFFC9A961);
 const _dark  = Color(0xFF1A1A1A);
 const _bg    = Color(0xFFFAF8F3);
@@ -76,9 +155,7 @@ class _CustomizationScreenState extends State<CustomizationScreen>
   final _scentSearchCtrl  = TextEditingController();
   String _scentSearchQuery = '';
 
-  // ── AI 소믈리에 (Gemini) ─────────────────────────────────────
-  final _keywordCtrl   = TextEditingController();
-  int   _aiSubTab      = 0; // 0=키워드, 1=이미지
+  // ── AI 소믈리에 (Gemini) — 이미지 분석 ─────────────────────
   File?      _pickedImage;
   Uint8List? _pickedImageBytes;
   Map<String, dynamic>? _geminiResult;
@@ -101,6 +178,19 @@ class _CustomizationScreenState extends State<CustomizationScreen>
   bool    _evalLoading = false;
   Timer?  _evalTimer;
 
+  // ── 진행 중 fetch 중단용 클라이언트 (AbortController 대체) ──
+  // Claude SSE 스트림 / Gemini 분석 / Gemini 평가 모두 이 클라이언트를
+  // 통해 송신 — dispose나 reset 시 close()로 일괄 중단한다.
+  http.Client? _claudeClient;
+  http.Client? _geminiClient;
+  http.Client? _evalClient;
+
+  // ── 같은 이미지 재분석 방지용 현재 캐시 키 ──
+  String? _currentImageCacheKey;
+
+  // ── sessionStorage 영속화 복원 완료 플래그 ──
+  bool _restoredFromCache = false;
+
   final _scrollCtrl = ScrollController();
 
   // ────────────────────────────────────────────────────────────
@@ -122,13 +212,111 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       'isStatus': false,
       'isEval': false,
     });
+
+    // ★ 영속 데이터 복원 (Gemini 결과 / Claude 채팅 / 레시피 / 슬라이더)
+    _restoreFromCache();
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // SharedPreferences에서 이전 세션 데이터 복원
+  // (AiScentStudio.jsx의 useState 초기값 로드와 동일 역할)
+  // ────────────────────────────────────────────────────────────
+  Future<void> _restoreFromCache() async {
+    try {
+      // Gemini 결과
+      final geminiResult = await _SP.getJson('gemini_result');
+
+      // Claude 채팅 메시지
+      final claudeMessages = await _SP.getList('claude_messages');
+
+      // Claude 레시피
+      final recipe = await _SP.getJson('claude_recipe');
+
+      // Claude 슬라이더 (List<Map>로 직렬화돼 있음)
+      final slidersRaw = await _SP.getList('claude_sliders');
+
+      // Claude 평가
+      final evalText = await _SP.getString('claude_eval');
+
+      // 활성 탭 (0=공병, 1=향조합, 2=AI)
+      final activeMode = await _SP.getString('active_mode');
+
+      if (!mounted) return;
+      setState(() {
+        if (geminiResult != null) _geminiResult = geminiResult;
+        if (claudeMessages != null && claudeMessages.isNotEmpty) {
+          _chatMessages
+            ..clear()
+            ..addAll(claudeMessages.cast<Map<String, dynamic>>());
+        }
+        if (recipe != null) _recipe = recipe;
+        if (slidersRaw != null && slidersRaw.isNotEmpty) {
+          _sliders = slidersRaw.map<_SliderItem>((m) {
+            final mp = m as Map<String, dynamic>;
+            return _SliderItem(
+              ingredientId: mp['ingredientId'] as int?,
+              ingredientName: mp['ingredientName']?.toString() ?? '',
+              noteType: mp['noteType']?.toString() ?? 'top',
+              ratio: (mp['ratio'] as num?)?.toDouble() ?? 0.0,
+              reason: mp['reason']?.toString(),
+            );
+          }).toList();
+          _prevSliders = List.from(_sliders.map((s) => s.copyWith()));
+        }
+        if (evalText != null && evalText.isNotEmpty) _evaluation = evalText;
+
+        if (activeMode != null) {
+          final idx = int.tryParse(activeMode);
+          if (idx != null && idx >= 0 && idx <= 2) _activeMode = idx;
+        }
+        _restoredFromCache = true;
+      });
+    } catch (e) {
+      debugPrint('영속 데이터 복원 오류: $e');
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // 영속화 저장 헬퍼 — 상태 변경 후 호출
+  // ────────────────────────────────────────────────────────────
+  void _persistGeminiResult() {
+    _SP.setJson('gemini_result', _geminiResult);
+  }
+  void _persistClaudeMessages() {
+    // status / eval 메시지는 휘발성이라 제외
+    final saved = _chatMessages
+        .where((m) => m['isStatus'] != true)
+        .toList();
+    _SP.setJson('claude_messages', saved);
+  }
+  void _persistRecipe() {
+    _SP.setJson('claude_recipe', _recipe);
+  }
+  void _persistSliders() {
+    final list = _sliders.map((s) => {
+      'ingredientId': s.ingredientId,
+      'ingredientName': s.ingredientName,
+      'noteType': s.noteType,
+      'ratio': s.ratio,
+      'reason': s.reason,
+    }).toList();
+    _SP.setJson('claude_sliders', list);
+  }
+  void _persistEvaluation() {
+    _SP.setJson('claude_eval', _evaluation);
+  }
+  void _persistActiveMode() {
+    _SP.setJson('active_mode', _activeMode.toString());
   }
 
   @override
   void dispose() {
     _evalTimer?.cancel();
+    // ★ 진행 중인 모든 HTTP 요청 중단 (AbortController.abort() 대체)
+    _claudeClient?.close();
+    _geminiClient?.close();
+    _evalClient?.close();
     _scentSearchCtrl.dispose();
-    _keywordCtrl.dispose();
     _chatCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -260,37 +448,34 @@ class _CustomizationScreenState extends State<CustomizationScreen>
   }
 
   // ────────────────────────────────────────────────────────────
-  // Gemini AI 분석
+  // Gemini AI 분석 (이미지 단일 모드)
   // ────────────────────────────────────────────────────────────
-
-  Future<void> _analyzeKeyword() async {
-    final q = _keywordCtrl.text.trim();
-    if (q.isEmpty) { _snack('키워드를 입력해주세요'); return; }
-    setState(() { _geminiLoading = true; _geminiResult = null; _geminiError = null; });
-    try {
-      final res = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/ai/keyword-search'),
-        headers: {'Content-Type': 'application/json; charset=utf-8'},
-        body: jsonEncode({'query': q}),
-      );
-      if (res.statusCode == 200) {
-        final json = jsonDecode(utf8.decode(res.bodyBytes));
-        if (mounted) setState(() => _geminiResult = json['data'] ?? json);
-      } else {
-        if (mounted) setState(() => _geminiError = '분석 실패 (${res.statusCode})');
-      }
-    } catch (e) {
-      if (mounted) setState(() => _geminiError = '네트워크 오류: $e');
-    } finally {
-      if (mounted) setState(() => _geminiLoading = false);
-    }
-  }
 
   Future<void> _analyzeImage() async {
     if (_pickedImageBytes == null && _pickedImage == null) {
       _snack('이미지를 선택해주세요'); return;
     }
+
+    // ★ 같은 이미지 재분석 방지 — 캐시에 결과 있으면 즉시 복원
+    if (_currentImageCacheKey != null) {
+      final cached = await _SP.getJson(_currentImageCacheKey!);
+      if (cached != null) {
+        if (mounted) setState(() {
+          _geminiResult = cached;
+          _geminiError = null;
+        });
+        _persistGeminiResult();
+        return;
+      }
+    }
+
     setState(() { _geminiLoading = true; _geminiResult = null; _geminiError = null; });
+
+    // 이전 요청 중단
+    _geminiClient?.close();
+    _geminiClient = http.Client();
+    final client = _geminiClient!;
+
     try {
       final req = http.MultipartRequest(
           'POST', Uri.parse('${ApiConfig.baseUrl}/api/ai/image-to-scent'));
@@ -307,15 +492,23 @@ class _CustomizationScreenState extends State<CustomizationScreen>
         req.files.add(await http.MultipartFile.fromPath(
           'image', path, contentType: MediaType('image', subtype)));
       }
-      final streamed = await req.send();
+      final streamed = await client.send(req);
       final res      = await http.Response.fromStream(streamed);
       if (res.statusCode == 200) {
         final json = jsonDecode(utf8.decode(res.bodyBytes));
-        if (mounted) setState(() => _geminiResult = json['data'] ?? json);
+        final data = json['data'] ?? json;
+        if (mounted) setState(() => _geminiResult = data);
+        // ★ 이미지 캐시에 결과 저장
+        if (_currentImageCacheKey != null) {
+          await _SP.setJson(_currentImageCacheKey!, data);
+        }
+        _persistGeminiResult();
       } else {
         if (mounted) setState(() => _geminiError = '분석 실패 (${res.statusCode})');
       }
     } catch (e) {
+      // 중단된 클라이언트면 무시
+      if (client != _geminiClient) return;
       if (mounted) setState(() => _geminiError = '네트워크 오류: $e');
     } finally {
       if (mounted) setState(() => _geminiLoading = false);
@@ -325,14 +518,37 @@ class _CustomizationScreenState extends State<CustomizationScreen>
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null && mounted) {
-      final bytes = await picked.readAsBytes();
-      setState(() {
-        _pickedImageBytes = bytes;
-        _pickedImage      = kIsWeb ? null : File(picked.path);
-        _geminiResult     = null;
-      });
+    if (picked == null || !mounted) return;
+
+    final bytes = await picked.readAsBytes();
+    final file = kIsWeb ? null : File(picked.path);
+
+    // ★ 캐시 키 생성 (재분석 방지)
+    String cacheKey;
+    if (kIsWeb) {
+      // 웹은 path 접근 불가 — XFile 정보만 사용
+      cacheKey = _webImageCacheKey(picked.name, bytes.length, null);
+    } else {
+      cacheKey = _imageCacheKey(file!);
     }
+
+    // ★ 캐시에 결과 있으면 즉시 복원 (분석 스킵)
+    final cached = await _SP.getJson(cacheKey);
+
+    if (!mounted) return;
+    setState(() {
+      _pickedImageBytes = bytes;
+      _pickedImage = file;
+      _currentImageCacheKey = cacheKey;
+      if (cached != null) {
+        _geminiResult = cached;
+        _geminiError = null;
+      } else {
+        _geminiResult = null;
+      }
+    });
+
+    if (cached != null) _persistGeminiResult();
   }
 
   // ────────────────────────────────────────────────────────────
@@ -370,8 +586,17 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       _pipelineStatus = _PipelineStatus.extracting;
       _chatLoading    = true;
     });
+    _persistClaudeMessages();
+    _persistRecipe();
+    _persistSliders();
+    _persistEvaluation();
     _scrollToBottom();
     _addStatusMsg('✦ 향수 감성 키워드를 분석하고 있습니다...');
+
+    // ★ 이전 진행 중 SSE 스트림 중단 후 새 클라이언트 생성
+    _claudeClient?.close();
+    _claudeClient = http.Client();
+    final client = _claudeClient!;
 
     try {
       // ★ 컨텍스트용 메시지 (status/eval 제외)
@@ -380,7 +605,6 @@ class _CustomizationScreenState extends State<CustomizationScreen>
           .map((m) => {'role': m['role'], 'content': m['content']})
           .toList();
 
-      final client  = http.Client();
       final request = http.Request(
           'POST', Uri.parse('${ApiConfig.baseUrl}/api/ai/claude-blend'));
       request.headers['Content-Type'] = 'application/json; charset=utf-8';
@@ -397,6 +621,9 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       bool   assistantAdded   = false;
 
       await for (final chunk in stream) {
+        // 중단 감지 — client가 교체됐으면 즉시 종료
+        if (client != _claudeClient) return;
+
         buffer += chunk;
         final lines = buffer.split('\n');
         buffer = lines.removeLast(); // 불완전한 마지막 줄 유지
@@ -466,10 +693,14 @@ class _CustomizationScreenState extends State<CustomizationScreen>
                     _recipe = parsed;
                     _initSliders(parsed);
                   });
+                  _persistRecipe();
+                  _persistSliders();
                 } catch (e) {
                   debugPrint('레시피 파싱 오류: $e');
                 }
               }
+              // 스트리밍 종료 — 최종 메시지 영속화
+              _persistClaudeMessages();
 
             } else if (data.containsKey('error')) {
               throw Exception(data['error']);
@@ -479,9 +710,16 @@ class _CustomizationScreenState extends State<CustomizationScreen>
           }
         }
       }
-      client.close();
+      // 정상 종료 시에만 close — 중간에 교체된 경우는 위에서 이미 return됨
+      if (client == _claudeClient) {
+        client.close();
+        _claudeClient = null;
+      }
 
     } catch (e) {
+      // 중단된 클라이언트면 조용히 무시
+      if (client != _claudeClient) return;
+
       if (mounted) setState(() {
         _pipelineStatus = _PipelineStatus.error;
         _chatMessages.removeWhere((m) => m['isStatus'] == true);
@@ -491,6 +729,7 @@ class _CustomizationScreenState extends State<CustomizationScreen>
           'isStatus': false, 'isEval': false,
         });
       });
+      _persistClaudeMessages();
     } finally {
       if (mounted) setState(() => _chatLoading = false);
     }
@@ -534,6 +773,7 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       _sliders = List.from(_sliders);
       _sliders[index] = _sliders[index].copyWith(ratio: newRatio);
     });
+    _persistSliders();
 
     // ★ 1초 디바운스 후 Gemini 평가 요청
     _evalTimer?.cancel();
@@ -549,6 +789,12 @@ class _CustomizationScreenState extends State<CustomizationScreen>
   Future<void> _requestGeminiEvaluation(
       List<_SliderItem> prev, List<_SliderItem> curr) async {
     if (mounted) setState(() => _evalLoading = true);
+
+    // 이전 평가 요청 중단
+    _evalClient?.close();
+    _evalClient = http.Client();
+    final client = _evalClient!;
+
     try {
       Map<String, dynamic> toSnapshot(List<_SliderItem> list) => {
         'topNotes':    list.where((s) => s.noteType == 'top')
@@ -559,7 +805,7 @@ class _CustomizationScreenState extends State<CustomizationScreen>
             .map((s) => {'ingredientName': s.ingredientName, 'ratio': s.ratio}).toList(),
       };
 
-      final res = await http.post(
+      final res = await client.post(
         Uri.parse('${ApiConfig.baseUrl}/api/ai/gemini-evaluate'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -567,6 +813,9 @@ class _CustomizationScreenState extends State<CustomizationScreen>
           'currentRecipe':  toSnapshot(curr),
         }),
       );
+      // 중단된 요청이면 무시
+      if (client != _evalClient) return;
+
       if (res.statusCode == 200) {
         final json     = jsonDecode(utf8.decode(res.bodyBytes));
         final evalText = json['data'] as String? ?? '';
@@ -580,10 +829,14 @@ class _CustomizationScreenState extends State<CustomizationScreen>
               'isStatus': false, 'isEval': true,
             });
           });
+          _persistEvaluation();
+          // eval 메시지는 휘발성이라 _persistClaudeMessages는 호출하지 않음
+          // (이미 _persistClaudeMessages는 isEval/isStatus를 자동 제외)
           _scrollToBottom();
         }
       }
     } catch (e) {
+      if (client != _evalClient) return;
       debugPrint('Gemini 평가 오류: $e');
     } finally {
       if (mounted) setState(() => _evalLoading = false);
@@ -645,6 +898,8 @@ class _CustomizationScreenState extends State<CustomizationScreen>
             _recipe = parsed;
             _initSliders(parsed as Map<String, dynamic>);
           });
+          _persistRecipe();
+          _persistSliders();
         }
       }
     } catch (_) { _snack('레시피 생성에 실패했습니다'); }
@@ -652,6 +907,14 @@ class _CustomizationScreenState extends State<CustomizationScreen>
   }
 
   void _resetChat() {
+    // ★ 진행 중인 Claude SSE 스트림 중단
+    _claudeClient?.close();
+    _claudeClient = null;
+    // 평가도 진행 중이라면 중단
+    _evalClient?.close();
+    _evalClient = null;
+    _evalTimer?.cancel();
+
     setState(() {
       _chatMessages
         ..clear()
@@ -662,11 +925,18 @@ class _CustomizationScreenState extends State<CustomizationScreen>
         });
       _recipe     = null;
       _sliders    = [];
+      _prevSliders = [];
       _evaluation = null;
       _pipelineStatus = _PipelineStatus.idle;
       _chatLoading    = false;
       _foundIngredients = [];
     });
+
+    // ★ Claude 관련 영속 데이터 일괄 삭제
+    _SP.removeAll([
+      'claude_messages', 'claude_recipe', 'claude_sliders', 'claude_eval',
+    ]);
+    _persistClaudeMessages(); // 초기 메시지로 덮어쓰기
   }
 
   void _scrollToBottom() {
@@ -764,7 +1034,10 @@ class _CustomizationScreenState extends State<CustomizationScreen>
     final active = _activeMode == idx;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _activeMode = idx),
+        onTap: () {
+          setState(() => _activeMode = idx);
+          _persistActiveMode();
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.symmetric(vertical: 11),
@@ -1267,91 +1540,50 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       ),
       const SizedBox(height: 16),
 
-      // 모드 토글 (키워드 / 이미지)
-      Container(
-        decoration: BoxDecoration(border: Border.all(color: _cream)),
-        child: Row(children: [
-          _aiSubTabBtn(0, Icons.text_fields_outlined, '키워드'),
-          Container(width: 0.5, color: _cream),
-          _aiSubTabBtn(1, Icons.image_outlined, '이미지'),
-        ]),
-      ),
-      const SizedBox(height: 16),
-
-      if (_aiSubTab == 0) ...[
-        const Text('DESCRIBE YOUR MOOD',
-            style: TextStyle(fontSize: 9, letterSpacing: 4, color: _grey)),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: _cream)),
-          child: TextField(
-            controller: _keywordCtrl,
-            maxLines: 3,
-            style: const TextStyle(fontSize: 13, color: _dark),
-            decoration: const InputDecoration(
-              hintText: '예: "비 오는 날 카페에서 책 읽는 느낌"\n예: "깊은 숲속 새벽 안개"',
-              hintStyle: TextStyle(fontSize: 12, color: _grey),
-              border: InputBorder.none, isDense: true,
-            ),
+      // ── 이미지 업로드 영역 ─────────────────────────────────
+      // (키워드 분석 모드는 사용성 저하로 제거 — 이미지 분석 단일 모드)
+      const Text('UPLOAD YOUR IMAGE',
+          style: TextStyle(fontSize: 9, letterSpacing: 4, color: _grey)),
+      const SizedBox(height: 8),
+      GestureDetector(
+        onTap: _pickImage,
+        child: Container(
+          height: 220, width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: _gold.withOpacity(0.3), width: 1.5),
           ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 6,
-          children: ['봄 소풍 햇살', '도서관 오래된 책', '겨울 따뜻한 홍차', '재즈바 깊은 밤']
-              .map((ex) => GestureDetector(
-                onTap: () => _keywordCtrl.text = ex,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(border: Border.all(color: _cream)),
-                  child: Text(ex, style: const TextStyle(fontSize: 10, color: _grey)),
-                ),
-              )).toList(),
-        ),
-        const SizedBox(height: 16),
-        _geminiAnalyzeBtn(_analyzeKeyword),
-      ] else ...[
-        const Text('UPLOAD YOUR IMAGE',
-            style: TextStyle(fontSize: 9, letterSpacing: 4, color: _grey)),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _pickImage,
-          child: Container(
-            height: 180, width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: _gold.withOpacity(0.3), width: 1.5),
-            ),
-            child: (_pickedImageBytes != null || _pickedImage != null)
-                ? Stack(fit: StackFit.expand, children: [
-                    kIsWeb && _pickedImageBytes != null
-                        ? Image.memory(_pickedImageBytes!, fit: BoxFit.cover)
-                        : Image.file(_pickedImage!, fit: BoxFit.cover),
-                    Positioned(top: 8, right: 8,
-                      child: GestureDetector(
-                        onTap: () => setState(() {
-                          _pickedImage = null; _pickedImageBytes = null;
-                        }),
-                        child: Container(
-                          width: 28, height: 28,
-                          color: Colors.white.withOpacity(0.9),
-                          child: const Icon(Icons.close, size: 16, color: _grey),
-                        ),
+          child: (_pickedImageBytes != null || _pickedImage != null)
+              ? Stack(fit: StackFit.expand, children: [
+                  kIsWeb && _pickedImageBytes != null
+                      ? Image.memory(_pickedImageBytes!, fit: BoxFit.cover)
+                      : Image.file(_pickedImage!, fit: BoxFit.cover),
+                  Positioned(top: 8, right: 8,
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        _pickedImage = null;
+                        _pickedImageBytes = null;
+                        _currentImageCacheKey = null;
+                      }),
+                      child: Container(
+                        width: 28, height: 28,
+                        color: Colors.white.withOpacity(0.9),
+                        child: const Icon(Icons.close, size: 16, color: _grey),
                       ),
                     ),
-                  ])
-                : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.add_photo_alternate_outlined, color: _gold, size: 36),
-                    SizedBox(height: 8),
-                    Text('이미지 선택', style: TextStyle(fontSize: 12, color: _grey, letterSpacing: 2)),
-                    SizedBox(height: 4),
-                    Text('JPG, PNG · 최대 10MB', style: TextStyle(fontSize: 10, color: _cream)),
-                  ]),
-          ),
+                  ),
+                ])
+              : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.add_photo_alternate_outlined, color: _gold, size: 42),
+                  SizedBox(height: 10),
+                  Text('이미지 선택', style: TextStyle(fontSize: 12, color: _grey, letterSpacing: 2)),
+                  SizedBox(height: 4),
+                  Text('JPG, PNG · 최대 10MB', style: TextStyle(fontSize: 10, color: _cream)),
+                ]),
         ),
-        const SizedBox(height: 16),
-        _geminiAnalyzeBtn(_analyzeImage),
-      ],
+      ),
+      const SizedBox(height: 16),
+      _geminiAnalyzeBtn(_analyzeImage),
 
       if (_geminiError != null)
         Padding(padding: const EdgeInsets.only(top: 8),
@@ -1362,7 +1594,15 @@ class _CustomizationScreenState extends State<CustomizationScreen>
         _buildGeminiResult(_geminiResult!),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: () => setState(() { _geminiResult = null; _pickedImage = null; _pickedImageBytes = null; }),
+          onTap: () {
+            setState(() {
+              _geminiResult = null;
+              _pickedImage = null;
+              _pickedImageBytes = null;
+              _currentImageCacheKey = null;
+            });
+            _SP.remove('gemini_result');
+          },
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 13),
@@ -1377,25 +1617,6 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       ],
     ]),
   );
-
-  Widget _aiSubTabBtn(int idx, IconData icon, String label) {
-    final active = _aiSubTab == idx;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() { _aiSubTab = idx; _geminiResult = null; }),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          color: active ? _dark : Colors.white,
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, size: 14, color: active ? _gold : _grey),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 10, color: active ? _gold : _grey)),
-          ]),
-        ),
-      ),
-    );
-  }
 
   Widget _geminiAnalyzeBtn(VoidCallback onTap) => GestureDetector(
     onTap: _geminiLoading ? null : onTap,
@@ -1737,7 +1958,10 @@ class _CustomizationScreenState extends State<CustomizationScreen>
             ),
             const SizedBox(width: 8),
             GestureDetector(
-              onTap: () => setState(() { _recipe = null; _sliders = []; _evaluation = null; }),
+              onTap: () {
+                setState(() { _recipe = null; _sliders = []; _evaluation = null; });
+                _SP.removeAll(['claude_recipe', 'claude_sliders', 'claude_eval']);
+              },
               child: const Icon(Icons.close, size: 16, color: _grey),
             ),
           ]),
