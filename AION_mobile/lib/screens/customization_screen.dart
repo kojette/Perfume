@@ -788,8 +788,16 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       child: GestureDetector(
         onTap: () async {
           final token = await _getToken();
-          if (token == null && mounted) { Navigator.pushNamed(context, '/login'); return; }
-          if (mounted) _snack('에디터는 웹 버전에서 이용해 주세요');
+          // 로그인 안 되어 있으면 로그인 페이지로 이동
+          if (token == null && mounted) {
+            Navigator.pushNamed(context, '/login');
+            return;
+          }
+
+          // 에디터 화면으로 이동
+          if (mounted) {
+            Navigator.pushNamed(context, '/bottle-editor');
+          }
         },
         child: Container(
           width: double.infinity,
@@ -865,6 +873,26 @@ class _CustomizationScreenState extends State<CustomizationScreen>
                 ),
               )),
               const SizedBox(width: 4),
+              // 수정 버튼
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/bottle-editor',
+                    arguments: d, // 기존 데이터 전달
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _gold),
+                  ),
+                  child: const Icon(Icons.edit, size: 14, color: _gold),
+                ),
+              ),
+
+              const SizedBox(width: 4),
+              
               GestureDetector(
                 onTap: () => _deleteDesign(designId, name.toString()),
                 child: Container(

@@ -20,6 +20,7 @@ import 'screens/reset_password_screen.dart';
 import 'screens/profile_edit_screen.dart';
 import 'screens/wishlist_screen.dart';
 import 'screens/mypage_screen.dart';
+import 'screens/bottle_editor_screen.dart';
 
 import 'screens/signature_screen.dart';
 import 'screens/collections_screen.dart';
@@ -43,6 +44,7 @@ final Map<String, WidgetBuilder> routes = {
   '/profile/edit':       (context) => const ProfileEditScreen(),
   '/wishlist':           (context) => const WishlistScreen(),
   '/mypage':             (context) => const MyPageScreen(),
+  '/bottle-editor':      (context) => const BottleEditorScreen(),
 
   '/signature':          (context) => const SignatureScreen(),
   '/collections':        (context) => const CollectionsScreen(),
