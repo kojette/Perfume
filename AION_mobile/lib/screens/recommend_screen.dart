@@ -209,8 +209,10 @@ class _RecommendScreenState extends State<RecommendScreen>
     _loadPerfumes();
   }
 
-  void _goToCollections(Map<String, dynamic> p) =>
-      Navigator.pushNamed(context, '/collections', arguments: p['id'] ?? p['perfumeId']);
+  void _goToCollections(Map<String, dynamic> p) {
+    final id = p['id'] ?? p['perfumeId'];
+    Navigator.pushNamed(context, '/perfumes/$id');
+  }
 
   // ════════════════ BUILD ═══════════════════════════════════════
 

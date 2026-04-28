@@ -1,8 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ornament } from '../Ornament';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+// ✅ 카카오 우편번호 SDK 동적 로드
+const loadKakaoPostcode = () => {
+  return new Promise((resolve) => {
+    if (window.daum?.Postcode) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.onload = resolve;
+    document.head.appendChild(script);
+  });
+};
 
 const ProfileEdit = () => {
   const navigate = useNavigate();
@@ -23,6 +37,8 @@ const ProfileEdit = () => {
 
   useEffect(() => {
     fetchCurrentProfile();
+    // 페이지 로드 시 SDK 미리 로드
+    loadKakaoPostcode();
   }, []);
 
   const fetchCurrentProfile = async () => {
@@ -69,6 +85,27 @@ const ProfileEdit = () => {
     }
   };
 
+  // ✅ 카카오 우편번호 검색 팝업 실행
+  const handleAddressSearch = useCallback(async () => {
+    await loadKakaoPostcode();
+    new window.daum.Postcode({
+      oncomplete: (data) => {
+        // 도로명 주소 우선, 없으면 지번 주소
+        const address = data.roadAddress || data.jibunAddress;
+        setFormData(prev => ({
+          ...prev,
+          zipcode: data.zonecode,
+          address: address,
+          addressDetail: '', // 상세주소는 직접 입력
+        }));
+        // 상세주소 입력창으로 포커스
+        setTimeout(() => {
+          document.getElementById('addressDetail')?.focus();
+        }, 100);
+      },
+    }).open();
+  }, []);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -83,12 +120,6 @@ const ProfileEdit = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-
-  const handleZipcodeChange = (e) => {
-    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
-    setFormData(prev => ({ ...prev, zipcode: value }));
   };
 
   const handleSave = async () => {
@@ -206,7 +237,7 @@ const ProfileEdit = () => {
 
         <div className="space-y-6">
 
-          
+          {/* 프로필 사진 */}
           <div className="flex flex-col items-center mb-10">
             <div className="relative">
               <div className="w-24 h-24 rounded-full border border-[#c9a961]/30 overflow-hidden bg-[#faf8f3] flex items-center justify-center">
@@ -226,7 +257,7 @@ const ProfileEdit = () => {
             <p className="text-[9px] text-[#c9a961] mt-3 tracking-[0.2em] uppercase font-bold">Change Photo</p>
           </div>
 
-          
+          {/* 이메일 */}
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">
               EMAIL ADDRESS (UNALTERABLE)
@@ -240,7 +271,7 @@ const ProfileEdit = () => {
             <p className="text-[9px] text-[#c9a961]/70 italic mt-1">* 이메일은 변경할 수 없습니다.</p>
           </div>
 
-          
+          {/* 이름 */}
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">NAME</label>
             <input
@@ -252,7 +283,7 @@ const ProfileEdit = () => {
             />
           </div>
 
-          
+          {/* 닉네임 */}
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">NICKNAME</label>
             <input
@@ -264,7 +295,7 @@ const ProfileEdit = () => {
             />
           </div>
 
-          
+          {/* 전화번호 */}
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">PHONE NUMBER</label>
             <input
@@ -276,7 +307,7 @@ const ProfileEdit = () => {
             />
           </div>
 
-          
+          {/* 성별 */}
           <div className="space-y-2">
             <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">GENDER</label>
             <div className="relative">
@@ -294,7 +325,7 @@ const ProfileEdit = () => {
             </div>
           </div>
 
-          
+          {/* ✅ 배송지 섹션 */}
           <div className="pt-4">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-px flex-1 bg-[#c9a961]/20"></div>
@@ -302,40 +333,49 @@ const ProfileEdit = () => {
               <div className="h-px flex-1 bg-[#c9a961]/20"></div>
             </div>
 
-            
+            {/* ✅ 우편번호 + 검색 버튼 */}
             <div className="space-y-2 mb-4">
               <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">POSTAL CODE</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={formData.zipcode}
-                onChange={handleZipcodeChange}
-                placeholder="우편번호 (5자리)"
-                maxLength={5}
-                className="w-full border-b border-[#c9a961]/30 py-2 outline-none text-sm focus:border-[#c9a961] transition-colors"
-              />
+              <div className="flex gap-2 items-end">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.zipcode}
+                  readOnly
+                  placeholder="우편번호"
+                  className="flex-1 border-b border-[#c9a961]/30 py-2 outline-none text-sm bg-transparent text-[#8b8278] cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddressSearch}
+                  className="shrink-0 px-4 py-2 bg-[#2a2620] text-white text-[10px] tracking-[0.15em] hover:bg-[#c9a961] transition-colors whitespace-nowrap"
+                >
+                  주소 검색
+                </button>
+              </div>
             </div>
 
-            
+            {/* ✅ 기본주소 (자동 입력, 읽기 전용) */}
             <div className="space-y-2 mb-4">
               <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">ADDRESS</label>
               <input
                 name="address"
                 value={formData.address}
-                onChange={handleChange}
-                placeholder="기본주소 (시/도, 시/군/구, 도로명)"
-                className="w-full border-b border-[#c9a961]/30 py-2 outline-none text-sm focus:border-[#c9a961] transition-colors"
+                readOnly
+                placeholder="주소 검색 후 자동 입력됩니다"
+                className="w-full border-b border-[#c9a961]/30 py-2 outline-none text-sm bg-transparent text-[#8b8278] cursor-not-allowed"
               />
             </div>
 
-            
+            {/* ✅ 상세주소 (직접 입력) */}
             <div className="space-y-2">
               <label className="block text-[10px] tracking-[0.2em] text-[#8b8278]">ADDRESS DETAIL</label>
               <input
+                id="addressDetail"
                 name="addressDetail"
                 value={formData.addressDetail}
                 onChange={handleChange}
-                placeholder="상세주소 (동/호수 등)"
+                placeholder="상세주소를 입력해주세요 (동/호수 등)"
                 className="w-full border-b border-[#c9a961]/30 py-2 outline-none text-sm focus:border-[#c9a961] transition-colors"
               />
             </div>
@@ -345,7 +385,7 @@ const ProfileEdit = () => {
             </p>
           </div>
 
-          
+          {/* 버튼 */}
           <div className="pt-6 space-y-3">
             <button
               onClick={handleSave}

@@ -34,6 +34,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
   List<Map<String, dynamic>> _orders = [];
   int? _expandedOrderId;
 
+  final _couponCodeController = TextEditingController();
+  bool _couponRegisterLoading = false;
+
   final _supabase = Supabase.instance.client;
 
   static const _gold = Color(0xFFC9A961);
@@ -199,6 +202,36 @@ class _MyPageScreenState extends State<MyPageScreen> {
     await _fetchTabData(tab);
   }
 
+  Future<void> _registerCoupon() async {
+    final code = _couponCodeController.text.trim();
+    if (code.isEmpty) {
+      _showAlert('쿠폰 코드를 입력해주세요.');
+      return;
+    }
+    setState(() => _couponRegisterLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('accessToken') ?? '';
+      final res = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/coupons/register'),
+        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+        body: jsonEncode({'couponCode': code}),
+      );
+      final data = jsonDecode(utf8.decode(res.bodyBytes));
+      if (res.statusCode == 200 && data['success'] == true) {
+        _couponCodeController.clear();
+        _showAlert('쿠폰이 성공적으로 등록되었습니다!');
+        await _fetchCoupons(_userInfo?['email'] ?? '');
+      } else {
+        _showAlert(data['message'] ?? '유효하지 않은 쿠폰 코드입니다.');
+      }
+    } catch (e) {
+      _showAlert('서버 통신 중 오류가 발생했습니다.');
+    } finally {
+      if (mounted) setState(() => _couponRegisterLoading = false);
+    }
+  }
+
   // ─── 로그아웃 / 탈퇴 ─────────────────────────────────────────
 
   Future<void> _handleLogout() async {
@@ -221,26 +254,71 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _handleDeleteAccount() async {
-    _showConfirmDialog(
-      title: 'DELETE ACCOUNT',
-      message: '정말 탈퇴하시겠습니까?\n탈퇴 후 30일간 재가입이 제한됩니다.',
-      confirmLabel: '탈퇴',
-      confirmColor: Colors.red,
-      onConfirm: () async {
-        final success = await ApiService.deleteAccount();
-        if (success && mounted) {
-          _showAlert('회원 탈퇴가 완료되었습니다.\n그동안 이용해 주셔서 감사합니다.', () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const StartScreen()),
-              (_) => false,
-            );
-          });
-        } else {
-          _showAlert('탈퇴 처리 중 오류가 발생했습니다.');
-        }
-      },
+    final reasonController = TextEditingController();
+    bool confirmed = false;
+
+    await showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('DELETE ACCOUNT', style: TextStyle(fontSize: 14, letterSpacing: 2)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('탈퇴 후 30일간 재가입이 제한됩니다.\n탈퇴 사유를 입력해주세요.',
+                  style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: '탈퇴 사유를 입력해주세요 (최소 5자)',
+                  hintStyle: TextStyle(fontSize: 12, color: Colors.black26),
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(12),
+                ),
+                style: const TextStyle(fontSize: 13),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                if (reasonController.text.trim().length < 5) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('탈퇴 사유를 5자 이상 입력해주세요.')),
+                  );
+                  return;
+                }
+                confirmed = true;
+                Navigator.pop(ctx);
+              },
+              child: const Text('탈퇴', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      ),
     );
+
+    if (!confirmed) return;
+
+    final success = await ApiService.deleteAccount(reason: reasonController.text.trim());
+    if (success && mounted) {
+      _showAlert('회원 탈퇴가 완료되었습니다.\n그동안 이용해 주셔서 감사합니다.', () {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const StartScreen()),
+          (_) => false,
+        );
+      });
+    } else {
+      _showAlert('탈퇴 처리 중 오류가 발생했습니다.');
+    }
   }
 
   // ─── 다이얼로그 유틸 ──────────────────────────────────────────
@@ -506,14 +584,69 @@ class _MyPageScreenState extends State<MyPageScreen> {
   // ── COUPONS ─────────────────────────────────────────────────
 
   Widget _buildCouponsTab() {
-    if (_coupons.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.card_giftcard_outlined,
-        message: '보유 중인 쿠폰이 없습니다.',
-      );
-    }
     return Column(
-      children: _coupons.map((uc) {
+      children: [
+        // 쿠폰 코드 등록 폼
+        _buildCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('REGISTER NEW COUPON',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: _dark)),
+              const SizedBox(height: 8),
+              const Divider(color: Color(0xFFE5D9C0)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _couponCodeController,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: const InputDecoration(
+                        hintText: '쿠폰 코드를 입력하세요 (예: WELCOME2026)',
+                        hintStyle: TextStyle(fontSize: 12, color: Colors.black26),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFFC9A964), width: 0.5),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: _gold),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
+                      onSubmitted: (_) => _registerCoupon(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: _couponRegisterLoading ? null : _registerCoupon,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      color: _couponRegisterLoading ? Colors.grey : _dark,
+                      child: _couponRegisterLoading
+                          ? const SizedBox(
+                              width: 14, height: 14,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Text('REGISTER',
+                              style: TextStyle(fontSize: 10, color: Colors.white, letterSpacing: 1)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text('* 대소문자를 구분하여 정확히 입력해 주세요.',
+                  style: TextStyle(fontSize: 10, color: _grey, fontStyle: FontStyle.italic)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // 보유 쿠폰 목록
+        if (_coupons.isEmpty)
+          _buildEmptyState(icon: Icons.card_giftcard_outlined, message: '보유 중인 쿠폰이 없습니다.')
+        else
+          ..._coupons.map((uc) {
         //final coupon = uc['coupon'] as Map<String, dynamic>? ?? {};
         final isUsed = uc['isUsed'] == true;
         return _buildCard(
@@ -561,6 +694,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ),
         );
       }).toList(),
+      ],
     );
   }
 
@@ -1008,6 +1142,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
       final dt = DateTime.parse(iso).toLocal();
       return '${_formatDate(iso)} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) { return iso; }
+  }
+
+  @override
+  void dispose() {
+    _couponCodeController.dispose();
+    super.dispose();
   }
 }
 

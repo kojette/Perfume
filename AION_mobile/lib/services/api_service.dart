@@ -131,7 +131,7 @@ class ApiService {
     }
   }
 
-  /// 프로필 업데이트 - 닉네임, 프로필이미지 파일 지원
+  /// 프로필 업데이트 - 닉네임, 프로필이미지 파일, 주소 지원
   static Future<bool> updateProfile({
     String? name,
     String? nickname,
@@ -139,6 +139,10 @@ class ApiService {
     String? gender,
     String? birth,
     File? profileImageFile,
+    // ✅ 주소 필드 추가
+    String? zipcode,
+    String? address,
+    String? addressDetail,
   }) async {
     try {
       final token = await _getToken();
@@ -156,6 +160,10 @@ class ApiService {
         if (phone != null) request.fields['phone'] = phone;
         if (gender != null) request.fields['gender'] = gender;
         if (birth != null) request.fields['birth'] = birth;
+        // ✅ 주소 필드 추가
+        if (zipcode != null) request.fields['zipcode'] = zipcode;
+        if (address != null) request.fields['address'] = address;
+        if (addressDetail != null) request.fields['addressDetail'] = addressDetail;
         request.files.add(await http.MultipartFile.fromPath('profileImage', profileImageFile.path));
 
         final streamedResponse = await request.send();
@@ -169,6 +177,10 @@ class ApiService {
       if (phone != null) body['phone'] = phone;
       if (gender != null) body['gender'] = gender;
       if (birth != null) body['birth'] = birth;
+      // ✅ 주소 필드 추가
+      if (zipcode != null) body['zipcode'] = zipcode;
+      if (address != null) body['address'] = address;
+      if (addressDetail != null) body['addressDetail'] = addressDetail;
 
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}/api/members/profile'),

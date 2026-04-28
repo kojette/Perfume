@@ -24,6 +24,8 @@ import 'screens/bottle_editor_screen.dart';
 
 import 'screens/signature_screen.dart';
 import 'screens/collections_screen.dart';
+import 'screens/perfume_detail_screen.dart';
+import 'screens/notification_panel_screen.dart';
 
 /// 정적 라우트 (인자 없는 화면들)
 final Map<String, WidgetBuilder> routes = {
@@ -48,23 +50,22 @@ final Map<String, WidgetBuilder> routes = {
 
   '/signature':          (context) => const SignatureScreen(),
   '/collections':        (context) => const CollectionsScreen(),
+  '/notifications':      (context) => const NotificationPanelScreen(),
 };
 
-/// 동적 라우트 (orderId 등 인자가 필요한 화면들)
-///
-/// 사용 예:
-///   Navigator.pushNamed(context, '/orders/123');
-///   Navigator.pushNamed(context, '/orders/123/tracking');
-///   Navigator.pushNamed(context, '/orders/123/return-exchange');
-///
-/// MaterialApp 설정에서:
-///   MaterialApp(
-///     routes: routes,
-///     onGenerateRoute: onGenerateRoute,
-///     ...
-///   )
 Route<dynamic>? onGenerateRoute(RouteSettings settings) {
   final name = settings.name ?? '';
+
+  // /perfumes/:id
+  final perfumeMatch = RegExp(r'^/perfumes/([^/]+)$').firstMatch(name);
+  if (perfumeMatch != null) {
+    final perfumeId = int.tryParse(perfumeMatch.group(1)!);
+    if (perfumeId == null) return null; // 숫자가 아니면 404 처리
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => PerfumeDetailScreen(perfumeId: perfumeId),
+    );
+  }
 
   // /orders/:id/tracking
   final trackingMatch = RegExp(r'^/orders/([^/]+)/tracking$').firstMatch(name);
