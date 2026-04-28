@@ -16,7 +16,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   
   # HTTP & Network
-  http: ^1.2.1  #기존의 1.2.0인데 일단 바꿈. 안되면 롤백 시도. 
+  http: ^1.2.1
   http_parser: ^4.0.2   # multipart 이미지 업로드 (기존 dart 파일에서 사용)
   
   # Supabase
@@ -33,6 +33,12 @@ dependencies:
   image_picker: ^1.0.7
   cached_network_image: ^3.3.1
   
+  # WebView (다음 우편번호 검색)
+  webview_flutter: ^4.7.0
+
+  # Share (향수 상세 페이지 공유 버튼)
+  share_plus: ^7.2.2
+  
   # Utilities
   intl: ^0.19.0
 
@@ -46,7 +52,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # 이미지 에셋 (기존 설정 유지)
   assets:
     - assets/
     - .env  

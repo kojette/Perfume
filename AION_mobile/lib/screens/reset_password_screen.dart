@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:aion_perfume_app/screens/login_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -12,22 +11,57 @@ class ResetPasswordScreen extends StatefulWidget {
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool _loading = false;
+
+  static const _gold = Color(0xFFC9A961);
+  static const _dark = Color(0xFF2A2620);
+  static const _grey = Color(0xFF8B8278);
+
+  // ✅ 비밀번호 유효성 검사 (ResetPassword.jsx와 동일한 규칙)
+  bool _isValidPassword(String password) {
+    final regex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$');
+    return regex.hasMatch(password);
+  }
 
   Future<void> _handleSubmit() async {
-    if (_passwordController.text.isEmpty || _confirmPasswordController.text.isEmpty) {
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (password.isEmpty || confirmPassword.isEmpty) {
       _showAlert('비밀번호를 모두 입력해주세요.');
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
+    if (password != confirmPassword) {
       _showAlert('비밀번호가 일치하지 않습니다.');
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('userPassword', _passwordController.text);
+    if (!_isValidPassword(password)) {
+      _showAlert('비밀번호는 최소 8자 이상, 영문과 숫자를 포함해야 합니다.');
+      return;
+    }
 
-    _showAlertWithNavigation('비밀번호가 변경되었습니다. 다시 로그인해주세요.');
+    setState(() => _loading = true);
+    try {
+      // ✅ supabase.auth.updateUser로 교체 (평문 저장 제거)
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: password),
+      );
+
+      // ✅ 비밀번호 변경 후 로그아웃 처리
+      await Supabase.instance.client.auth.signOut();
+
+      if (mounted) {
+        _showAlertWithNavigation('비밀번호가 성공적으로 변경되었습니다. 다시 로그인해주세요.');
+      }
+    } on AuthException catch (e) {
+      if (mounted) _showAlert('오류가 발생했습니다: ${e.message}');
+    } catch (e) {
+      if (mounted) _showAlert('오류가 발생했습니다: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _showAlert(String message) {
@@ -38,7 +72,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('확인', style: TextStyle(color: Color(0xFFC9A961))),
+            child: const Text('확인', style: TextStyle(color: _gold)),
           ),
         ],
       ),
@@ -53,14 +87,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // 다이얼로그 닫기
-              Navigator.pushAndRemoveUntil(
+              Navigator.pop(context);
+              // ✅ 로그인 화면으로 이동 (모든 스택 제거)
+              Navigator.pushNamedAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                '/login',
                 (route) => false,
               );
             },
-            child: const Text('확인', style: TextStyle(color: Color(0xFFC9A961))),
+            child: const Text('확인', style: TextStyle(color: _gold)),
           ),
         ],
       ),
@@ -77,7 +112,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF2A2620)),
+          icon: const Icon(Icons.arrow_back, color: _dark),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -89,7 +124,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const Text(
               'AUTHENTICATION',
               style: TextStyle(
-                color: Color(0xFFC9A961),
+                color: _gold,
                 fontSize: 10,
                 letterSpacing: 5,
                 fontStyle: FontStyle.italic,
@@ -100,19 +135,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const SizedBox(height: 20),
             const Text(
               '비밀번호 재설정',
-              style: TextStyle(
-                fontSize: 24,
-                letterSpacing: 2,
-                color: Color(0xFF2A2620),
-              ),
+              style: TextStyle(fontSize: 24, letterSpacing: 2, color: _dark),
             ),
             const SizedBox(height: 40),
-
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(color: const Color(0xFFC9A961).withOpacity(0.2)),
+                border: Border.all(color: _gold.withOpacity(0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +152,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       letterSpacing: 2,
-                      color: Color(0xFF8B8278),
+                      color: _grey,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -137,10 +167,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         borderSide: BorderSide(color: Color(0xFFC9A964), width: 0.5),
                       ),
                       focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFFC9A961)),
+                        borderSide: BorderSide(color: _gold),
                       ),
                     ),
                     style: const TextStyle(fontSize: 14),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                      '* 최소 8자 이상, 영문과 숫자를 포함해주세요',
+                      style: TextStyle(fontSize: 9, color: _grey, fontStyle: FontStyle.italic),
+                    ),
                   ),
                   const SizedBox(height: 30),
 
@@ -149,7 +186,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       letterSpacing: 2,
-                      color: Color(0xFF8B8278),
+                      color: _grey,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -164,7 +201,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         borderSide: BorderSide(color: Color(0xFFC9A964), width: 0.5),
                       ),
                       focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFFC9A961)),
+                        borderSide: BorderSide(color: _gold),
                       ),
                     ),
                     style: const TextStyle(fontSize: 14),
@@ -182,23 +219,74 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         ),
                       ),
                     ),
+
+                  if (_confirmPasswordController.text.isNotEmpty &&
+                      isMatch &&
+                      _passwordController.text.length >= 8)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        '✓ 비밀번호가 일치합니다.',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.green,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+
                   const SizedBox(height: 40),
 
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _handleSubmit,
+                      onPressed: (_loading || !isMatch || _passwordController.text.length < 8)
+                          ? null
+                          : _handleSubmit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2A2620),
+                        backgroundColor: _dark,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: const RoundedRectangleBorder(),
+                        disabledBackgroundColor: _dark.withOpacity(0.5),
                       ),
-                      child: const Text(
-                        'RESET PASSWORD',
-                        style: TextStyle(
-                          letterSpacing: 3,
-                          fontSize: 12,
-                          color: Colors.white,
+                      child: _loading
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              '비밀번호 변경',
+                              style: TextStyle(
+                                letterSpacing: 3,
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.only(top: 20),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: _gold.withOpacity(0.1)),
+                      ),
+                    ),
+                    child: Center(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          '로그인으로 돌아가기',
+                          style: TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 2,
+                            color: _grey,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ),
                     ),
@@ -216,11 +304,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Container(width: 40, height: 1, color: const Color(0xFFC9A961)),
+        Container(width: 40, height: 1, color: _gold),
         const SizedBox(width: 8),
-        const Icon(Icons.auto_awesome, size: 12, color: Color(0xFFC9A961)),
+        const Icon(Icons.auto_awesome, size: 12, color: _gold),
         const SizedBox(width: 8),
-        Container(width: 40, height: 1, color: const Color(0xFFC9A961)),
+        Container(width: 40, height: 1, color: _gold),
       ],
     );
   }

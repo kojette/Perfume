@@ -125,6 +125,21 @@ class _HomeScreenState extends State<HomeScreen> {
       centerTitle: true,
       actions: [
         IconButton(
+          icon: Stack(
+            children: [
+              const Icon(Icons.notifications_none, color: _dark, size: 22),
+              Positioned(
+                top: 0, right: 0,
+                child: Container(
+                  width: 7, height: 7,
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                ),
+              ),
+            ],
+          ),
+          onPressed: () => Navigator.pushNamed(context, '/notifications'),
+        ),
+        IconButton(
           icon: const Icon(Icons.search, color: _dark, size: 22),
           onPressed: () => Navigator.pushNamed(context, '/search'),
         ),
@@ -420,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPerfumeCard(Perfume perfume) {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/collections', arguments: perfume.id),
+      onTap: () => Navigator.pushNamed(context, '/perfumes/${perfume.id}'),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,

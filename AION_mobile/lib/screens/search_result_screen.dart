@@ -295,7 +295,7 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
 
   Widget _buildProductCard(Perfume perfume) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () => Navigator.pushNamed(context, '/perfumes/${perfume.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
