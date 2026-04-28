@@ -1067,9 +1067,11 @@ class _CustomizationScreenState extends State<CustomizationScreen>
             return;
           }
 
-          // 에디터 화면으로 이동
-          if (mounted) {
-            Navigator.pushNamed(context, '/bottle-editor');
+          // 에디터 화면으로 이동 + 저장 성공 시 목록 갱신
+          if (!mounted) return;
+          final saved = await Navigator.pushNamed(context, '/bottle-editor');
+          if (saved == true && mounted) {
+            await _fetchDesigns();
           }
         },
         child: Container(
@@ -1148,12 +1150,15 @@ class _CustomizationScreenState extends State<CustomizationScreen>
               const SizedBox(width: 4),
               // 수정 버튼
               GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(
+                onTap: () async {
+                  final saved = await Navigator.pushNamed(
                     context,
                     '/bottle-editor',
                     arguments: d, // 기존 데이터 전달
                   );
+                  if (saved == true && mounted) {
+                    await _fetchDesigns();
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),

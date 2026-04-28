@@ -579,35 +579,36 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: _cream)),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(children: List.generate(tabs.length, (i) {
+      child: Row(
+        children: List.generate(tabs.length, (i) {
           final active = _activeTab == i;
-          return GestureDetector(
-            onTap: () => setState(() => _activeTab = i),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: active ? _gold : Colors.transparent,
-                    width: 2,
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _activeTab = i),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: active ? _gold : Colors.transparent,
+                      width: 2,
+                    ),
                   ),
                 ),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(tabs[i][1] as IconData, size: 14,
+                      color: active ? _gold : _grey),
+                  const SizedBox(height: 3),
+                  Text(tabs[i][0] as String,
+                      style: TextStyle(
+                        fontSize: 10, letterSpacing: 0.5,
+                        color: active ? _gold : _grey,
+                      )),
+                ]),
               ),
-              child: Row(children: [
-                Icon(tabs[i][1] as IconData, size: 14,
-                    color: active ? _gold : _grey),
-                const SizedBox(width: 5),
-                Text(tabs[i][0] as String,
-                    style: TextStyle(
-                      fontSize: 11, letterSpacing: 1.5,
-                      color: active ? _gold : _grey,
-                    )),
-              ]),
             ),
           );
-        })),
+        }),
       ),
     );
   }
@@ -616,145 +617,170 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
   Widget _buildPreviewPanel(Map<String, int> p) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: const BoxDecoration(
         color: _light,
         border: Border(bottom: BorderSide(color: _cream)),
       ),
-      child: Column(children: [
-        RepaintBoundary(
-          key: _previewKey,
-          child: Container(
-            width: W, height: H,
-            color: _light,
-            child: Stack(children: [
-              // 병 본체
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _BottlePainter(
-                    shape: _selectedBottle.shape,
-                    fillColor: _bottleColor,
-                  ),
-                ),
-              ),
-              // 그림판 스트로크 — 병 영역 클리핑
-              Positioned.fill(
-                child: ClipPath(
-                  clipper: _BottleBodyClipper(_selectedBottle.shape),
-                  child: CustomPaint(
-                    painter: _StrokesPainter(_strokes, _currentStrokePoints, _penColor, _penSize, _drawMode),
-                  ),
-                ),
-              ),
-              // 객체 (이미지/스티커) — 병 영역 클리핑
-              Positioned.fill(
-                child: ClipPath(
-                  clipper: _BottleBodyClipper(_selectedBottle.shape),
-                  child: Stack(
-                    children: _objects.map((o) {
-                      final isSelected = _selectedObjId == o.id;
-                      return Positioned(
-                        left: o.x, top: o.y,
-                        width: o.w, height: o.h,
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedObjId = o.id),
-                          onPanUpdate: (d) => setState(() {
-                            o.x = (o.x + d.delta.dx).clamp(-20.0, W - 10);
-                            o.y = (o.y + d.delta.dy).clamp(-20.0, H - 10);
-                          }),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: isSelected
-                                  ? Border.all(color: _gold, width: 1.2, style: BorderStyle.solid)
-                                  : null,
-                            ),
-                            child: o.type == 'image' && o.src != null
-                                ? _buildObjectImage(o.src!)
-                                : Center(
-                                    child: Text(
-                                      o.text ?? '',
-                                      style: TextStyle(fontSize: o.w * 0.7, height: 1),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-              // 각인 텍스트
-              if (_engravingEnabled && _engravingText.isNotEmpty)
-                Positioned(
-                  left: 0, right: 0, bottom: 36,
-                  child: Center(
-                    child: Text(
-                      _engravingText,
-                      style: const TextStyle(
-                        fontSize: 11, color: _goldDark,
-                        fontStyle: FontStyle.italic, letterSpacing: 2,
+      child: LayoutBuilder(builder: (ctx, constraints) {
+        // 화면 폭에 맞춰 미리보기 박스 사이즈 결정
+        // 모바일은 보통 360~400px → 박스를 적당히 축소해 그리드 공간 확보
+        final maxBoxW = (constraints.maxWidth - 32).clamp(140.0, 200.0);
+        final scale  = maxBoxW / W;          // 200 기준
+        final boxW   = W * scale;
+        final boxH   = H * scale;
+
+        // 객체 좌표는 200×280 좌표계에 저장돼 있으나 표시할 때는 scale 적용
+        return Column(children: [
+          RepaintBoundary(
+            key: _previewKey,
+            child: SizedBox(
+              width: boxW, height: boxH,
+              child: Container(
+                color: _light,
+                child: Stack(children: [
+                  // 병 본체 — Painter가 size에 맞춰 자동 스케일
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _BottlePainter(
+                        shape: _selectedBottle.shape,
+                        fillColor: _bottleColor,
                       ),
                     ),
                   ),
-                ),
-              // 그림판 탭일 때만 — 병 위에 직접 그리기 GestureDetector
-              if (_activeTab == 1)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onPanStart: (d) {
-                      setState(() {
-                        _currentStrokePoints = [d.localPosition];
-                      });
-                    },
-                    onPanUpdate: (d) {
-                      setState(() {
-                        _currentStrokePoints = [..._currentStrokePoints, d.localPosition];
-                      });
-                    },
-                    onPanEnd: (_) {
-                      if (_currentStrokePoints.length < 2) {
-                        setState(() => _currentStrokePoints = []);
-                        return;
-                      }
-                      setState(() {
-                        _strokes.add(_Stroke(
-                          points: List.from(_currentStrokePoints),
-                          color: _penColor,
-                          width: _penSize,
-                          eraser: _drawMode == 'eraser',
-                        ));
-                        _currentStrokePoints = [];
-                      });
-                    },
+                  // 그림판 스트로크 — 200×280 좌표계에 저장된 점들을 scale로 변환해서 그림
+                  Positioned.fill(
+                    child: ClipPath(
+                      clipper: _BottleBodyClipper(_selectedBottle.shape),
+                      child: CustomPaint(
+                        painter: _StrokesPainter(
+                          _strokes, _currentStrokePoints,
+                          _penColor, _penSize, _drawMode,
+                          renderScale: scale,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              // 선택된 객체 컨트롤 버튼 (스티커/이미지 탭에서만)
-              if (_selectedObjId != null && (_activeTab == 2 || _activeTab == 3))
-                ..._buildSelectedObjectControls(),
-            ]),
+                  // 객체 (이미지/스티커) — 좌표·크기에 scale 적용
+                  Positioned.fill(
+                    child: ClipPath(
+                      clipper: _BottleBodyClipper(_selectedBottle.shape),
+                      child: Stack(
+                        children: _objects.map((o) {
+                          final isSelected = _selectedObjId == o.id;
+                          return Positioned(
+                            left: o.x * scale,
+                            top:  o.y * scale,
+                            width:  o.w * scale,
+                            height: o.h * scale,
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedObjId = o.id),
+                              onPanUpdate: (d) => setState(() {
+                                // delta(픽셀) → 200×280 좌표계로 역변환
+                                o.x = (o.x + d.delta.dx / scale).clamp(-20.0, W - 10);
+                                o.y = (o.y + d.delta.dy / scale).clamp(-20.0, H - 10);
+                              }),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: isSelected
+                                      ? Border.all(color: _gold, width: 1.2)
+                                      : null,
+                                ),
+                                child: o.type == 'image' && o.src != null
+                                    ? _buildObjectImage(o.src!)
+                                    : Center(
+                                        child: Text(
+                                          o.text ?? '',
+                                          style: TextStyle(fontSize: o.w * scale * 0.7, height: 1),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                  // 각인 텍스트
+                  if (_engravingEnabled && _engravingText.isNotEmpty)
+                    Positioned(
+                      left: 0, right: 0, bottom: 26 * scale,
+                      child: Center(
+                        child: Text(
+                          _engravingText,
+                          style: TextStyle(
+                            fontSize: 9 + scale * 2,
+                            color: _goldDark,
+                            fontStyle: FontStyle.italic,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // 그림판 탭일 때만 — 병 위에서 그리기
+                  if (_activeTab == 1)
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onPanStart: (d) {
+                          // localPosition은 박스(boxW×boxH) 좌표 → 200×280 좌표계로 역변환
+                          final p = Offset(d.localPosition.dx / scale, d.localPosition.dy / scale);
+                          setState(() => _currentStrokePoints = [p]);
+                        },
+                        onPanUpdate: (d) {
+                          final p = Offset(d.localPosition.dx / scale, d.localPosition.dy / scale);
+                          setState(() => _currentStrokePoints = [..._currentStrokePoints, p]);
+                        },
+                        onPanEnd: (_) {
+                          if (_currentStrokePoints.length < 2) {
+                            setState(() => _currentStrokePoints = []);
+                            return;
+                          }
+                          setState(() {
+                            _strokes.add(_Stroke(
+                              points: List.from(_currentStrokePoints),
+                              color: _penColor,
+                              width: _penSize,
+                              eraser: _drawMode == 'eraser',
+                            ));
+                            _currentStrokePoints = [];
+                          });
+                        },
+                      ),
+                    ),
+                  // 선택된 객체 컨트롤 버튼 (이미지/스티커 탭에서만)
+                  if (_selectedObjId != null && (_activeTab == 2 || _activeTab == 3))
+                    ..._buildSelectedObjectControls(scale),
+                ]),
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(_selectedBottle.name,
-            style: const TextStyle(fontSize: 11, letterSpacing: 2, color: _grey)),
-        Text('₩${_fmt(_selectedBottle.basePrice)}',
-            style: const TextStyle(fontSize: 10, color: _gold)),
-      ]),
+          const SizedBox(height: 6),
+          Text(_selectedBottle.name,
+              style: const TextStyle(fontSize: 11, letterSpacing: 2, color: _grey)),
+          Text('₩${_fmt(_selectedBottle.basePrice)}',
+              style: const TextStyle(fontSize: 10, color: _gold)),
+        ]);
+      }),
     );
   }
 
   // 선택된 객체 위에 표시할 X / + / - 버튼 3개
-  List<Widget> _buildSelectedObjectControls() {
+  List<Widget> _buildSelectedObjectControls(double scale) {
     final obj = _objects.firstWhere(
       (o) => o.id == _selectedObjId,
       orElse: () => _CanvasObject(id: -1, type: 'sticker', x: 0, y: 0, w: 0, h: 0),
     );
     if (obj.id == -1) return const [];
+    // 객체의 좌상단/우하단 픽셀 좌표 (박스 좌표계)
+    final left   = obj.x * scale;
+    final top    = obj.y * scale;
+    final right  = (obj.x + obj.w) * scale;
+    final bottom = (obj.y + obj.h) * scale;
     return [
       // 삭제 (오른쪽 위)
       Positioned(
-        left: obj.x + obj.w - 12, top: obj.y - 12,
+        left: right - 12, top: top - 12,
         child: GestureDetector(
           onTap: () => _deleteObject(obj.id),
           child: Container(
@@ -766,7 +792,7 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
       ),
       // 확대 (오른쪽 아래)
       Positioned(
-        left: obj.x + obj.w - 12, top: obj.y + obj.h - 12,
+        left: right - 12, top: bottom - 12,
         child: GestureDetector(
           onTap: () => _resizeObject(obj.id, 12),
           child: Container(
@@ -778,7 +804,7 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
       ),
       // 축소 (왼쪽 아래)
       Positioned(
-        left: obj.x - 10, top: obj.y + obj.h - 12,
+        left: left - 10, top: bottom - 12,
         child: GestureDetector(
           onTap: () => _resizeObject(obj.id, -12),
           child: Container(
@@ -836,7 +862,8 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            childAspectRatio: 0.65,
+            // 병 비율(200/280≈0.71) + 라벨/가격 영역 → 0.62
+            childAspectRatio: 0.62,
             crossAxisSpacing: 10, mainAxisSpacing: 10,
           ),
           itemCount: all.length,
@@ -846,7 +873,7 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedBottle = b),
               child: Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: selected ? _gold.withOpacity(0.05) : Colors.white,
                   border: Border.all(
@@ -855,13 +882,19 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
                   ),
                 ),
                 child: Column(children: [
+                  // ★ AspectRatio 200:280으로 비율 명시 → 모양 왜곡 방지
                   Expanded(
-                    child: CustomPaint(
-                      painter: _BottlePainter(shape: b.shape, fillColor: _bottleColor),
-                      size: const Size(double.infinity, double.infinity),
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: 200 / 280,
+                        child: CustomPaint(
+                          painter: _BottlePainter(shape: b.shape, fillColor: _bottleColor),
+                          size: const Size.square(double.infinity),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(b.name,
                       style: const TextStyle(fontSize: 10, color: _dark),
                       overflow: TextOverflow.ellipsis),
@@ -1608,8 +1641,17 @@ class _StrokesPainter extends CustomPainter {
   final Color currentColor;
   final double currentWidth;
   final String currentMode;
+  /// 200×280 좌표계 → 실제 박스 크기 변환 비율
+  final double renderScale;
 
-  _StrokesPainter(this.strokes, this.currentPoints, this.currentColor, this.currentWidth, this.currentMode);
+  _StrokesPainter(
+    this.strokes,
+    this.currentPoints,
+    this.currentColor,
+    this.currentWidth,
+    this.currentMode, {
+    this.renderScale = 1.0,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1627,14 +1669,15 @@ class _StrokesPainter extends CustomPainter {
     if (pts.length < 2) return;
     final paint = Paint()
       ..color = eraser ? Colors.white : color
-      ..strokeWidth = width
+      ..strokeWidth = width * renderScale  // 굵기도 scale 적용
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
     if (eraser) paint.blendMode = BlendMode.clear;
-    final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+    final path = Path()
+      ..moveTo(pts.first.dx * renderScale, pts.first.dy * renderScale);
     for (var i = 1; i < pts.length; i++) {
-      path.lineTo(pts[i].dx, pts[i].dy);
+      path.lineTo(pts[i].dx * renderScale, pts[i].dy * renderScale);
     }
     canvas.drawPath(path, paint);
   }
@@ -1645,5 +1688,6 @@ class _StrokesPainter extends CustomPainter {
       old.currentPoints.length != currentPoints.length ||
       old.currentColor != currentColor ||
       old.currentWidth != currentWidth ||
-      old.currentMode != currentMode;
+      old.currentMode != currentMode ||
+      old.renderScale != renderScale;
 }
