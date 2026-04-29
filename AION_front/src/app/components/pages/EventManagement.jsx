@@ -3,7 +3,7 @@ import { Ornament } from '../Ornament';
 import { Plus, Edit2, Trash2, Pin, AlertCircle, Calendar } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const AnnouncementManagement = () => {
   const [announcements, setAnnouncements] = useState([]);

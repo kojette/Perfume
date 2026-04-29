@@ -6,7 +6,7 @@ import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 
 const Cart = () => {
     const navigate = useNavigate();
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);

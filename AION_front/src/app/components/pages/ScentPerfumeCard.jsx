@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Download, Loader2 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 // ── Gemini API 호출 (백엔드 프록시) ──────────────────────────────────────────
 async function fetchGeminiCardData(blend) {

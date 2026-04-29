@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, X } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const SECTION_TYPES = [
   { value: 'HISTORY', label: '브랜드 연혁 (HISTORY)' },

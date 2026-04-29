@@ -4,7 +4,7 @@ import { Search, Bell, CheckCircle, Clock, User, MessageSquare, RefreshCw, Send,
 import { Ornament } from '../Ornament';
 import { supabase } from '../../supabaseClient';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const INQUIRY_TYPES = [
   { value: 'product', label: '상품문의' },

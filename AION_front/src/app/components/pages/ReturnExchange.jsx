@@ -4,7 +4,7 @@ import { Ornament } from '../Ornament';
 import { ChevronLeft, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const REQUEST_TYPES = [
     { value: 'RETURN',   label: '반품 (환불)' },
