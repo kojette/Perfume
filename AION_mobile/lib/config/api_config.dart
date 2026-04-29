@@ -26,6 +26,6 @@ class ApiConfig {
       return 'http://localhost:8080';
     }
     // 안드로이드 에뮬레이터 기본값
-    return 'http://10.0.2.2:8080';
+    return 'http://43.203.49.141:8080';
   }
 }
