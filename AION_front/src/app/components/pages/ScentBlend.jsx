@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 
 // ── 카테고리별 고정 색상 팔레트 (displayOrder 순 인덱스 순환) ────────────────

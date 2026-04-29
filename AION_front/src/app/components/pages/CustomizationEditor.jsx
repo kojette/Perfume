@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Upload, Pen, Save, RotateCcw, Eraser, Plus } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const DEFAULT_BOTTLES = [
   { id: 'classic-round',  name: '클래식 라운드',  shape: 'round',     basePrice: 15000 },

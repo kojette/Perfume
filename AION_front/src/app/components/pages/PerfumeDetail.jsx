@@ -6,7 +6,7 @@ import {
   ArrowLeft, Star, Share2, Check, X, AlertTriangle,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const fmtKRW   = (n) => (n != null ? `₩${Number(n).toLocaleString()}` : '-');
 const getToken  = () => sessionStorage.getItem('accessToken');

@@ -6,7 +6,7 @@ import ScentBlend from './ScentBlend';
 import CustomizationEditor from './CustomizationEditor';
 import AiScentStudio from './AiScentStudio';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const Customization = () => {
   const navigate = useNavigate();

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import ScentBlend from './ScentBlend';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const gold  = '#c9a961';
 const dark  = '#1a1a1a';
 const muted = '#8b8278';

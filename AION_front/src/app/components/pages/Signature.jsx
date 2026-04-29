@@ -7,7 +7,7 @@ import {
   Search, Star, Filter, Check,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 
 const FONT_SIZE_CLASS = {

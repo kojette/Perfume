@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { Ornament } from '../Ornament';
 import { ArrowLeft, Package, AlertTriangle, Plus, RefreshCw, Search, ChevronDown, ChevronUp } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const getAdminToken = async () => {
   const { data } = await supabase.auth.getSession();

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Ornament } from '../Ornament';
 import { Package, Truck, CheckCircle, Clock, MapPin, ExternalLink, ChevronLeft } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const STATUS_STEPS = [
     { key: 'PENDING',    label: '주문 접수',   icon: Clock,        desc: '주문이 접수되었습니다.' },
