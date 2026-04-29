@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aion_perfume_app/config/api_config.dart';
 
 class NotificationPanelScreen extends StatefulWidget {
   const NotificationPanelScreen({super.key});
@@ -142,11 +143,7 @@ class _NotificationPanelScreenState extends State<NotificationPanelScreen>
     setState(() => _loading[eventId] = true);
 
     try {
-      const baseUrl = String.fromEnvironment(
-        'API_BASE_URL',
-        defaultValue: 'http://localhost:8080',
-      );
-      final uri = Uri.parse('$baseUrl/api/events/$eventId/participate');
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/events/$eventId/participate');
       final response = await http.post(
         uri,
         headers: {

@@ -6,13 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart'; // pubspec에 없으면 Clipboard fallback 사용
-
+import 'package:aion_perfume_app/config/api_config.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // 상수 & 헬퍼
 // ─────────────────────────────────────────────────────────────────────────────
 
-const String _kApiBase =
-    String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8080');
 
 const Color kGold      = Color(0xFFC9A961);
 const Color kDarkBrown = Color(0xFF2A1508);
@@ -197,7 +195,7 @@ class _PerfumeDetailScreenState extends State<PerfumeDetailScreen> {
     setState(() => _notesLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('$_kApiBase/api/collections/perfumes/${widget.perfumeId}/notes'),
+        Uri.parse('${ApiConfig.baseUrl}/api/collections/perfumes/${widget.perfumeId}/notes'),
       );
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body);
@@ -225,7 +223,7 @@ class _PerfumeDetailScreenState extends State<PerfumeDetailScreen> {
     setState(() => _wishLoading = true);
     try {
       final res = await http.post(
-        Uri.parse('$_kApiBase/api/wishlist/toggle'),
+        Uri.parse('${ApiConfig.baseUrl}/api/wishlist/toggle'),
         headers: _authHeaders,
         body: jsonEncode({'perfumeId': widget.perfumeId}),
       );
@@ -245,7 +243,7 @@ class _PerfumeDetailScreenState extends State<PerfumeDetailScreen> {
     setState(() => _cartLoading = true);
     try {
       final res = await http.post(
-        Uri.parse('$_kApiBase/api/cart/add'),
+        Uri.parse('${ApiConfig.baseUrl}/api/cart/add'),
         headers: _authHeaders,
         body: jsonEncode({'perfumeId': widget.perfumeId, 'quantity': _qty}),
       );
@@ -259,7 +257,7 @@ class _PerfumeDetailScreenState extends State<PerfumeDetailScreen> {
   Future<void> _handleBuy() async {
     if (!_isLoggedIn) { _goLogin(); return; }
     await http.post(
-      Uri.parse('$_kApiBase/api/cart/add'),
+      Uri.parse('${ApiConfig.baseUrl}/api/cart/add'),
       headers: _authHeaders,
       body: jsonEncode({'perfumeId': widget.perfumeId, 'quantity': _qty}),
     );
@@ -284,7 +282,7 @@ class _PerfumeDetailScreenState extends State<PerfumeDetailScreen> {
     setState(() => _restockLoading = true);
     try {
       final res = await http.post(
-        Uri.parse('$_kApiBase/api/restock/notify'),
+        Uri.parse('${ApiConfig.baseUrl}/api/restock/notify'),
         headers: _authHeaders,
         body: jsonEncode({'perfumeId': widget.perfumeId}),
       );
