@@ -38,7 +38,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of("https://aion-pefume.kro.kr"));
+        config.setAllowedOrigins(List.of(
+                "https://aion-perfume.kro.kr",
+                "https://aion-perfume.kro.kr/"
+        ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
