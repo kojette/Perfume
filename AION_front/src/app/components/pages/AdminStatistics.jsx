@@ -13,7 +13,7 @@ import {
   PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 
-const API_BASE = "";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const GOLD   = '#c9a961';
 const DARK   = '#2a2620';

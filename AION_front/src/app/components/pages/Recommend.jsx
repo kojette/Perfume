@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getRecommendations } from '../../../services/recommendationApi';
 
 
@@ -172,7 +172,7 @@ function PerfumeCard({ perfume, onClick }) {
 function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
   const [expanded, setExpanded] = useState(false);
   const { palette } = group;
-  const displayPerfumes = expanded ? perfumes : perfumes.slice(0, 3);
+  const displayPerfumes = expanded ? perfumes : perfumes.slice(0, 2);
   const AGE_IMAGES = {
   '10s': imgTeen,
   '20s': imgTwenties,
@@ -183,7 +183,7 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
   return (
     <div className="relative overflow-hidden border border-[#e8e2d6] bg-white">
       <div
-        className="relative cursor-pointer select-none"
+        className="relative select-none"
         style={{
           // 상단 헤더 전체 배경
           background: `
@@ -201,7 +201,6 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
           `,
           backdropFilter: 'blur(10px)',
         }}
-        onClick={() => setExpanded(!expanded)}
       >
         {AGE_IMAGES[group.id] && (
   <div className="absolute inset-0 pointer-events-none">
@@ -232,8 +231,8 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
     />
   </div>
 )}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 font-serif text-[80px] leading-none pointer-events-none select-none"
-          style={{ color: palette.accent, opacity: 0.07 }}>
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 font-serif text-[80px] leading-none pointer-events-none select-none"
+          style={{ color: palette.accent, opacity: 0.18, letterSpacing: '-0.02em', textShadow: `0 2px 12px ${palette.accent}33` }}>
           {group.symbol}
         </div>
         <div className="relative px-8 py-6 flex items-center justify-between">
@@ -350,19 +349,11 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
                 </div>
               </div>
             </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-[#8b8278]">{perfumes.length}개</span>
-            <div className={`w-6 h-6 border flex items-center justify-center transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
-              style={{ borderColor: `${palette.accent}50` }}>
-              <span className="text-[10px]" style={{ color: palette.accent }}>▼</span>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div className={`overflow-hidden transition-all duration-500`}
-        style={{ maxHeight: expanded ? '2000px' : perfumes.length > 0 ? '280px' : '0' }}>
+      <div className={`relative overflow-hidden transition-all duration-500`}
+        style={{ maxHeight: expanded ? '2000px' : perfumes.length > 0 ? '360px' : '0' }}>
 
         {loading ? (
           <div className="p-8 text-center">
@@ -370,14 +361,14 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
           </div>
         ) : perfumes.length > 0 ? (
           <div>
-            <div className="px-8 py-5 border-b border-[#e8e2d6]/50"
+            <div className="px-8 py-3 border-b border-[#e8e2d6]/30"
               style={{ background: `linear-gradient(to right, ${palette.from}30, transparent)` }}>
               <p className="text-xs italic text-[#8b8278] leading-loose whitespace-pre-line tracking-wider">
                 {group.poem}
               </p>
             </div>
 
-            <div className="divide-y divide-[#f0ebe0]">
+            <div className="divide-y divide-[#f5f2ec]">
               {displayPerfumes.map(p => (
                 <PerfumeCard key={p.id} perfume={p} onClick={onPerfumeClick} />
               ))}
@@ -386,9 +377,14 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
             {perfumes.length > 3 && (
               <button
                 onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-                className="w-full py-3 text-[11px] tracking-[0.3em] text-[#8b8278] hover:text-[#c9a961] transition-colors border-t border-[#e8e2d6]"
+                className="w-full py-2.5 flex items-center justify-center gap-1.5 border-t border-[#e8e2d6] bg-[#faf8f4] hover:bg-[#c9a961]/8 transition-all cursor-pointer"
               >
-                {expanded ? '접기 ▲' : `${perfumes.length - 3}개 더 보기 ▼`}
+                <span className="text-[10px] tracking-[0.4em] text-[#c9a961]">
+                  {expanded ? 'CLOSE' : 'MORE'}
+                </span>
+                <span className={`text-[9px] text-[#c9a961] transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
               </button>
             )}
           </div>
@@ -397,6 +393,14 @@ function AgeGroupSection({ group, perfumes, loading, onPerfumeClick }) {
             <p className="text-sm text-[#a39d8f] italic">해당 연령대 추천 향수가 없습니다</p>
           </div>
         )}
+        {!expanded && perfumes.length > 3 && (
+    <div
+      className="absolute bottom-[36px] left-0 right-0 h-16 pointer-events-none"
+      style={{
+        background: 'linear-gradient(to bottom, transparent, white 85%)',
+      }}
+    />
+  )}
       </div>
     </div>
   );
@@ -409,7 +413,7 @@ function QuickFilterButton({ filter, isActive, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="relative overflow-hidden flex flex-col items-center justify-end gap-1 border transition-all duration-300 min-h-[110px]"
+      className="relative overflow-hidden flex flex-col items-center justify-end gap-1 border transition-all duration-300 min-h-[110px] cursor-pointer"
       style={{
         borderColor: isActive ? '#c9a961' : '#e8e2d6',
         padding: 0,
@@ -480,7 +484,9 @@ export default function Recommend() {
   const [perfumeData, setPerfumeData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'all';
+  const setActiveTab = (tab) => setSearchParams({ tab });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -713,8 +719,8 @@ export default function Recommend() {
         
         <div className="flex border border-[#e8e2d6] mb-10 fade-up delay-1">
           <button
-            onClick={() => setActiveTab('all')}
-            className={`flex-1 py-4 text-xs tracking-[0.4em] uppercase transition-all duration-300 ${
+            onClick={() => setSearchParams({ tab: 'all' })}
+            className={`flex-1 py-4 text-xs tracking-[0.4em] uppercase transition-all duration-300 cursor-pointer ${
               activeTab === 'all' ? 'bg-[#1a1510] text-[#c9a961]' : 'bg-white text-[#8b8278] hover:text-[#c9a961]'
             }`}
           >
@@ -722,8 +728,8 @@ export default function Recommend() {
           </button>
           <div className="w-[1px] bg-[#e8e2d6]" />
           <button
-            onClick={() => setActiveTab('age')}
-            className={`flex-1 py-4 text-xs tracking-[0.4em] uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
+            onClick={() => setSearchParams({ tab: 'age' })}
+            className={`flex-1 py-4 text-xs tracking-[0.4em] uppercase transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'age' ? 'bg-[#1a1510] text-[#c9a961]' : 'bg-white text-[#8b8278] hover:text-[#c9a961]'
             }`}
           >
