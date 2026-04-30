@@ -64,7 +64,7 @@ export function EventBanner() {
         {isAdmin && (
           <button
             onClick={() => setEditorOpen(true)}
-            className="absolute right-8 top-1/2 -translate-y-1/2 px-3 py-1 bg-black/60 text-[#c9a961] border border-[#c9a961]/40 text-xs tracking-widest hover:bg-black z-10"
+            className="absolute right-8 top-1/2 -translate-y-1/2 px-3 py-1 bg-black/60 text-[#c9a961] border border-[#c9a961]/40 text-xs tracking-widest hover:bg-black z-10 cursor-pointer"
           >
             배너 편집
           </button>
@@ -189,7 +189,7 @@ function BannerEditor({ onClose, currentBanners, currentColors }) {
       <div className="w-full max-w-3xl bg-[#1f1c17] text-[#e8dcc8] p-8 relative border border-[#c9a961]/30 my-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="tracking-[0.3em] text-[#c9a961]">EVENT BANNER EDITOR</h2>
-          <button onClick={onClose} className="text-sm hover:text-white">✕ 닫기</button>
+          <button onClick={onClose} className="text-sm hover:text-white cursor-pointer">✕ 닫기</button>
         </div>
 
         {/* 탭 */}
@@ -238,7 +238,7 @@ function BannerEditor({ onClose, currentBanners, currentColors }) {
               </div>
               <button
                 onClick={handleAdd}
-                className="w-full py-2 bg-[#c9a961]/20 border border-[#c9a961]/40 text-sm text-[#c9a961] hover:bg-[#c9a961]/30"
+                className="w-full py-2 bg-[#c9a961]/20 border border-[#c9a961]/40 text-sm text-[#c9a961] hover:bg-[#c9a961]/30 cursor-pointer"
               >
                 + 추가하기
               </button>
@@ -346,8 +346,8 @@ function BannerEditor({ onClose, currentBanners, currentColors }) {
             </div>
 
             <div className="flex justify-end gap-4">
-              <button onClick={onClose} className="px-6 py-2 border border-[#c9a961]/40 text-sm">취소</button>
-              <button onClick={handleSave} className="px-6 py-2 bg-[#c9a961] text-[#2a2620] text-sm tracking-widest">저장 및 적용</button>
+              <button onClick={onClose} className="px-6 py-2 border border-[#c9a961]/40 text-sm cursor-pointer">취소</button>
+              <button onClick={handleSave} className="px-6 py-2 bg-[#c9a961] text-[#2a2620] text-sm tracking-widest cursor-pointer">저장 및 적용</button>
             </div>
           </>
         )}
@@ -396,7 +396,7 @@ function BannerEditor({ onClose, currentBanners, currentColors }) {
                     {!history.is_active && (
                       <button
                         onClick={() => handleApplyHistory(history.id)}
-                        className="px-4 py-1 bg-[#c9a961]/20 border border-[#c9a961]/40 text-xs text-[#c9a961] hover:bg-[#c9a961]/30"
+                        className="px-4 py-1 bg-[#c9a961]/20 border border-[#c9a961]/40 text-xs text-[#c9a961] hover:bg-[#c9a961]/30 cursor-pointer"
                       >
                         적용하기
                       </button>

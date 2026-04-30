@@ -104,12 +104,12 @@ export function Hero({ navHeight = 0 }) {
   };
 
   return (
+    <>
     <section
       className="relative flex items-center justify-center overflow-hidden"
       style={{
         marginTop: `-${overlapHeight}px`,
         height: `calc(100vh + ${overlapHeight}px)`,
-        zIndex: 1
       }}
     >
       <div className="absolute inset-0 z-0 bg-[#2a2620]">
@@ -173,24 +173,24 @@ export function Hero({ navHeight = 0 }) {
         <div className="text-xs tracking-[0.3em]">SCROLL</div>
         <div className="w-[1px] h-12 bg-gradient-to-b from-[#c9a961] to-transparent" />
       </div>
-
-      {isAdmin && (
-        <button
-          onClick={() => setEditorOpen(true)}
-          style={{ transform: `translateY(calc(${overlapHeight}px - 4px))` }}
-          className="absolute top-8 right-8 z-20 px-4 py-2 bg-black/60 text-[#c9a961] border border-[#c9a961]/40 text-sm tracking-widest hover:bg-black"
-        >
-          Hero 편집
-        </button>
-      )}
-
-      {isAdmin && editorOpen && (
-        <HeroAdminOverlay
-          onClose={() => setEditorOpen(false)}
-          currentData={{ title: displayTitle, subtitle: displaySubtitle, tagline: displayTagline }}
-          onSave={handleSave}
-        />
-      )}
     </section>
+    {isAdmin && !editorOpen && (
+      <button
+        onClick={() => setEditorOpen(true)}
+        style={{ transform: `translateY(calc(${overlapHeight}px - 4px))` }}
+        className="fixed top-8 right-8 z-[100] px-4 py-2 bg-black text-[#c9a961] border border-[#c9a961]/60 text-sm tracking-widest hover:bg-black/50 transition-all duration-200 cursor-pointer"
+      >
+        Hero 편집
+      </button>
+    )}
+
+    {isAdmin && editorOpen && (
+      <HeroAdminOverlay
+        onClose={() => setEditorOpen(false)}
+        currentData={{ title: displayTitle, subtitle: displaySubtitle, tagline: displayTagline }}
+        onSave={handleSave}
+      />
+    )}
+  </>
   );
 }
