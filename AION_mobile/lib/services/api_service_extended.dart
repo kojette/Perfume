@@ -242,13 +242,28 @@ class ApiService {
         }).toList();
       }
 
-      // 정규화
-      return items.map((p) {
+      // 정규화 (이미지 URL 추출 + thumbnail 우선, 없으면 첫 번째 이미지)
+      final normalized = items.map((p) {
         final imgList = p['Perfume_Images'] as List? ?? [];
-        final thumbUrl = imgList
-            .where((i) => i['is_thumbnail'] == true)
-            .map((i) => i['image_url'] as String?)
-            .firstWhere((u) => u != null, orElse: () => null);
+        
+        // 1차 시도: is_thumbnail = true인 것
+        String? thumbUrl;
+        for (final i in imgList) {
+          if (i['is_thumbnail'] == true && i['image_url'] != null) {
+            thumbUrl = i['image_url'] as String;
+            break;
+          }
+        }
+        // 2차 시도: thumbnail이 없으면 첫 번째 이미지라도
+        if (thumbUrl == null && imgList.isNotEmpty) {
+          for (final i in imgList) {
+            if (i['image_url'] != null) {
+              thumbUrl = i['image_url'] as String;
+              break;
+            }
+          }
+        }
+        
         final tagList = (p['Preference_Tags'] as List? ?? [])
             .map((t) => (t['tag_name'] ?? '').toString())
             .where((t) => t.isNotEmpty)
@@ -256,6 +271,10 @@ class ApiService {
         final salePrice = p['sale_price'];
         final price = p['price'] ?? 0;
         final saleRate = p['sale_rate'] ?? 0;
+        
+        // 디버그: 첫 향수의 이미지 URL 로그
+        debugPrint('🔍 [fetchPerfumesRaw] ${p['name']} → imageUrl: $thumbUrl');
+        
         return {
           'id': p['perfume_id'],
           'perfumeId': p['perfume_id'],
@@ -275,6 +294,14 @@ class ApiService {
           'concentration': p['concentration'],
         };
       }).toList();
+      
+      // 이미지가 없는 향수가 있으면 _enrichWithImages로 한 번 더 시도
+      final hasNullImage = normalized.any((p) => p['imageUrl'] == null);
+      if (hasNullImage) {
+        debugPrint('⚠️ 일부 향수 imageUrl이 null → _enrichWithImages로 재시도');
+        return await _enrichWithImages(normalized);
+      }
+      return normalized;
     } catch (e) {
       debugPrint('Supabase 향수 조회 오류, Spring fallback: $e');
       // fallback: Spring API
