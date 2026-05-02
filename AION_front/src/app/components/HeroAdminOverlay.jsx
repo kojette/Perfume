@@ -91,7 +91,7 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
           <h2 className="tracking-[0.3em] text-[#c9a961]">
             HERO BANNER EDITOR
           </h2>
-          <button onClick={onClose} className="text-sm hover:text-white">
+          <button onClick={onClose} className="text-sm hover:text-white cursor-pointer">
             ✕ 닫기
           </button>
         </div>
@@ -218,13 +218,13 @@ export function HeroAdminOverlay({ onClose, currentData, onSave }) {
             <div className="flex justify-end gap-4">
               <button
                 onClick={onClose}
-                className="px-6 py-2 border border-[#c9a961]/40 text-sm"
+                className="px-6 py-2 border border-[#c9a961]/40 text-sm cursor-pointer"
               >
                 취소
               </button>
               <button
                 onClick={handleSave}
-                className="px-6 py-2 bg-[#c9a961] text-[#2a2620] text-sm tracking-widest"
+                className="px-6 py-2 bg-[#c9a961] text-[#2a2620] text-sm tracking-widest cursor-pointer"
               >
                 저장 및 적용
               </button>

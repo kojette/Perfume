@@ -9,7 +9,7 @@ import img11 from "../../assets/11.png";
 import img12 from "../../assets/12.jpg";
 import img13 from "../../assets/13.jpg";
 
-export function Hero({ navHeight = 0 }) {
+export function Hero({ navHeight = 0, bannerEditorOpen = false }) {
   const [heroData, setHeroData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -174,7 +174,7 @@ export function Hero({ navHeight = 0 }) {
         <div className="w-[1px] h-12 bg-gradient-to-b from-[#c9a961] to-transparent" />
       </div>
     </section>
-    {isAdmin && !editorOpen && (
+    {isAdmin && !editorOpen && !bannerEditorOpen && (
       <button
         onClick={() => setEditorOpen(true)}
         style={{ transform: `translateY(calc(${overlapHeight}px - 4px))` }}

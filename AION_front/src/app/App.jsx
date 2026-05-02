@@ -58,6 +58,7 @@ function AppLayout() {
   const location = useLocation();
   const [navHeight, setNavHeight] = useState(0);
   const navRef = useRef(null);
+  const [bannerEditorOpen, setBannerEditorOpen] = useState(false);
 
   const isAdmin = location.pathname.startsWith("/admin");
   const showHero = HERO_PATHS.includes(location.pathname);
@@ -75,11 +76,11 @@ function AppLayout() {
     <>
       <div ref={navRef} className="fixed top-0 w-full z-50 shadow-lg">
         <Header />
-        <EventBanner />
+        <EventBanner onEditorChange={setBannerEditorOpen} />
       </div>
 
       <div style={{ paddingTop: `${navHeight}px` }}>
-        {showHero && <Hero isAdmin={isAdmin} navHeight={navHeight} />}
+        {showHero && <Hero isAdmin={isAdmin} navHeight={navHeight} bannerEditorOpen={bannerEditorOpen} />}
 
         <main>
           <Routes>

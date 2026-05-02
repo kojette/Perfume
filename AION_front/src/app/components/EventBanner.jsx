@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 
-export function EventBanner() {
+export function EventBanner({ onEditorChange }) {
   const [banners, setBanners] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ export function EventBanner() {
   return (
     <>
       <div
-        className="w-full relative h-[44px] flex items-center overflow-hidden"
+        className="w-full relative h-[44px] flex items-center"
         style={{ backgroundColor: bannerColors.bg, color: bannerColors.text }}
       >
         {!loading && banners[currentIdx] && (
@@ -63,8 +63,8 @@ export function EventBanner() {
 
         {isAdmin && (
           <button
-            onClick={() => setEditorOpen(true)}
-            className="absolute right-8 top-1/2 -translate-y-1/2 px-3 py-1 bg-black/60 text-[#c9a961] border border-[#c9a961]/40 text-xs tracking-widest hover:bg-black z-10 cursor-pointer"
+            onClick={() => { setEditorOpen(true); onEditorChange?.(true); }}
+            className="absolute right-8 top-1/2 -translate-y-1/2 px-3 py-1 bg-black text-[#c9a961] border border-[#c9a961]/60 text-xs tracking-widest hover:bg-black/50 transition-all duration-200 z-10 cursor-pointer"
           >
             배너 편집
           </button>
@@ -73,7 +73,7 @@ export function EventBanner() {
 
       {isAdmin && editorOpen && (
         <BannerEditor
-          onClose={() => setEditorOpen(false)}
+          onClose={() => { setEditorOpen(false); onEditorChange?.(false); }}
           currentBanners={banners}
           currentColors={bannerColors}
         />
@@ -185,7 +185,7 @@ function BannerEditor({ onClose, currentBanners, currentColors }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center overflow-y-auto py-8">
+    <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto pt-5 pb-8">
       <div className="w-full max-w-3xl bg-[#1f1c17] text-[#e8dcc8] p-8 relative border border-[#c9a961]/30 my-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="tracking-[0.3em] text-[#c9a961]">EVENT BANNER EDITOR</h2>
@@ -277,7 +277,7 @@ function BannerEditor({ onClose, currentBanners, currentColors }) {
                       </div>
                       <button
                         onClick={() => handleRemove(idx)}
-                        className="px-3 py-1 text-xs text-red-400 border border-red-400/40 hover:bg-red-400/10"
+                        className="px-3 py-1 text-xs text-red-400 border border-red-400/40 hover:bg-red-400/10 cursor-pointer"
                       >삭제</button>
                     </div>
                   </div>
