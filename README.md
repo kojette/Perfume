@@ -14,8 +14,9 @@
 
 ## 3. 기능 구성도 -> docs
 <img width="636" height="702" alt="1" src="https://github.com/user-attachments/assets/722cc042-801b-470a-bb22-fdfe66d44673" />
-<img width="830" height="828" alt="2" src="https://github.com/user-attachments/assets/976aa5fa-580b-4ed1-a85b-fd142e31aff8" />
-<img width="513" height="240" alt="3" src="https://github.com/user-attachments/assets/12b154f9-69d2-496b-8e2c-5293958c7308" />
+<img width="752" height="892" alt="2" src="https://github.com/user-attachments/assets/84a1271d-d0b5-4a0b-addf-638f5474481e" />
+<img width="442" height="287" alt="s" src="https://github.com/user-attachments/assets/5e93cb7a-04b7-44ab-947d-fb2fcb83cb21" />
+
 
 ## 4. API 명세서 -> docs
 
