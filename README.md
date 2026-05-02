@@ -13,13 +13,19 @@
 | Superbase | [http://aion-perfume.kro.kr](https://supabase.com/) |
 
 ## 3. 기능 구성도 
+<details>
+<summary>기능구성도 보기</summary>
 <img width="636" height="702" alt="1" src="https://github.com/user-attachments/assets/722cc042-801b-470a-bb22-fdfe66d44673" />
 <img width="752" height="892" alt="2" src="https://github.com/user-attachments/assets/84a1271d-d0b5-4a0b-addf-638f5474481e" />
 <img width="442" height="287" alt="s" src="https://github.com/user-attachments/assets/5e93cb7a-04b7-44ab-947d-fb2fcb83cb21" />
-
+</details>
 
 ## 4. API 명세서 
+<details>
+<summary>기능구성도 보기</summary>
 
+</details>
+  
 ## 5. code -> AION_front, AION_back, AION_mobile
 
 ## 6. 앱 등록
