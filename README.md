@@ -22,7 +22,169 @@
 
 ## 4. API 명세서 
 <details>
-<summary>API 명세서 보기</summary>
+<summary>API 명세서 보기
+인증
+		
+POST	/api/auth/login-record	로그인 기록 저장
+
+회원
+		
+POST	/api/members/register	회원가입
+GET	/api/members/profile	내 프로필 조회
+PUT	/api/members/profile	프로필 수정
+DELETE	/api/members/account	회원 탈퇴
+
+향수
+		
+GET	/api/perfumes	향수 목록 조회
+GET	/api/perfumes/{perfumeId}	향수 상세 조회
+GET	/api/recommendations	향수 추천 목록 (필터/검색/정렬)
+GET	/api/recommendations/{perfumeId}	향수 추천 상세
+GET	/api/recommendations/category/{category}	카테고리별 추천
+GET	/api/recommendations/age/{age}	연령대별 추천
+GET	/api/collections/perfumes/{perfumeId}/notes	향수 노트 정보 조회
+POST	/api/restock/notify	재입고 알림 신청
+
+
+
+
+
+
+커스텀 디자인
+		
+GET	/api/custom/designs	내 커스텀 디자인 목록 조회
+POST	/api/custom/designs	커스텀 디자인 저장
+DELETE	/api/custom/designs/{designId}	커스텀 디자인 삭제
+
+향 조합
+		
+GET	/api/custom/scents	향 원료 목록 조회
+GET	/api/custom/scent-blends	내 향 조합 목록 조회
+POST	/api/custom/scent-blends	향 조합 저장
+DELETE	/api/custom/scent-blends/{blendId}	향 조합 삭제
+POST	/api/cart/scent-blend	향 조합 장바구니 추가
+
+시그니처 향수
+		
+GET	/api/signature	시그니처 향수 목록 조회
+POST	/api/signature	시그니처 향수 등록
+GET	/api/signature/active	활성 시그니처 향수 조회
+PATCH	/api/signature/{id}/active	시그니처 향수 활성화
+DELETE	/api/signature/{id}	시그니처 향수 삭제
+
+
+
+
+
+
+장바구니
+		
+GET	/api/cart	장바구니 조회
+POST	/api/cart/add	일반 상품 장바구니 추가
+POST	/api/cart/custom	커스텀 디자인 장바구니 추가
+POST	/api/cart/scent-blend	향 조합 장바구니 추가
+PATCH	/api/cart/{itemId}	장바구니 수량 변경
+DELETE	/api/cart/{itemId}	장바구니 항목 삭제
+
+위시리스트
+		
+GET	/api/wishlist	위시리스트 조회
+POST	/api/wishlist/toggle	위시리스트 토글 (추가/제거)
+DELETE	/api/wishlist/{wishlistId}	위시리스트 항목 삭제
+
+주문 
+		
+POST	/api/orders/checkout	주문 결제
+GET	/api/orders/my	내 주문 목록 조회
+GET	/api/orders/{orderId}	주문 상세 / 배송 추적
+POST	/api/orders/return-exchange	반품/교환 신청
+
+
+
+
+
+
+쿠폰 / 포인트 
+		
+GET	/api/coupons/my	내 쿠폰 목록 조회
+POST	/api/coupons/register	쿠폰 등록
+GET	/api/points/balance	포인트 잔액 조회
+GET	/api/points/history	포인트 적립/사용 내역 조회
+
+문의
+		
+GET	/api/inquiries/my	내 문의 목록 조회
+POST	/api/inquiries	문의 등록
+PATCH	/api/inquiries/{inquiryId}/read	문의 읽음 처리
+DELETE	/api/inquiries/{inquiryId}/cancel	문의 취소
+GET	/api/inquiries/admin/all	전체 문의 목록 (어드민)
+PATCH	/api/inquiries/admin/{inquiryId}/answer	문의 답변 (어드민)
+PATCH	/api/inquiries/admin/users/{userId}/warning/add	경고 부여 (어드민)
+PATCH	/api/inquiries/admin/users/{userId}/warning/reduce	경고 감소 (어드민)
+PATCH	/api/inquiries/admin/users/{userId}/blacklist/remove	블랙리스트 해제 (어드민)
+
+공지사항 
+		
+GET	/api/announcements	공지사항 목록 조회
+POST	/api/announcements	공지사항 작성 (어드민)
+PUT	/api/announcements/{id}	공지사항 수정 (어드민)
+DELETE	/api/announcements/{id}	공지사항 삭제 (어드민)
+
+
+이벤트 
+		
+POST	/api/events/{eventId}/participate	이벤트 참여
+
+스토리
+		
+GET	/api/stories/public	공개 스토리 목록 조회
+GET	/api/stories/admin	전체 스토리 목록 (어드민)
+PUT	/api/stories/{id}	스토리 수정 (어드민)
+DELETE	/api/stories/{id}	스토리 삭제 (어드민)
+
+검색
+		
+GET	/api/search/functions?keyword={keyword}	키워드 검색
+
+AI
+		
+POST	/api/ai/image-to-scent	이미지 기반 향수 추천 (Gemini)
+POST	/api/ai/gemini-evaluate	향 조합 AI 평가 (Gemini)
+POST	/api/ai/gemini-scent-card	AI 향 카드 생성 (Gemini)
+POST	/api/ai/claude-blend	향 조합 AI 설계 (Claude)
+
+
+
+
+
+관리자 - 통계
+		
+GET	/api/admin/stats/summary	통계 요약
+GET	/api/admin/stats/revenue/daily	일별 매출
+GET	/api/admin/stats/perfumes	향수별 통계
+GET	/api/admin/stats/perfumes/low-conversion	낮은 전환율 향수
+GET	/api/admin/stats/ingredients	원료별 통계
+GET	/api/admin/stats/brands	브랜드별 통계
+GET	/api/admin/stats/customers/segments	고객 세그먼트
+GET	/api/admin/stats/customers/demographics	고객 인구통계
+
+관리자 - 쿠폰
+		
+POST	/api/admin/coupons	쿠폰 생성
+
+관리자 - 재고
+		
+POST	/api/admin/stock/receive	재고 입고 처리
+
+관리자 - 공병
+		
+GET	/api/custom/bottles	공병 목록 조회
+GET	/api/custom/bottles/all	전체 공병 목록 조회
+POST	/api/custom/bottles	공병 추가
+PATCH	/api/custom/bottles/{bottleId}/toggle	공병 활성/비활성 토글
+DELETE	/api/custom/bottles/{bottleId}	공병 삭제
+
+</summary>
 
 </details>
   
