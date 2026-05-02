@@ -13,7 +13,7 @@ plugins {
 }
 
 android {
-    namespace = "com.aion.perfume"
+    namespace = "com.aionperfume.aion"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.aion.perfume"
+        applicationId = "com.aionperfume.aion"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

@@ -423,17 +423,31 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
     try {
       final boundary = _previewKey.currentContext
           ?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) return null;
-      final image = await boundary.toImage(pixelRatio: 1.5);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return null;
-      final bytes = byteData.buffer.asUint8List();
-      // 너무 크면 백엔드에서 거절될 수 있음 (jsx와 동일 제한)
-      if (bytes.length > 400000) {
-        // PNG 그대로는 무거움 — 그래도 시도. 실제로 추가 압축이 필요하면 image 패키지 도입 필요
+      if (boundary == null) {
+        debugPrint('프리뷰 캡처: boundary가 null');
         return null;
       }
-      return 'data:image/png;base64,${base64Encode(bytes)}';
+      // pixelRatio를 1.0으로 낮춰 용량 줄임
+      final image = await boundary.toImage(pixelRatio: 1.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        debugPrint('프리뷰 캡처: byteData가 null');
+        return null;
+      }
+      final bytes = byteData.buffer.asUint8List();
+      debugPrint('프리뷰 캡처: PNG 크기 ${bytes.length} bytes');
+      
+      // 1MB 이하면 그대로 사용
+      if (bytes.length <= 1000000) {
+        final dataUrl = 'data:image/png;base64,${base64Encode(bytes)}';
+        debugPrint('프리뷰 캡처: 성공 (PNG, ${dataUrl.length} chars)');
+        return dataUrl;
+      }
+      
+      // 1MB 초과면 경고만 띄우고 그래도 전송 (백엔드가 받아주길)
+      debugPrint('프리뷰 캡처: 크기 초과 ${bytes.length} bytes - 그대로 전송 시도');
+      final dataUrl = 'data:image/png;base64,${base64Encode(bytes)}';
+      return dataUrl;
     } catch (e) {
       debugPrint('미리보기 캡처 오류: $e');
       return null;

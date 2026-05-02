@@ -35,6 +35,17 @@ public class AiPerfumeService {
     @Value("${claude.api.key:}")
     private String claudeApiKey;
 
+    // 기본은 Sonnet 4.6, 테스트할 때는 properties에서 Haiku 4.5로 잠깐 바꿔서 사용
+    @Value("${claude.model:claude-sonnet-4-6}")
+    private String claudeModel;
+
+    // Haiku로 자동 fallback 시 사용할 모델 (Claude API 장애/오류 시)
+    @Value("${claude.fallback-model:claude-haiku-4-5}")
+    private String claudeFallbackModel;
+
+    @Value("${claude.max-tokens:1600}")
+    private int claudeMaxTokens;
+
     private final PerfumeRepository perfumeRepository;
     private final IngredientRepository ingredientRepository;
     private final ScentCategoryRepository scentCategoryRepository;
@@ -243,66 +254,28 @@ public class AiPerfumeService {
                 String systemPrompt = buildClaudeSystemPrompt(userPrompt, ingredientList);
                 List<Map<String, Object>> messages = buildClaudeMessages(request.getMessages(), userPrompt);
 
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("model", "claude-sonnet-4-20250514");
-                body.put("max_tokens", 2000);
-                body.put("stream", true);
-                body.put("system", systemPrompt);
-                body.put("messages", messages);
+                // 1차 시도: 기본 모델 (Sonnet)
+                boolean success = callClaudeStream(
+                        claudeModel, systemPrompt, messages, emitter);
 
-                String jsonBody = objectMapper.writeValueAsString(body);
-
-                HttpClient client = HttpClient.newHttpClient();
-                HttpRequest httpRequest = HttpRequest.newBuilder()
-                        .uri(URI.create(CLAUDE_URL))
-                        .header("Content-Type", "application/json")
-                        .header("x-api-key", claudeApiKey)
-                        .header("anthropic-version", "2023-06-01")
-                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                        .build();
-
-                HttpResponse<InputStream> response = client.send(
-                        httpRequest, HttpResponse.BodyHandlers.ofInputStream());
-
-                if (response.statusCode() != 200) {
-                    emitter.completeWithError(new RuntimeException("Claude API 오류: " + response.statusCode()));
-                    return;
+                // 1차 실패 시: fallback 모델 (Haiku)로 자동 재시도
+                // 캡스톤 시연 중 Sonnet 장애/오류 시 Haiku로 끊김 없이 전환
+                if (!success && !claudeModel.equals(claudeFallbackModel)) {
+                    log.warn("기본 모델({}) 실패 → fallback 모델({}) 재시도",
+                            claudeModel, claudeFallbackModel);
+                    emitter.send(SseEmitter.event()
+                            .data(objectMapper.writeValueAsString(Map.of(
+                                    "status", "fallback",
+                                    "message", "고속 모드로 전환 중..."
+                            ))));
+                    success = callClaudeStream(
+                            claudeFallbackModel, systemPrompt, messages, emitter);
                 }
 
-                // Claude 응답 스트리밍
-                StringBuilder fullResponse = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
-
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (!line.startsWith("data: ")) continue;
-                        String data = line.substring(6).trim();
-                        if (data.equals("[DONE]")) break;
-
-                        try {
-                            JsonNode event = objectMapper.readTree(data);
-                            String type = event.path("type").asText();
-
-                            if ("content_block_delta".equals(type)) {
-                                String delta = event.path("delta").path("text").asText("");
-                                if (!delta.isEmpty()) {
-                                    fullResponse.append(delta);
-                                    emitter.send(SseEmitter.event()
-                                            .data(objectMapper.writeValueAsString(Map.of("delta", delta))));
-                                }
-                            } else if ("message_stop".equals(type)) {
-                                // 스트리밍 완료 후 <recipe> 태그 파싱해서 전송
-                                String recipeJson = extractAndParseRecipe(fullResponse.toString());
-                                emitter.send(SseEmitter.event()
-                                        .data(objectMapper.writeValueAsString(Map.of(
-                                                "done", true,
-                                                "recipeJson", recipeJson
-                                        ))));
-                                break;
-                            }
-                        } catch (Exception ignored) {}
-                    }
+                if (!success) {
+                    emitter.completeWithError(
+                            new RuntimeException("Claude API 호출 실패 (기본/fallback 모두 실패)"));
+                    return;
                 }
 
                 emitter.complete();
@@ -310,14 +283,120 @@ public class AiPerfumeService {
             } catch (Exception e) {
                 log.error("Claude 조향 파이프라인 오류", e);
                 try {
+                    // 사용자 친화 메시지 (Gemini 503은 흔하니 별도 안내)
+                    String userMsg = e.getMessage() != null && e.getMessage().contains("503")
+                            ? "AI 서버가 일시적으로 혼잡합니다. 잠시 후 다시 시도해주세요."
+                            : "조향 중 오류가 발생했습니다. 다시 시도해주세요.";
+
                     emitter.send(SseEmitter.event()
-                            .data(objectMapper.writeValueAsString(Map.of("error", e.getMessage()))));
-                } catch (Exception ignored) {}
-                emitter.completeWithError(e);
+                            .data(objectMapper.writeValueAsString(Map.of(
+                                    "error", userMsg,
+                                    "detail", e.getMessage() != null ? e.getMessage() : "Unknown"
+                            ))));
+                } catch (Exception ignored) { /* emitter 이미 닫혔으면 무시 */ }
+
+                // completeWithError 대신 complete() 호출
+                // → GlobalExceptionHandler가 SSE 컨텍스트에서 JSON 응답 만들려다 실패하는 문제 방지
+                //   (HttpMessageNotWritableException: text/event-stream에 HashMap 못 씀)
+                try { emitter.complete(); } catch (Exception ignored) {}
             }
         }).start();
 
         return emitter;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Claude 스트리밍 호출 (모델 교체 가능 + fallback 지원)
+    // 성공 시 true, 실패 시 false 반환 → fallback 트리거에 사용
+    // ══════════════════════════════════════════════════════════════
+
+    private boolean callClaudeStream(
+            String model,
+            String systemPrompt,
+            List<Map<String, Object>> messages,
+            SseEmitter emitter) {
+
+        // properties에서 공백/줄바꿈이 섞여 들어오는 경우 방지
+        // (예: "claude-haiku-4-5 " 같은 trailing space)
+        if (model != null) model = model.trim();
+
+        try {
+            log.info("Claude 호출 시작 - model: [{}], max_tokens: {}", model, claudeMaxTokens);
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", model);
+            body.put("max_tokens", claudeMaxTokens);
+            body.put("stream", true);
+            body.put("system", systemPrompt);
+            body.put("messages", messages);
+
+            String jsonBody = objectMapper.writeValueAsString(body);
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(CLAUDE_URL))
+                    .header("Content-Type", "application/json")
+                    .header("x-api-key", claudeApiKey)
+                    .header("anthropic-version", "2023-06-01")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<InputStream> response = client.send(
+                    httpRequest, HttpResponse.BodyHandlers.ofInputStream());
+
+            if (response.statusCode() != 200) {
+                // 에러 본문 로깅 (디버깅용)
+                try (InputStream err = response.body()) {
+                    String errBody = new String(err.readAllBytes(), StandardCharsets.UTF_8);
+                    log.error("Claude API 오류 {} (model: {}): {}",
+                            response.statusCode(), model, errBody);
+                } catch (Exception ignored) {}
+                return false;
+            }
+
+            // Claude 응답 스트리밍
+            StringBuilder fullResponse = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("data: ")) continue;
+                    String data = line.substring(6).trim();
+                    if (data.equals("[DONE]")) break;
+
+                    try {
+                        JsonNode event = objectMapper.readTree(data);
+                        String type = event.path("type").asText();
+
+                        if ("content_block_delta".equals(type)) {
+                            String delta = event.path("delta").path("text").asText("");
+                            if (!delta.isEmpty()) {
+                                fullResponse.append(delta);
+                                emitter.send(SseEmitter.event()
+                                        .data(objectMapper.writeValueAsString(Map.of("delta", delta))));
+                            }
+                        } else if ("message_stop".equals(type)) {
+                            // 스트리밍 완료 후 <recipe> 태그 파싱해서 전송
+                            String recipeJson = extractAndParseRecipe(fullResponse.toString());
+                            emitter.send(SseEmitter.event()
+                                    .data(objectMapper.writeValueAsString(Map.of(
+                                            "done", true,
+                                            "recipeJson", recipeJson,
+                                            "modelUsed", model
+                                    ))));
+                            break;
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Claude 호출 중 예외 발생 (model: {})", model, e);
+            return false;
+        }
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -400,8 +479,14 @@ public class AiPerfumeService {
             [조향 원칙]
             - 반드시 위 재료 목록에 있는 재료만 사용하세요
             - 고객 요청의 감성/분위기에 맞게 재료를 선택하세요
-            - 탑/미들/베이스 노트 비율 합이 반드시 100%%가 되어야 합니다
             - 조향 이유를 시적으로 설명해주세요
+            
+            [비율(ratio) 작성 규칙 - 매우 중요]
+            - 모든 재료의 ratio는 0.0 ~ 1.0 사이의 소수입니다 (백분율 아님)
+            - 모든 노트(탑+미들+베이스)의 ratio 합계는 정확히 1.0 이어야 합니다
+            - 권장 분배: 탑노트 합 ≈ 0.20, 미들노트 합 ≈ 0.50, 베이스노트 합 ≈ 0.30
+            - 예: 탑노트 [0.10, 0.10], 미들노트 [0.25, 0.25], 베이스노트 [0.15, 0.15] → 합 1.00
+            - 응답 전 반드시 합산 검증: 모든 ratio를 더했을 때 1.00이 되는지 직접 확인하세요
             
             [응답 형식]
             대화 형식으로 조향 과정을 설명하고, 마지막에 반드시 아래 태그를 포함하세요:
@@ -470,7 +555,8 @@ public class AiPerfumeService {
         sb.append("\n");
     }
 
-    // Gemini 공통 호출
+    // Gemini 공통 호출 (503/429 자동 재시도 포함)
+    // 503 = 서버 과부하, 429 = rate limit. 둘 다 일시적이라 재시도하면 풀림
     private String callGemini(Map<String, Object> body) throws Exception {
         String url = GEMINI_URL + "?key=" + geminiApiKey;
         String jsonBody = objectMapper.writeValueAsString(body);
@@ -482,17 +568,40 @@ public class AiPerfumeService {
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        // 최대 3번 시도 (1초, 2초 대기 - exponential backoff)
+        int maxRetries = 3;
+        long[] backoffMs = {0L, 1000L, 2000L};
+        HttpResponse<String> response = null;
 
-        if (response.statusCode() != 200) {
-            log.error("Gemini API 오류 {}: {}", response.statusCode(), response.body());
-            throw new RuntimeException("Gemini API 오류: " + response.statusCode());
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            if (backoffMs[attempt] > 0) {
+                log.info("Gemini 재시도 {}회차 ({}ms 대기 후)", attempt, backoffMs[attempt]);
+                Thread.sleep(backoffMs[attempt]);
+            }
+
+            response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            int code = response.statusCode();
+
+            if (code == 200) {
+                if (attempt > 0) log.info("Gemini 재시도 성공 (시도 {}회)", attempt + 1);
+                JsonNode root = objectMapper.readTree(response.body());
+                return root.path("candidates").get(0)
+                           .path("content").path("parts").get(0)
+                           .path("text").asText();
+            }
+
+            // 503(과부하), 429(rate limit), 500(서버오류)는 재시도
+            // 400(잘못된 요청), 401/403(인증)은 재시도해도 소용없음 → 즉시 실패
+            boolean retryable = (code == 503 || code == 429 || code == 500);
+            log.warn("Gemini API {} 응답 (재시도 가능: {})", code, retryable);
+
+            if (!retryable || attempt == maxRetries - 1) {
+                log.error("Gemini API 오류 {}: {}", code, response.body());
+                throw new RuntimeException("Gemini API 오류: " + code);
+            }
         }
-
-        JsonNode root = objectMapper.readTree(response.body());
-        return root.path("candidates").get(0)
-                   .path("content").path("parts").get(0)
-                   .path("text").asText();
+        // 도달 불가능
+        throw new RuntimeException("Gemini API 재시도 모두 실패");
     }
 
     // 탭 2 이미지 응답 파싱

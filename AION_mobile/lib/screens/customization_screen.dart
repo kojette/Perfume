@@ -1119,13 +1119,7 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       ),
       child: Column(children: [
         Expanded(child: Container(color: _light,
-          child: preview != null
-              ? Image.network(preview, fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Center(
-                      child: Text('NO PREVIEW',
-                          style: TextStyle(color: _gold, fontSize: 9, letterSpacing: 2))))
-              : const Center(child: Text('NO PREVIEW',
-                  style: TextStyle(color: _gold, fontSize: 9, letterSpacing: 2))),
+          child: _buildPreviewImage(preview),
         )),
         Padding(padding: const EdgeInsets.all(10), child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1185,7 +1179,43 @@ class _CustomizationScreenState extends State<CustomizationScreen>
       ]),
     );
   }
-
+  /// 프리뷰 이미지 빌더 - data URL과 일반 URL 모두 처리
+Widget _buildPreviewImage(String? src) {
+  const placeholder = Center(
+    child: Text('NO PREVIEW',
+        style: TextStyle(color: _gold, fontSize: 9, letterSpacing: 2)));
+  
+  if (src == null || src.isEmpty) return placeholder;
+  
+  // data URL (base64 인코딩된 이미지)
+  if (src.startsWith('data:image')) {
+    try {
+      final base64Str = src.split(',').last;
+      return Image.memory(
+        base64Decode(base64Str),
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => placeholder,
+      );
+    } catch (e) {
+      debugPrint('프리뷰 base64 디코딩 오류: $e');
+      return placeholder;
+    }
+  }
+  
+  // 일반 네트워크 URL
+  return Image.network(
+    src,
+    fit: BoxFit.contain,
+    errorBuilder: (_, __, ___) => placeholder,
+    loadingBuilder: (_, child, progress) {
+      if (progress == null) return child;
+      return const Center(
+        child: SizedBox(width: 20, height: 20,
+            child: CircularProgressIndicator(color: _gold, strokeWidth: 1.5)),
+      );
+    },
+  );
+}
   // ════════════════ 향 조합 탭 ════════════════════════════════
 
   Widget _buildScentTab() {

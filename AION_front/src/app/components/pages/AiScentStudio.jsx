@@ -44,6 +44,14 @@ const SS = {
 // 이미지 파일 → 캐시 키 (파일명 + 크기 + 마지막수정일)
 const imageKey = (file) => `gemini_img_${file.name}_${file.size}_${file.lastModified}`;
 
+// Claude 첫 프롬프트 → 응답 캐시 키 (동일 입력 시 API 재호출 방지)
+// 메시지 히스토리가 있는 후속 대화는 캐시 안 함 (대화 흐름 보존)
+const claudePromptKey = (prompt) => {
+  // 공백 정규화 후 첫 100자 + 길이로 키 생성 (충돌 방지 + 너무 긴 키 회피)
+  const norm = prompt.trim().replace(/\s+/g, ' ');
+  return `claude_blend_${norm.length}_${norm.slice(0, 100)}`;
+};
+
 // ══════════════════════════════════════════════════════════════
 // 메인
 // ══════════════════════════════════════════════════════════════
@@ -503,6 +511,7 @@ function ClaudePanel() {
   const [evalLoading,    setEvalLoading]= useState(false);
   const [foundIngredients, setFoundIngredients] = useState([]);
 
+  const chatBoxRef   = useRef();   // 채팅 스크롤 컨테이너 (페이지 전체가 아닌 내부만 스크롤)
   const chatEndRef   = useRef();
   const textareaRef  = useRef();
   const evalTimerRef = useRef(null);
@@ -518,8 +527,14 @@ function ClaudePanel() {
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
+  // 채팅 메시지 추가 시: 채팅 컨테이너 '내부'만 스크롤 (페이지 전체 스크롤 X)
+  // 기존 scrollIntoView()는 부모를 타고 올라가 페이지 자체를 움직여서
+  // 채팅입력창이 화면 밖으로 밀려나 footer가 보이는 문제가 있었음
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const box = chatBoxRef.current;
+    if (!box) return;
+    // 컨테이너 자체의 scrollTop만 조정 → 페이지 위치는 유지
+    box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
   // 슬라이더 변경 → Gemini 평가 (1s 디바운스)
@@ -534,11 +549,24 @@ function ClaudePanel() {
   }, [sliders]);
 
   const initSliders = useCallback((parsedRecipe) => {
-    const items = [
+    const rawItems = [
       ...(parsedRecipe.topNotes    || []).map(n => ({ ...n, noteType: 'top'    })),
       ...(parsedRecipe.middleNotes || []).map(n => ({ ...n, noteType: 'middle' })),
       ...(parsedRecipe.baseNotes   || []).map(n => ({ ...n, noteType: 'base'   })),
     ];
+
+    // ratio 자동 정규화 (Claude/Haiku가 합 ≠ 1.0 줘도 안전하게 보정)
+    // 예: 합이 1.05 → 모두 ÷1.05 해서 합 1.0으로
+    //     합이 0.95 → 모두 ÷0.95 해서 합 1.0으로
+    const total = rawItems.reduce((s, it) => s + (Number(it.ratio) || 0), 0);
+    const items = total > 0 && Math.abs(total - 1) > 0.005
+      ? rawItems.map(it => ({ ...it, ratio: (Number(it.ratio) || 0) / total }))
+      : rawItems;
+
+    if (Math.abs(total - 1) > 0.005) {
+      console.warn(`[Recipe] ratio 합 ${total.toFixed(3)} → 1.000으로 자동 정규화`);
+    }
+
     setSliders(items); setPrevSliders(items);
   }, []);
 
@@ -575,8 +603,24 @@ function ClaudePanel() {
   }, []);
 
   const handleSaveBlend = useCallback(async () => {
-    if (!token)                     { alert('로그인이 필요합니다.'); return; }
-    if (!recipe || !sliders.length) return;
+    if (!token) { alert('로그인이 필요합니다.'); return; }
+
+    // 저장 가능한 상태인지 명확히 검증 (조용한 실패 방지)
+    if (!recipe) {
+      alert('저장할 레시피가 없습니다.\nAI 조향을 먼저 진행해주세요.');
+      return;
+    }
+    if (!sliders.length) {
+      alert('재료 정보가 비어있습니다.\n페이지를 새로고침하거나 새로 조향해주세요.');
+      return;
+    }
+    // 모든 재료에 ingredientId가 있는지 확인 (DB 저장 필수 필드)
+    const invalidItem = sliders.find(s => !s.ingredientId);
+    if (invalidItem) {
+      alert(`재료 정보가 불완전합니다 (${invalidItem.ingredientName || '이름 없음'}).\n새로 조향해주세요.`);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/custom/scent-blends`, {
         method: 'POST',
@@ -586,16 +630,25 @@ function ClaudePanel() {
           concentration: recipe.concentration || 'EDP',
           volumeMl:      50,
           totalPrice:    0,
-          ingredients:   sliders.map(s => ({
+          // 백엔드 CustomScentBlendRequest는 'items' 필드를 받음 (탭 1과 동일 형식)
+          // BlendItemRequest는 ingredientId + ratio만 받음 (note type 컬럼 없음)
+          items:         sliders.map(s => ({
             ingredientId: s.ingredientId,
-            type:         s.noteType.toUpperCase(),
             ratio:        s.ratio,
           })),
         }),
       });
-      if (res.ok) alert('조향이 저장되었습니다!');
-      else        alert('저장에 실패했습니다.');
-    } catch { alert('네트워크 오류'); }
+      if (res.ok) {
+        alert('조향이 저장되었습니다!');
+      } else {
+        const errText = await res.text().catch(() => '');
+        console.error('저장 실패:', res.status, errText);
+        alert(`저장에 실패했습니다 (${res.status}).`);
+      }
+    } catch (e) {
+      console.error('저장 네트워크 오류:', e);
+      alert('네트워크 오류로 저장에 실패했습니다.');
+    }
   }, [token, recipe, sliders]);
 
   const sendMessage = useCallback(async () => {
@@ -604,6 +657,36 @@ function ClaudePanel() {
     setInput('');
 
     const userMsg = { role: 'user', content: text };
+
+    // ── 캐시 체크: 첫 요청이고 동일 프롬프트면 API 재호출 없이 즉시 복원 ──
+    // 후속 대화 (이미 assistant 응답이 있는 경우)는 캐시 사용 안 함 (대화 흐름 보존)
+    const isFirstUserMessage = messages.filter(m => m.role === 'user' && !m.isStatus).length === 0;
+    if (isFirstUserMessage) {
+      const cached = SS.get(claudePromptKey(text));
+      // 캐시 무결성 검증: recipe가 있고 노트가 1개 이상 있어야 유효
+      const cachedValid = cached?.recipe
+        && ((cached.recipe.topNotes?.length || 0)
+          + (cached.recipe.middleNotes?.length || 0)
+          + (cached.recipe.baseNotes?.length || 0)) > 0;
+      if (cachedValid) {
+        console.log('[Claude] 캐시 히트 - API 호출 생략');
+        setMessages([
+          ...messages,
+          userMsg,
+          { role: 'assistant', content: cached.assistantContent },
+        ]);
+        setRecipe(cached.recipe);
+        initSliders(cached.recipe);
+        if (cached.foundIngredients) setFoundIngredients(cached.foundIngredients);
+        setStatus('done');
+        return;
+      } else if (cached) {
+        // 깨진 캐시 발견 → 삭제 후 정상 호출 진행
+        console.warn('[Claude] 손상된 캐시 발견 - 삭제 후 재요청');
+        SS.del(claudePromptKey(text));
+      }
+    }
+
     setMessages(prev => [...prev, userMsg]);
     setRecipe(null); setSliders([]); setEvaluation('');
     setStatus('extracting');
@@ -639,6 +722,7 @@ function ClaudePanel() {
       let buffer    = '';
       let assistantContent  = '';
       let assistantMsgAdded = false;
+      let localFoundIngredients = [];   // 캐시 저장용 (state 비동기 문제 회피)
 
       while (true) {
         const { done, value } = await reader.read();
@@ -661,7 +745,8 @@ function ClaudePanel() {
               addStatus('✦ Supabase에서 매칭 재료를 검색하고 있습니다...');
 
             } else if (data.status === 'ingredients_found') {
-              setFoundIngredients(data.ingredients || []);
+              localFoundIngredients = data.ingredients || [];
+              setFoundIngredients(localFoundIngredients);
               addStatus(`✦ ${data.count || 0}개의 재료를 찾았습니다. Claude가 조향을 시작합니다...`);
               setStatus('streaming');
               if (!assistantMsgAdded) {
@@ -686,11 +771,27 @@ function ClaudePanel() {
 
             } else if (data.done) {
               setStatus('done');
+              let parsedRecipe = null;
               if (data.recipeJson && data.recipeJson !== '{}') {
                 try {
-                  const parsed = JSON.parse(data.recipeJson);
-                  setRecipe(parsed); initSliders(parsed);
+                  parsedRecipe = JSON.parse(data.recipeJson);
+                  setRecipe(parsedRecipe); initSliders(parsedRecipe);
                 } catch (e) { console.error('레시피 파싱 오류', e); }
+              }
+              // 첫 요청이었다면 캐시에 저장 (동일 프롬프트 재사용 시 비용 절감)
+              // 단, 파싱된 레시피에 노트가 모두 들어있을 때만 캐시 (깨진 캐시 방지)
+              const recipeValid = parsedRecipe
+                && (parsedRecipe.topNotes?.length || 0)
+                 + (parsedRecipe.middleNotes?.length || 0)
+                 + (parsedRecipe.baseNotes?.length || 0) > 0;
+              if (isFirstUserMessage && recipeValid) {
+                const displayContent = assistantContent.replace(/<recipe>[\s\S]*?<\/recipe>/g, '').trim();
+                SS.set(claudePromptKey(text), {
+                  assistantContent: displayContent,
+                  recipe: parsedRecipe,
+                  foundIngredients: localFoundIngredients,
+                  cachedAt: Date.now(),
+                });
               }
 
             } else if (data.error) {
@@ -702,9 +803,13 @@ function ClaudePanel() {
     } catch (e) {
       if (e.name === 'AbortError') return;
       setStatus('error');
+      // 백엔드가 보낸 사용자 친화 메시지가 있으면 그걸 우선 표시
+      const userMessage = e.message && e.message.length < 200
+        ? e.message
+        : '조향 중 오류가 발생했습니다. 다시 시도해 주세요.';
       setMessages(prev => [
         ...prev.filter(m => !m.isStatus),
-        { role: 'assistant', content: '오류가 발생했습니다. 다시 시도해 주세요.' },
+        { role: 'assistant', content: userMessage },
       ]);
     }
   }, [input, messages, pipelineStatus, initSliders]);
@@ -738,8 +843,20 @@ function ClaudePanel() {
           </div>
         )}
 
-        <div className="overflow-y-auto space-y-4 pr-1 mb-4"
-             style={{ height: recipe ? '520px' : '560px', scrollbarWidth: 'thin', scrollbarColor: `${gold} #f5f1e8` }}>
+        {/*
+          채팅 영역 높이:
+          - 첫 화면 (안내문 1줄만 있을 때): 280px (기존 절반)
+          - 대화 시작 후: 560px / 레시피 있을 때: 520px
+          isInitial 판정: assistant 안내문 한 줄만 있고 다른 메시지 없는 상태
+        */}
+        <div ref={chatBoxRef}
+             className="overflow-y-auto space-y-4 pr-1 mb-4"
+             style={{
+               height: messages.length <= 1 ? '280px' : (recipe ? '520px' : '560px'),
+               transition: 'height 0.3s ease',
+               scrollbarWidth: 'thin',
+               scrollbarColor: `${gold} #f5f1e8`,
+             }}>
           {messages.map((msg, i) => (
             <ChatBubble key={i} msg={msg}
               isStreaming={isBusy && i === messages.length - 1 && msg.role === 'assistant' && !msg.isStatus} />
