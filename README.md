@@ -22,7 +22,7 @@
 
 ## 4. API 명세서 
 <details>
-<summary>기능구성도 보기</summary>
+<summary>API 명세서 보기</summary>
 
 </details>
   
