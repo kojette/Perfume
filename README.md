@@ -27,10 +27,10 @@
 </details>
   
 ## 5. 코드
-- [안드로이드](링크)
-- [아이폰](링크)
-- [리액트](링크)
-- [백엔드](링크)
+- [안드로이드](https://github.com/kojette/Perfume/tree/main/AION_mobile)
+- [아이폰](https://github.com/kojette/Perfume/tree/main/AION_mobile)
+- [리액트]([리액트](https://github.com/kojette/Perfume/tree/main/AION_front))
+- [백엔드](https://github.com/kojette/Perfume/tree/main/AION_back)
   
 ## 6. 앱 등록
 App Store: [앱 링크]
