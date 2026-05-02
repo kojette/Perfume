@@ -22,7 +22,7 @@
 
 ## 4. API 명세서
 <details>
-<summary>👉 여기를 클릭하여 API 명세서 전체 보기</summary>
+<summary> API 명세서 전체 보기</summary>
 
 ### 🔐 인증 및 회원
 | 메서드 | 엔드포인트 | 설명 |
