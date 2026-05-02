@@ -26,7 +26,7 @@
 
 </details>
   
-## 5. code -> AION_front, AION_back, AION_mobile
+## 5. 코드
 
 ## 6. 앱 등록
 App Store: [앱 링크]
