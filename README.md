@@ -104,3 +104,9 @@ App Store: [앱 링크]
 | **커머스 요소** | 없음 | 없음 | — | 없음 | **장바구니/주문/결제/위시리스트/관리자 대시보드** |
 | **차별성** | 알고리즘 비율 조절 | URL만으로 자동화 | — | 시각 피드백 특화 | **AI + 커스터마이징 + 풀스택 커머스 통합** |
 | **기술 스택 폭** | JS/Python | React/Python/Flask | — | JS/Java/Python | **JS/Java(17)/Python/Dart, Supabase, 실시간 SSE** |
+
+최우수: 황치즈https://github.com/HwangCheese/VideoSummary
+우수1: 황금토끼 https://github.com/GolddBunny/Domain_QA_Gen
+우수2: 초신성 https://github.com/kola0709/2025Capstone/tree/master 작품설명 없음
+우수3: Prism https://github.com/hsu-capstone-prism/DamSeol
+
