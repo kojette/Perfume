@@ -109,7 +109,7 @@ App Store: [앱 링크]
 
 우수1: 황금토끼 https://github.com/GolddBunny/Domain_QA_Gen
 
-우수2: 초신성 https://github.com/kola0709/2025Capstone/tree/master 작품설명 없음
+우수2: 초신성 https://github.com/kola0709/2025Capstone/tree/master
 
 우수3: Prism https://github.com/hsu-capstone-prism/DamSeol
 
