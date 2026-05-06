@@ -84,6 +84,7 @@ const _ageGroups = [
 ];
 
 // ── 퀵 필터 ──────────────────────────────────────────────────────
+/*
 class _QF {
   final String label, en, type;
   final dynamic value;
@@ -97,6 +98,22 @@ const _quickFilters = [
   _QF(label:'청량한',  en:'FRESH',  type:'tags',   value:'청량한'),
   _QF(label:'봄/여름', en:'SPRING', type:'tags',   value:'플로럴'),
   _QF(label:'가을/겨울',en:'AUTUMN',type:'tags',   value:'우디'),
+];
+*/
+
+class _QF {
+  final String label, en, type;
+  final List<String> values; // dynamic value → List<String> values
+  const _QF({required this.label, required this.en, required this.type, required this.values});
+}
+
+const _quickFilters = [
+  _QF(label:'남성',     en:'MAN',    type:'gender', values:['MALE']),
+  _QF(label:'여성',     en:'WOMAN',  type:'gender', values:['FEMALE']),
+  _QF(label:'데이트',   en:'DATE',   type:'tags',   values:['데이트']),
+  _QF(label:'청량한',   en:'FRESH',  type:'tags',   values:['청량한']),
+  _QF(label:'봄/여름',  en:'SPRING', type:'tags',   values:['봄', '여름']),   // ← 두 개
+  _QF(label:'가을/겨울',en:'AUTUMN', type:'tags',   values:['가을', '겨울']), // ← 두 개
 ];
 
 // ════════════════════════════════════════════════════════════════
@@ -141,6 +158,24 @@ class _RecommendScreenState extends State<RecommendScreen>
   }
 
   Future<void> _loadPerfumes() async {
+    if (!mounted) return;
+    setState(() { _loading = true; _error = null; });
+    try {
+      final items = await ApiService.fetchPerfumesRaw(
+        search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+        tags: _selectedTags.isEmpty ? null : List<String>.from(_selectedTags),
+        gender: _selectedGender.isEmpty ? null : _selectedGender,
+        sortBy: _sortBy,
+        size: 100,
+      );
+      if (mounted) setState(() { _perfumes = items; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = "추천 데이터를 가져오지 못했습니다."; _loading = false; });
+    }
+  }
+
+  /*
+  Future<void> _loadPerfumes() async {
     setState(() { _loading = true; _error = null; });
     try {
       final items = await ApiService.fetchPerfumesRaw(
@@ -156,6 +191,7 @@ class _RecommendScreenState extends State<RecommendScreen>
       if (mounted) setState(() => _loading = false);
     }
   }
+  */
 
   void _onFilterChanged() {
     _debounce?.cancel();
@@ -182,6 +218,26 @@ class _RecommendScreenState extends State<RecommendScreen>
     if (mounted) setState(() { _ageData = result; _ageLoading = false; });
   }
 
+void _handleQF(_QF f) {
+  setState(() {
+    if (f.type == 'gender') {
+      _selectedGender = (_selectedGender == f.values[0]) ? '' : f.values[0];
+    } else {
+      final alreadyActive = f.values.any((v) => _selectedTags.contains(v));
+      if (alreadyActive) {
+        _selectedTags.removeWhere((t) => f.values.contains(t));
+      } else {
+        for (final v in f.values) {
+          if (!_selectedTags.contains(v)) _selectedTags.add(v);
+        }
+      }
+    }
+  });
+  _debounce?.cancel();
+  _debounce = Timer(const Duration(milliseconds: 300), _loadPerfumes);
+}
+
+/*
   void _handleQF(_QF f) {
     if (f.type == 'gender') {
       setState(() => _selectedGender = _selectedGender == f.value ? '' : f.value as String);
@@ -192,9 +248,17 @@ class _RecommendScreenState extends State<RecommendScreen>
     }
     _onFilterChanged();
   }
+  */
 
+  /*
   bool _isActive(_QF f) =>
       f.type == 'gender' ? _selectedGender == f.value : _selectedTags.contains(f.value);
+  */
+
+  bool _isActive(_QF f) =>
+    f.type == 'gender'
+        ? _selectedGender == f.values[0]
+        : f.values.any((v) => _selectedTags.contains(v));
 
   void _addTag() {
     final tag = _tagCtrl.text.trim();

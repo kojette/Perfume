@@ -232,12 +232,32 @@ class ApiService {
         }).toList();
       }
 
-      // 태그 필터 (클라이언트 사이드)
+      // 수정 전
+      /*
       if (tags != null && tags.isNotEmpty) {
         items = items.where((p) {
           final pTags = (p['Preference_Tags'] as List? ?? [])
               .map((t) => (t['tag_name'] ?? '').toString().toLowerCase())
               .toList();
+          return tags.any((sel) => pTags.any((t) => t.contains(sel.toLowerCase())));
+        }).toList();
+      }
+      */
+
+      // 태그 필터 바로 위에 추가
+      debugPrint('🔍 Preference_Tags raw: ${items.isNotEmpty ? items[0]['Preference_Tags'] : 'empty'}');
+      debugPrint('🔍 전체 향수 수: ${items.length}');
+      debugPrint('🔍 tags 파라미터: $tags');
+      debugPrint('🔍 gender 파라미터: $gender');
+
+      // 태그 필터 (클라이언트 사이드)
+      if (tags != null && tags.isNotEmpty) {
+        items = items.where((p) {
+          final pTags = (p['Preference_Tags'] as List? ?? []).map((t) {
+            final tagName = t['tag_name'];
+            if (tagName is Map) return (tagName['tag_name'] ?? '').toString().toLowerCase();
+            return (tagName ?? '').toString().toLowerCase();
+          }).toList();
           return tags.any((sel) => pTags.any((t) => t.contains(sel.toLowerCase())));
         }).toList();
       }
@@ -264,10 +284,19 @@ class ApiService {
           }
         }
         
+        /*
         final tagList = (p['Preference_Tags'] as List? ?? [])
             .map((t) => (t['tag_name'] ?? '').toString())
             .where((t) => t.isNotEmpty)
             .toList();
+        */
+
+        final tagList = (p['Preference_Tags'] as List? ?? []).map((t) {
+          final tagName = t['tag_name'];
+          if (tagName is Map) return (tagName['tag_name'] ?? '').toString();
+          return (tagName ?? '').toString();
+        }).where((t) => t.isNotEmpty).toList();
+
         final salePrice = p['sale_price'];
         final price = p['price'] ?? 0;
         final saleRate = p['sale_rate'] ?? 0;
