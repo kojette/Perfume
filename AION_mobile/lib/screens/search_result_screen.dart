@@ -1,17 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
-import '../models/perfume.dart';
 import '../services/api_service_extended.dart';
+import '../models/perfume.dart';
 
 class SearchResultScreen extends StatefulWidget {
   final String initialQuery;
-
-  const SearchResultScreen({
-    super.key,
-    this.initialQuery = '',
-  });
+  const SearchResultScreen({super.key, this.initialQuery = ''});
 
   @override
   State<SearchResultScreen> createState() => _SearchResultScreenState();
@@ -19,38 +12,99 @@ class SearchResultScreen extends StatefulWidget {
 
 class _SearchResultScreenState extends State<SearchResultScreen> {
   final _searchController = TextEditingController();
+  final _focusNode = FocusNode();
+
   List<Perfume> _results = [];
   bool _isLoading = false;
 
-  // 전체 향수 캐시 (한 번만 로드, 앱 세션 동안 재사용)
-  static List<Perfume>? _cachedPerfumes;
+  // 현재 입력 중인 텍스트 (# 없는 일반 검색어)
+  String _searchText = '';
+  // 선택된 태그 칩들
+  List<String> _selectedTags = [];
 
   static const _gold = Color(0xFFC9A961);
   static const _dark = Color(0xFF2A2620);
   static const _grey = Color(0xFF8B8278);
+  static const _cream = Color(0xFFE8E2D6);
+  static const _bg = Color(0xFFFAF8F3);
 
   @override
   void initState() {
     super.initState();
     if (widget.initialQuery.isNotEmpty) {
       _searchController.text = widget.initialQuery;
-      _performSearch(widget.initialQuery);
+      _searchText = widget.initialQuery;
+      _performSearch();
     }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _performSearch(String keyword) async {
-    if (keyword.trim().isEmpty) return;
-    setState(() => _isLoading = true);
+  // 입력값 파싱: #태그 → 칩, 나머지 → 텍스트
+  void _onTextChanged(String value) {
+    // #으로 시작하는 단어가 스페이스나 엔터로 끝나면 태그로 확정
+    final tagMatch = RegExp(r'#(\S+)\s$').firstMatch(value);
+    if (tagMatch != null) {
+      final tag = tagMatch.group(1)!;
+      if (!_selectedTags.contains(tag)) {
+        setState(() => _selectedTags.add(tag));
+      }
+      _searchController.clear();
+      setState(() => _searchText = '');
+      _performSearch();
+      return;
+    }
 
+    // #으로 시작하면 태그 입력 중 표시
+    setState(() => _searchText = value.startsWith('#') ? '' : value);
+  }
+
+  void _onSubmitted(String value) {
+    final trimmed = value.trim();
+    if (trimmed.startsWith('#')) {
+      // #태그 확정
+      final tag = trimmed.substring(1);
+      if (tag.isNotEmpty && !_selectedTags.contains(tag)) {
+        setState(() => _selectedTags.add(tag));
+      }
+      _searchController.clear();
+      setState(() => _searchText = '');
+    } else if (trimmed.isNotEmpty) {
+      setState(() => _searchText = trimmed);
+    }
+    _performSearch();
+  }
+
+  void _removeTag(String tag) {
+    setState(() => _selectedTags.remove(tag));
+    _performSearch();
+  }
+
+  void _clearAll() {
+    setState(() {
+      _selectedTags.clear();
+      _searchText = '';
+      _searchController.clear();
+    });
+    _performSearch();
+  }
+
+  Future<void> _performSearch() async {
+    if (_searchText.isEmpty && _selectedTags.isEmpty) {
+      setState(() => _results = []);
+      return;
+    }
+
+    setState(() => _isLoading = true);
     try {
       final results = await ApiService.fetchPerfumesRaw(
-        search: keyword.trim(),
+        search: _searchText.isEmpty ? null : _searchText,
+        tags: _selectedTags.isEmpty ? null : List.from(_selectedTags),
         size: 100,
       );
 
@@ -81,163 +135,169 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-
-    /*
-    try {
-      // 캐시 없으면 파라미터 없이 단순 호출
-  
-      if (_cachedPerfumes == null) {
-        final response = await http.get(
-          Uri.parse('${ApiConfig.baseUrl}/api/perfumes'),
-        );
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(utf8.decode(response.bodyBytes));
-          List items = [];
-          if (data is List) {
-            items = data;
-          } else if (data is Map) {
-            if (data['content'] is List) items = data['content'];
-            else if (data['data'] is List) items = data['data'];
-          }
-          _cachedPerfumes = items
-              .map((e) => Perfume.fromJson(e as Map<String, dynamic>))
-              .toList();
-        } else {
-          throw Exception('향수 로드 실패: ${response.statusCode}');
-        }
-      }
-
-      // Flutter에서 키워드 필터링
-      final kw = keyword.trim().toLowerCase();
-      final filtered = (_cachedPerfumes ?? []).where((p) {
-        return p.name.toLowerCase().contains(kw) ||
-            (p.nameEn?.toLowerCase().contains(kw) ?? false) ||
-            (p.brandName?.toLowerCase().contains(kw) ?? false) ||
-            (p.description?.toLowerCase().contains(kw) ?? false);
-      }).toList();
-
-      if (mounted) setState(() => _results = filtered);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('검색 실패: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-    */
-
-    
-  }
-
-  void _handleSearchSubmit() {
-    if (_searchController.text.trim().isNotEmpty) {
-      _performSearch(_searchController.text.trim());
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _bg,
       appBar: AppBar(
+        backgroundColor: const Color(0xFF1A1510),
+        iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
-        title: const Text('SEARCH', style: TextStyle(letterSpacing: 4)),
+        title: const Text('SEARCH',
+            style: TextStyle(letterSpacing: 4, color: Colors.white, fontSize: 14, fontWeight: FontWeight.w300)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: _gold.withOpacity(0.4)),
+        ),
       ),
       body: Column(
         children: [
-          // 검색 바
+          // ── 검색 입력 영역 ────────────────────────────────
           Container(
-            padding: const EdgeInsets.all(20),
-            child: Row(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onSubmitted: (_) => _handleSearchSubmit(),
-                    decoration: InputDecoration(
-                      hintText: '찾으시는 컬렉션이나 향을 입력해주세요',
-                      hintStyle: TextStyle(
-                        fontSize: 14,
-                        letterSpacing: 1,
-                        color: _grey.withOpacity(0.5),
+                // 태그 칩 + 입력창 통합
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _cream),
+                    color: _bg,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: _grey, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            // 선택된 태그 칩들
+                            ..._selectedTags.map((tag) => _TagChip(
+                              label: tag,
+                              onRemove: () => _removeTag(tag),
+                            )),
+                            // 텍스트 입력
+                            IntrinsicWidth(
+                              child: TextField(
+                                controller: _searchController,
+                                focusNode: _focusNode,
+                                onChanged: _onTextChanged,
+                                onSubmitted: _onSubmitted,
+                                style: const TextStyle(fontSize: 13, color: _dark),
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                  hintText: _selectedTags.isEmpty
+                                      ? '향수명 검색 또는 #태그 입력'
+                                      : '#태그 추가...',
+                                  hintStyle: TextStyle(
+                                      fontSize: 12,
+                                      color: _grey.withOpacity(0.5)),
+                                  constraints: const BoxConstraints(minWidth: 120),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      border: const OutlineInputBorder(
-                        borderSide: BorderSide(color: _gold),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: _gold),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
-                    ),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      letterSpacing: 1.5,
-                      color: _dark,
-                    ),
+                      if (_selectedTags.isNotEmpty || _searchText.isNotEmpty)
+                        GestureDetector(
+                          onTap: _clearAll,
+                          child: const Icon(Icons.close, color: _grey, size: 16),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _handleSearchSubmit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _dark,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 16),
-                    shape: const RoundedRectangleBorder(),
-                  ),
-                  child: const Text(
-                    '검색',
-                    style: TextStyle(letterSpacing: 3, fontSize: 12),
-                  ),
+                const SizedBox(height: 8),
+                // 힌트 텍스트
+                Text(
+                  '#을 붙이면 태그로 검색됩니다  예) #데이트  #럭셔리',
+                  style: TextStyle(fontSize: 10, color: _grey.withOpacity(0.6), letterSpacing: 0.5),
                 ),
               ],
             ),
           ),
 
-          // 결과 카운트
-          if (_searchController.text.isNotEmpty && !_isLoading)
+          // ── 결과 카운트 ──────────────────────────────────
+          if ((_searchText.isNotEmpty || _selectedTags.isNotEmpty) && !_isLoading)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: _gold.withOpacity(0.2)),
-                ),
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: _gold.withOpacity(0.2))),
               ),
               child: Row(
                 children: [
-                  Text(
-                    "'${_searchController.text}'에 대한 ",
-                    style: const TextStyle(
-                        fontSize: 12, letterSpacing: 1.5, color: _grey),
-                  ),
-                  Text(
-                    '${_results.length}',
-                    style: const TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                        color: _dark,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const Text(
-                    '개의 결과',
-                    style: TextStyle(
-                        fontSize: 12, letterSpacing: 1.5, color: _grey),
-                  ),
+                  if (_selectedTags.isNotEmpty) ...[
+                    ...(_selectedTags.map((t) => Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Text('#$t', style: const TextStyle(fontSize: 11, color: _gold, fontWeight: FontWeight.w500)),
+                    ))),
+                    if (_searchText.isNotEmpty) const Text(' · ', style: TextStyle(color: _grey)),
+                  ],
+                  if (_searchText.isNotEmpty)
+                    Text("'$_searchText'", style: const TextStyle(fontSize: 11, color: _dark)),
+                  const Text(' 검색 결과  ', style: TextStyle(fontSize: 11, color: _grey)),
+                  Text('${_results.length}개', style: const TextStyle(fontSize: 11, color: _dark, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
 
-          // 결과
+          // ── 결과 목록 ────────────────────────────────────
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: _gold))
-                : _results.isEmpty
-                    ? _buildEmptyState()
-                    : _buildResultsGrid(),
+                : (_searchText.isEmpty && _selectedTags.isEmpty)
+                    ? _buildInitialState()
+                    : _results.isEmpty
+                        ? _buildEmptyState()
+                        : _buildResultsGrid(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInitialState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('✦', style: TextStyle(fontSize: 40, color: _gold.withOpacity(0.2))),
+          const SizedBox(height: 16),
+          const Text('향수명 또는 #태그로 검색하세요',
+              style: TextStyle(fontSize: 13, color: _grey, fontStyle: FontStyle.italic)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6, runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: ['#데이트', '#럭셔리', '#청량함', '#신비로운', '#로맨틱한', '#달콤함'].map((t) =>
+              GestureDetector(
+                onTap: () {
+                  final tag = t.substring(1);
+                  if (!_selectedTags.contains(tag)) {
+                    setState(() => _selectedTags.add(tag));
+                    _performSearch();
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _gold.withOpacity(0.4)),
+                    color: _gold.withOpacity(0.05),
+                  ),
+                  child: Text(t, style: const TextStyle(fontSize: 11, color: _gold)),
+                ),
+              ),
+            ).toList(),
           ),
         ],
       ),
@@ -245,26 +305,6 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
   }
 
   Widget _buildEmptyState() {
-    if (_searchController.text.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search, size: 80, color: _gold),
-            SizedBox(height: 16),
-            Text(
-              '검색어를 입력해주세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: _grey,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Center(
       child: Container(
         margin: const EdgeInsets.all(24),
@@ -276,30 +316,13 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              "'${_searchController.text}'에 대한\n상품이 존재하지 않습니다.",
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                letterSpacing: 1.5,
-                color: _grey,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton(
-              onPressed: () =>
-                  Navigator.of(context).pushNamed('/collections'),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: _gold),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 32, vertical: 12),
-              ),
-              child: const Text(
-                '전체 컬렉션 보기',
-                style: TextStyle(color: _gold, letterSpacing: 3, fontSize: 10),
-              ),
-            ),
+            const Text('?', style: TextStyle(fontSize: 40, color: Color(0xFFE8E2D6))),
+            const SizedBox(height: 12),
+            const Text('검색 결과가 없습니다',
+                style: TextStyle(fontSize: 13, color: _grey, fontStyle: FontStyle.italic)),
+            const SizedBox(height: 4),
+            const Text('다른 키워드나 태그로 검색해보세요',
+                style: TextStyle(fontSize: 11, color: Color(0xFFC0B8A8))),
           ],
         ),
       ),
@@ -339,50 +362,34 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 이미지: AspectRatio로 비율 고정, 절대 overflow 없음
           AspectRatio(
             aspectRatio: 3 / 4,
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFFAF8F3),
-                border: Border.all(color: const Color(0xFFEEEEEE)),
+                border: Border.all(color: _cream),
               ),
               child: Stack(
                 children: [
                   perfume.imageUrl != null
-                      ? Image.network(
-                          perfume.imageUrl!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (_, __, ___) => _placeholder(perfume),
-                        )
+                      ? Image.network(perfume.imageUrl!, fit: BoxFit.cover,
+                          width: double.infinity, height: double.infinity,
+                          errorBuilder: (_, __, ___) => _placeholder(perfume))
                       : _placeholder(perfume),
                   if (perfume.isOnSale)
                     Positioned(
-                      top: 6,
-                      left: 6,
+                      top: 6, left: 6,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Text(
-                          '${perfume.saleRate}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        color: const Color(0xFF1A1510),
+                        child: Text('${perfume.saleRate}%',
+                            style: const TextStyle(color: _gold, fontSize: 9, fontWeight: FontWeight.bold)),
                       ),
                     ),
                 ],
               ),
             ),
           ),
-          // 텍스트: mainAxisSize.min → 내용만큼만 차지
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
             child: Column(
@@ -390,40 +397,30 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (perfume.brandName != null)
-                  Text(
-                    perfume.brandName!,
-                    style: const TextStyle(fontSize: 9, color: _grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                Text(
-                  perfume.name,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  Text(perfume.brandName!,
+                      style: const TextStyle(fontSize: 9, color: _grey, letterSpacing: 1),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(perfume.name,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _dark),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
                 if (perfume.isOnSale)
-                  Text(
-                    '₩${perfume.formattedOriginalPrice}',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: _grey,
-                      decoration: TextDecoration.lineThrough,
-                    ),
+                  Text('₩${perfume.formattedOriginalPrice}',
+                      style: const TextStyle(fontSize: 9, color: _grey,
+                          decoration: TextDecoration.lineThrough)),
+                Text('₩${perfume.formattedPrice}',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _gold)),
+                // 태그 표시
+                if (perfume.tags != null && perfume.tags!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    children: perfume.tags!.take(2).map((t) => Text(
+                      '#$t',
+                      style: TextStyle(fontSize: 9, color: _grey.withOpacity(0.7)),
+                    )).toList(),
                   ),
-                Text(
-                  '₩${perfume.formattedPrice}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: perfume.isOnSale ? Colors.red : _dark,
-                  ),
-                ),
+                ],
               ],
             ),
           ),
@@ -431,11 +428,42 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
       ),
     );
   }
+
   Widget _placeholder(Perfume perfume) {
     return Center(
       child: Text(
-        perfume.name.isNotEmpty ? perfume.name.substring(0, 1) : '?',
-        style: const TextStyle(fontSize: 40, color: Color(0xFFCCCCCC)),
+        perfume.name.isNotEmpty ? perfume.name[0] : '✦',
+        style: TextStyle(fontSize: 36, color: _gold.withOpacity(0.25)),
+      ),
+    );
+  }
+}
+
+// ── 태그 칩 위젯 ─────────────────────────────────────────────────
+class _TagChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onRemove;
+  const _TagChip({required this.label, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1510),
+        border: Border.all(color: const Color(0xFFC9A961)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('#$label',
+              style: const TextStyle(fontSize: 11, color: Color(0xFFC9A961))),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onRemove,
+            child: const Icon(Icons.close, size: 10, color: Color(0xFFC9A961)),
+          ),
+        ],
       ),
     );
   }
