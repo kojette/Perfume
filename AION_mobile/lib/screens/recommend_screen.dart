@@ -111,7 +111,7 @@ const _quickFilters = [
   _QF(label:'남성',     en:'MAN',    type:'gender', values:['MALE']),
   _QF(label:'여성',     en:'WOMAN',  type:'gender', values:['FEMALE']),
   _QF(label:'데이트',   en:'DATE',   type:'tags',   values:['데이트']),
-  _QF(label:'청량한',   en:'FRESH',  type:'tags',   values:['청량한']),
+  _QF(label:'청량한',   en:'FRESH',  type:'tags',   values:['청량함']),
   _QF(label:'봄/여름',  en:'SPRING', type:'tags',   values:['봄', '여름']),   // ← 두 개
   _QF(label:'가을/겨울',en:'AUTUMN', type:'tags',   values:['가을', '겨울']), // ← 두 개
 ];
