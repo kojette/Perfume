@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/perfume.dart';
+import '../services/api_service_extended.dart';
 
 class SearchResultScreen extends StatefulWidget {
   final String initialQuery;
@@ -45,11 +46,46 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
 
   Future<void> _performSearch(String keyword) async {
     if (keyword.trim().isEmpty) return;
-
     setState(() => _isLoading = true);
 
     try {
+      final results = await ApiService.fetchPerfumesRaw(
+        search: keyword.trim(),
+        size: 100,
+      );
+
+      if (mounted) {
+        setState(() {
+          _results = results.map((p) => Perfume(
+            id: p['id'] ?? p['perfumeId'] ?? 0,
+            name: p['name'] ?? '',
+            nameEn: p['nameEn'],
+            brandName: p['brandName'],
+            imageUrl: p['imageUrl'] ?? p['thumbnail'],
+            price: (p['originalPrice'] ?? p['price'] ?? 0) as int,
+            salePrice: p['salePrice'] as int?,
+            saleRate: (p['saleRate'] ?? 0) as int,
+            tags: (p['tags'] as List?)?.cast<String>(),
+            gender: p['gender'],
+            description: p['description'],
+            concentration: p['concentration'],
+          )).toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('검색 실패: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+
+    /*
+    try {
       // 캐시 없으면 파라미터 없이 단순 호출
+  
       if (_cachedPerfumes == null) {
         final response = await http.get(
           Uri.parse('${ApiConfig.baseUrl}/api/perfumes'),
@@ -91,6 +127,9 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+    */
+
+    
   }
 
   void _handleSearchSubmit() {
