@@ -14,7 +14,7 @@ const _mockHistory = [
     'subtitle': 'The Birth of Divinity',
     'content':
         '파리 마레 지구의 작은 공방에서 조향사 에드몬 뒤발은 그리스 신화에서 영감을 받아 AION을 창립했습니다. 신들이 숨쉬는 올림포스의 공기를 지상에 담겠다는 꿈을 가졌습니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/history_1.png',
   },
   {
     'storyId': 2,
@@ -23,7 +23,7 @@ const _mockHistory = [
     'subtitle': "L'Âge d'Or",
     'content':
         '두 번의 세계대전을 거치며 AION의 향수는 유럽 귀족 사회의 필수품이 되었습니다. 아르테미스 컬렉션은 파리, 런던, 비엔나의 궁정을 사로잡았습니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/history_2.png',
   },
   {
     'storyId': 3,
@@ -32,7 +32,7 @@ const _mockHistory = [
     'subtitle': 'East meets Olympus',
     'content':
         '일본 교토의 고급 백화점에 첫 아시아 매장을 오픈하며 AION은 동서양 향수 예술의 교류를 시작했습니다. 이 시기 탄생한 아프로디테 오드퍼퓸은 지금도 전설로 남아 있습니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/history_3.png',
   },
   {
     'storyId': 4,
@@ -41,7 +41,7 @@ const _mockHistory = [
     'subtitle': 'Into the Eternal Now',
     'content':
         '177년의 역사를 담아 AION은 새로운 신화를 씁니다. 전통 증류법과 현대 분자 조향 기술을 결합하여 과거와 미래를 잇는 향수를 창조합니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/history_4.png',
   },
 ];
 
@@ -52,7 +52,7 @@ const _mockProcess = [
     'subtitle': 'Harvest of the Gods',
     'content':
         '그라스의 새벽, 이슬이 마르기 전에 장미 꽃잎을 손으로 채집합니다. 1킬로그램의 앱솔루트를 얻기 위해 3.5톤의 꽃잎이 필요합니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/process_1.png',
   },
   {
     'storyId': 6,
@@ -60,7 +60,7 @@ const _mockProcess = [
     'subtitle': 'Alchemy of Essence',
     'content':
         '전통 구리 증류기와 냉압착법으로 꽃과 과실의 정수를 추출합니다. 이 연금술적 과정은 신들의 넥타르를 현실로 옮겨오는 의식입니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/process_2.png',
   },
   {
     'storyId': 7,
@@ -68,7 +68,7 @@ const _mockProcess = [
     'subtitle': 'Composing Harmony',
     'content':
         '수석 조향사는 300여 가지 원료를 오케스트라처럼 조율합니다. 탑 노트, 미들 노트, 베이스 노트가 완벽한 삼위일체를 이루기까지 수백 번의 시도가 반복됩니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/process_3.png',
   },
   {
     'storyId': 8,
@@ -76,7 +76,7 @@ const _mockProcess = [
     'subtitle': 'The Art of Patience',
     'content':
         '혼합된 향수는 오크통에서 최소 6개월 숙성됩니다. 시간이 녹아든 향은 처음과 전혀 다른 깊이와 복잡성을 가지게 됩니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/process_4.png',
   },
   {
     'storyId': 9,
@@ -84,7 +84,7 @@ const _mockProcess = [
     'subtitle': 'Myth in a Bottle',
     'content':
         '베네치아 유리 장인이 하나씩 손으로 제작한 플라콩에 향수를 담습니다. 병 하나를 완성하는 데 3시간, 그것은 하나의 조각품입니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/process_5.png',
   },
   {
     'storyId': 10,
@@ -92,7 +92,7 @@ const _mockProcess = [
     'subtitle': 'The Sacred Ritual',
     'content':
         '포장부터 리본까지 모든 과정이 수작업으로 이루어집니다. AION의 향수를 받는 것은 올림포스로부터 선물을 받는 것과 같은 경험입니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/process_6_2.png',
   },
 ];
 
@@ -103,7 +103,7 @@ const _mockPhilosophy = [
     'subtitle': 'KAIROS — 카이로스',
     'content':
         "그리스어로 '완벽한 순간'을 의미하는 카이로스. AION은 향수가 단순한 향기가 아닌, 시간을 정지시키는 마법이라 믿습니다.\n\n뿌리는 순간, 당신은 신화 속으로 걸어 들어갑니다. 이오의 변신처럼, 아프로디테의 탄생처럼 — 향은 당신을 전혀 다른 존재로 만듭니다.",
-    'imageUrl': null,
+    'imageUrl': 'assets/philosophy_1.png',
   },
   {
     'storyId': 12,
@@ -111,7 +111,7 @@ const _mockPhilosophy = [
     'subtitle': 'HEPHAESTUS — 헤파이스토스',
     'content':
         '불과 대장장이의 신 헤파이스토스는 완벽함을 추구했습니다. AION의 모든 조향사는 그 정신을 계승합니다.\n\n10년의 수련, 100번의 실패, 그리고 단 하나의 걸작. 우리는 빠른 것보다 옳은 것을 선택합니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/philosophy_2.png',
   },
   {
     'storyId': 13,
@@ -119,7 +119,7 @@ const _mockPhilosophy = [
     'subtitle': 'GAIA — 가이아',
     'content':
         '대지의 여신 가이아는 모든 생명의 근원입니다. AION은 자연에서 영감을 얻고, 자연에 다시 돌려줍니다.\n\n그라스의 장미 농장, 에티오피아의 프랑켄센스 나무, 인도의 재스민 밭 — 우리는 지속 가능한 관계를 맺습니다.',
-    'imageUrl': null,
+    'imageUrl': 'assets/philosophy_3.png',
   },
 ];
 
@@ -741,7 +741,7 @@ class _StoryScreenState extends State<StoryScreen>
       child: Column(
         children: [
           // 비주얼 패널
-          _buildPhilosophyVisual(idx, godSymbols[idx % godSymbols.length]),
+          _buildPhilosophyVisual(idx, godSymbols[idx % godSymbols.length], item['imageUrl']),
           // 텍스트 패널
           Container(
             width: double.infinity,
@@ -822,7 +822,7 @@ class _StoryScreenState extends State<StoryScreen>
     );
   }
 
-  Widget _buildPhilosophyVisual(int idx, String symbol) {
+  Widget _buildPhilosophyVisual(int idx, String symbol, String? imageUrl) {
     final palettes = [
       [const Color(0xFF0E0B06), const Color(0xFF2D2010)],
       [const Color(0xFF060B0E), const Color(0xFF102030)],
@@ -841,6 +841,15 @@ class _StoryScreenState extends State<StoryScreen>
       child: Stack(
         fit: StackFit.expand,
         children: [
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            Opacity(
+              opacity: 0.6,
+              child: Image.asset(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(),
+              ),
+            ),
           CustomPaint(painter: _GridPatternPainter()),
           Center(
             child: Text(
@@ -970,6 +979,36 @@ class _StoryScreenState extends State<StoryScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildImageWidget(String? url, {double height = 200}) {
+    if (url == null || url.isEmpty) return const SizedBox.shrink();
+
+    if (url.startsWith('assets/')) {
+      return Image.asset(
+        url,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildErrorPlaceholder(),
+      );
+    } else {
+      return Image.network(
+        url,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildErrorPlaceholder(),
+      );
+    }
+  }
+
+  Widget _buildErrorPlaceholder() {
+    return Container(
+      height: 180,
+      color: _darkBrown,
+      child: Center(child: Icon(Icons.broken_image, color: _gold.withOpacity(0.5))),
     );
   }
 }
