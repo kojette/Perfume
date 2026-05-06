@@ -258,7 +258,7 @@ class ApiService {
             if (tagName is Map) return (tagName['tag_name'] ?? '').toString().toLowerCase();
             return (tagName ?? '').toString().toLowerCase();
           }).toList();
-          return tags.any((sel) => pTags.any((t) => t.contains(sel.toLowerCase())));
+          return tags.every((sel) => pTags.any((t) => t.contains(sel.toLowerCase())));
         }).toList();
       }
 

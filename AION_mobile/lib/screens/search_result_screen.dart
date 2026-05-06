@@ -17,9 +17,7 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
   List<Perfume> _results = [];
   bool _isLoading = false;
 
-  // 현재 입력 중인 텍스트 (# 없는 일반 검색어)
   String _searchText = '';
-  // 선택된 태그 칩들
   List<String> _selectedTags = [];
 
   static const _gold = Color(0xFFC9A961);
@@ -45,9 +43,7 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
     super.dispose();
   }
 
-  // 입력값 파싱: #태그 → 칩, 나머지 → 텍스트
   void _onTextChanged(String value) {
-    // #으로 시작하는 단어가 스페이스나 엔터로 끝나면 태그로 확정
     final tagMatch = RegExp(r'#(\S+)\s$').firstMatch(value);
     if (tagMatch != null) {
       final tag = tagMatch.group(1)!;
@@ -60,14 +56,12 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
       return;
     }
 
-    // #으로 시작하면 태그 입력 중 표시
     setState(() => _searchText = value.startsWith('#') ? '' : value);
   }
 
   void _onSubmitted(String value) {
     final trimmed = value.trim();
     if (trimmed.startsWith('#')) {
-      // #태그 확정
       final tag = trimmed.substring(1);
       if (tag.isNotEmpty && !_selectedTags.contains(tag)) {
         setState(() => _selectedTags.add(tag));
@@ -154,14 +148,12 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
       ),
       body: Column(
         children: [
-          // ── 검색 입력 영역 ────────────────────────────────
           Container(
             color: Colors.white,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 태그 칩 + 입력창 통합
                 Container(
                   decoration: BoxDecoration(
                     border: Border.all(color: _cream),
@@ -178,12 +170,10 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
                           runSpacing: 4,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            // 선택된 태그 칩들
                             ..._selectedTags.map((tag) => _TagChip(
                               label: tag,
                               onRemove: () => _removeTag(tag),
                             )),
-                            // 텍스트 입력
                             IntrinsicWidth(
                               child: TextField(
                                 controller: _searchController,
@@ -217,7 +207,6 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // 힌트 텍스트
                 Text(
                   '#을 붙이면 태그로 검색됩니다  예) #데이트  #럭셔리',
                   style: TextStyle(fontSize: 10, color: _grey.withOpacity(0.6), letterSpacing: 0.5),
@@ -226,7 +215,6 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
             ),
           ),
 
-          // ── 결과 카운트 ──────────────────────────────────
           if ((_searchText.isNotEmpty || _selectedTags.isNotEmpty) && !_isLoading)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -251,7 +239,6 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
               ),
             ),
 
-          // ── 결과 목록 ────────────────────────────────────
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: _gold))
@@ -439,7 +426,6 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
   }
 }
 
-// ── 태그 칩 위젯 ─────────────────────────────────────────────────
 class _TagChip extends StatelessWidget {
   final String label;
   final VoidCallback onRemove;
