@@ -97,9 +97,9 @@ const QUICK_FILTERS = [
   { label: '남성', en: 'Man',    type: 'gender', value: 'MALE'    },
   { label: '여성', en: 'Woman',  type: 'gender', value: 'FEMALE'  },
   { label: '데이트', en: 'Date', type: 'tags',   value: ['데이트'] },
-  { label: '청량한', en: 'Fresh',type: 'tags',   value: ['청량한'] },
-  { label: '봄/여름', en: 'Spring', type: 'tags', value: ['플로럴'] },
-  { label: '가을/겨울', en: 'Autumn', type: 'tags', value: ['우디'] },
+  { label: '청량한', en: 'Fresh',type: 'tags',   value: ['청량함'] },
+  { label: '봄/여름', en: 'Spring', type: 'tags', value: ['봄', '여름'] },
+  { label: '가을/겨울', en: 'Autumn', type: 'tags', value: ['가을', '겨울'] },
 ];
 
 
@@ -520,7 +520,7 @@ export default function Recommend() {
       setError(null);
       const params = {
         search: searchTerm || undefined,
-        tags: selectedTags.length > 0 ? selectedTags : undefined,
+        tags: selectedTags,
         gender: selectedGender || undefined,
         sortBy,
         page: 0,
@@ -585,6 +585,7 @@ export default function Recommend() {
     setAgeLoading(false);
   };
 
+  /*
   const handleQuickFilter = (filter) => {
     if (filter.type === 'gender') {
       setSelectedGender(prev => prev === filter.value ? '' : filter.value);
@@ -595,6 +596,23 @@ export default function Recommend() {
       setSelectedTags(prev =>
         prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
       );
+    }
+  };
+  */
+
+  const handleQuickFilter = (filter) => {
+    if (filter.type === 'gender') {
+      setSelectedGender(prev => prev === filter.value ? '' : filter.value);
+      return;
+    }
+    if (filter.type === 'tags') {
+      const filterTags = filter.value; // 배열 전체
+      const alreadyActive = filterTags.some(t => selectedTags.includes(t));
+      if (alreadyActive) {
+        setSelectedTags(prev => prev.filter(t => !filterTags.includes(t)));
+      } else {
+        setSelectedTags(prev => [...prev, ...filterTags.filter(t => !prev.includes(t))]);
+      }
     }
   };
 
@@ -608,9 +626,17 @@ export default function Recommend() {
     }
   };
 
+  /*
   const isFilterActive = (filter) => {
     if (filter.type === 'gender') return selectedGender === filter.value;
     if (filter.type === 'tags') return selectedTags.includes(filter.value[0]);
+    return false;
+  };
+  */
+
+  const isFilterActive = (filter) => {
+    if (filter.type === 'gender') return selectedGender === filter.value;
+    if (filter.type === 'tags') return filter.value.some(t => selectedTags.includes(t));
     return false;
   };
 
