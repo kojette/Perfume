@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+
 @Repository
 public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
 
@@ -43,4 +44,29 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
             "LEFT JOIN \"Perfume_Images\" pi ON p.perfume_id = pi.perfume_id AND pi.is_thumbnail = true " +
             "WHERE p.name ILIKE CONCAT('%', :keyword, '%')", nativeQuery = true)
     List<PerfumeSearchProjection> searchWithImages(@Param("keyword") String keyword);
+
+    @Query(value = """
+        SELECT DISTINCT p.* FROM "Perfumes" p
+        INNER JOIN "Perfume_Tags" pt ON p.perfume_id = pt.perfume_id
+        INNER JOIN "Preference_Tags" prt ON pt.tag_id = prt.tag_id
+        WHERE p.is_active = true
+        AND prt.tag_name IN :tagNames
+        GROUP BY p.perfume_id
+        HAVING COUNT(DISTINCT prt.tag_name) = :tagCount
+        """,
+            countQuery = """
+        SELECT COUNT(DISTINCT p.perfume_id) FROM "Perfumes" p
+        INNER JOIN "Perfume_Tags" pt ON p.perfume_id = pt.perfume_id
+        INNER JOIN "Preference_Tags" prt ON pt.tag_id = prt.tag_id
+        WHERE p.is_active = true
+        AND prt.tag_name IN :tagNames
+        GROUP BY p.perfume_id
+        HAVING COUNT(DISTINCT prt.tag_name) = :tagCount
+        """,
+            nativeQuery = true)
+    Page<Perfume> findByTagNamesAll(
+            @Param("tagNames") List<String> tagNames,
+            @Param("tagCount") long tagCount,
+            Pageable pageable
+    );
 }

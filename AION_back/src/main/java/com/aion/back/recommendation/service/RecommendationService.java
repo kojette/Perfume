@@ -4,14 +4,15 @@ import com.aion.back.perfume.repository.PerfumeRepository;
 import com.aion.back.recommendation.dto.response.RecommendationResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class RecommendationService {
 
     private final com.aion.back.perfume.repository.PerfumeImageRepository perfumeImageRepository;
 
+    /*
     public Page<RecommendationResponse> getRecommendations(
             String search,
             List<String> tags,
@@ -38,6 +40,42 @@ public class RecommendationService {
         List<RecommendationResponse> responses = filteredPerfumes.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, perfumes.getTotalElements());
+    }
+     */
+
+    public Page<RecommendationResponse> getRecommendations(
+            String search,
+            List<String> tags,
+            String gender,
+            List<String> seasons,
+            List<String> occasions,
+            Integer minPrice,
+            Integer maxPrice,
+            Pageable pageable) {
+
+        Page<Perfume> perfumes;
+
+        if (tags != null && !tags.isEmpty()) {
+            Pageable nativePageable = PageRequest.of(
+                    pageable.getPageNumber(),
+                    pageable.getPageSize(),
+                    Sort.by(Sort.Direction.DESC, "created_at")  // ← snake_case
+            );
+            perfumes = perfumeRepository.findByTagNamesAll(tags, tags.size(), nativePageable);
+        }
+        else {
+            perfumes = perfumeRepository.findByIsActiveTrue(pageable);
+        }
+
+        List<Perfume> filtered = perfumes.getContent().stream()
+                .filter(p -> applyFilters(p, search, null, gender, seasons, occasions, minPrice, maxPrice))
+                .collect(Collectors.toList());
+
+        List<RecommendationResponse> responses = filtered.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+
         return new PageImpl<>(responses, pageable, perfumes.getTotalElements());
     }
 
@@ -63,6 +101,18 @@ public class RecommendationService {
             if (!gender.equalsIgnoreCase(perfume.getGender())) {
                 return false;
             }
+        }
+        if (tags != null && !tags.isEmpty()) {
+            String haystack = String.join(" ",
+                    perfume.getName() != null ? perfume.getName() : "",
+                    perfume.getNameEn() != null ? perfume.getNameEn() : "",
+                    perfume.getDescription() != null ? perfume.getDescription() : ""
+            ).toLowerCase();
+
+            boolean matchesAllTags = tags.stream()
+                    .allMatch(tag -> haystack.contains(tag.toLowerCase()));
+
+            if (!matchesAllTags) return false;
         }
         Integer price = perfume.getSalePrice() != null ? perfume.getSalePrice() : perfume.getPrice();
         if (minPrice != null && price < minPrice) return false;
