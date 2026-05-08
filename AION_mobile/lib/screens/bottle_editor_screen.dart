@@ -865,20 +865,16 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
   // ── 공병 선택 탭 ──────────────────────────────────────────
   Widget _buildBottleTab() {
     final all = [..._DEFAULT_BOTTLES, ..._adminBottles];
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('공병 디자인 선택',
-            style: TextStyle(fontSize: 11, letterSpacing: 3, color: _grey)),
-        const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+    return Column(children: [
+      // 병 그리드
+      Expanded(
+        child: GridView.builder(
+          padding: const EdgeInsets.all(16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            // 병 비율(200/280≈0.71) + 라벨/가격 영역 → 0.62
-            childAspectRatio: 0.62,
-            crossAxisSpacing: 10, mainAxisSpacing: 10,
+            childAspectRatio: 0.68, // 0.62 → 0.68로 수정 (라벨 공간 확보)
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
           ),
           itemCount: all.length,
           itemBuilder: (_, i) {
@@ -896,61 +892,73 @@ class _BottleEditorScreenState extends State<BottleEditorScreen> {
                   ),
                 ),
                 child: Column(children: [
-                  // ★ AspectRatio 200:280으로 비율 명시 → 모양 왜곡 방지
                   Expanded(
                     child: Center(
                       child: AspectRatio(
                         aspectRatio: 200 / 280,
                         child: CustomPaint(
-                          painter: _BottlePainter(shape: b.shape, fillColor: _bottleColor),
-                          size: const Size.square(double.infinity),
+                          painter: _BottlePainter(
+                            shape: b.shape,
+                            fillColor: _bottleColor,
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(b.name,
-                      style: const TextStyle(fontSize: 10, color: _dark),
-                      overflow: TextOverflow.ellipsis),
-                  Text('₩${_fmt(b.basePrice)}',
-                      style: const TextStyle(fontSize: 9, color: _gold)),
+                  Text(
+                    b.name,
+                    style: const TextStyle(fontSize: 10, color: _dark),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    '₩${_fmt(b.basePrice)}',
+                    style: const TextStyle(fontSize: 9, color: _gold),
+                  ),
                 ]),
               ),
             );
           },
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: _cream),
+      ),
+
+      // 색상 선택 (그리드 아래 고정)
+      Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: _cream),
+        ),
+        child: Row(children: [
+          const Text(
+            '병 색상',
+            style: TextStyle(fontSize: 11, letterSpacing: 2, color: _grey),
           ),
-          child: Row(children: [
-            const Text('병 색상',
-                style: TextStyle(fontSize: 11, letterSpacing: 2, color: _grey)),
-            const Spacer(),
-            ..._presetColors.map((c) {
-              final sel = _bottleColor.value == c.value;
-              return GestureDetector(
-                onTap: () => setState(() => _bottleColor = c),
-                child: Container(
-                  margin: const EdgeInsets.only(left: 6),
-                  width: 26, height: 26,
-                  decoration: BoxDecoration(
-                    color: c, shape: BoxShape.circle,
-                    border: Border.all(
-                      color: sel ? _gold : Colors.black.withOpacity(0.1),
-                      width: sel ? 2 : 1,
-                    ),
+          const Spacer(),
+          ..._presetColors.map((c) {
+            final sel = _bottleColor.value == c.value;
+            return GestureDetector(
+              onTap: () => setState(() => _bottleColor = c),
+              child: Container(
+                margin: const EdgeInsets.only(left: 6),
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: c,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: sel ? _gold : Colors.black.withOpacity(0.1),
+                    width: sel ? 2 : 1,
                   ),
                 ),
-              );
-            }),
-          ]),
-        ),
-      ]),
-    );
+              ),
+            );
+          }),
+        ]),
+      ),
+    ]);
   }
 
   static const List<Color> _presetColors = [

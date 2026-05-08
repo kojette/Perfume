@@ -25,6 +25,10 @@ import 'screens/notification_panel_screen.dart';
 import 'screens/start_screen.dart';
 import 'screens/main_screen.dart';
 
+
+import 'screens/ai_studio_screen.dart';
+import 'screens/scent_blend_screen.dart';
+
 // ── 동적 라우트 (URL 인자) ─────────────────────────────────────
 import 'screens/perfume_detail_screen.dart';
 import 'screens/order_receipt_screen.dart';
@@ -69,6 +73,8 @@ final Map<String, WidgetBuilder> routes = {
   // 커스터마이즈
   '/custom':            (_) => const CustomizationScreen(),
   '/bottle-editor':     (_) => const BottleEditorScreen(),
+  '/ai-studio': (ctx) => const AiScentStudioScreen(),
+'/scent-blend': (ctx) => const ScentBlendScreen(),
 
   // 고객센터
   '/faq':               (_) => const FAQScreen(),
