@@ -79,17 +79,10 @@ App Store: [앱 링크]
 
 ## 7. 시연 동영상
 
-- <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
-  [안드로이드 시연 영상](https://youtu.be/q0Ugg9oJQJ8?si=mrcNaLWR9QJVmVOQ)
-
-- <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
-  [아이폰 시연 영상] https://youtu.be/RT6HO9mhY6w
-
-- <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
-  [리액트(PC) 시연 영상] https://youtu.be/FsEHbaUkvWA
-
-- <img src="https://cdn-icons-png.flaticon.com/512/727/727245.png" width="18"/> 
-  [리액트(모바일) 시연 영상] https://youtu.be/gKQLfjE2-Ps
+[안드로이드 시연 영상](https://youtu.be/q0Ugg9oJQJ8)
+[아이폰 시연 영상](https://youtu.be/RT6HO9mhY6w)
+[리액트(PC) 시연 영상](https://youtu.be/FsEHbaUkvWA)
+[리액트(모바일) 시연 영상](https://youtu.be/gKQLfjE2-Ps)
 
 ## 8. 우리팀 평가
 ## 2025 우수팀 vs AION 비교
