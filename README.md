@@ -70,8 +70,11 @@
   
 ## 5. 코드
 - [안드로이드](https://github.com/kojette/Perfume/tree/main/AION_mobile)
+- 
 - [아이폰](https://github.com/kojette/Perfume/tree/main/AION_mobile)
+- 
 - [리액트](https://github.com/kojette/Perfume/tree/main/AION_front)
+- 
 - [백엔드](https://github.com/kojette/Perfume/tree/main/AION_back)
   
 ## 6. 앱 등록
