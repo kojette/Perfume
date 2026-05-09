@@ -70,11 +70,8 @@
   
 ## 5. 코드
 - [안드로이드](https://github.com/kojette/Perfume/tree/main/AION_mobile)
-- 
 - [아이폰](https://github.com/kojette/Perfume/tree/main/AION_mobile)
-- 
 - [리액트](https://github.com/kojette/Perfume/tree/main/AION_front)
-- 
 - [백엔드](https://github.com/kojette/Perfume/tree/main/AION_back)
   
 ## 6. 앱 등록
@@ -83,8 +80,11 @@ App Store: [앱 링크]
 ## 7. 시연 동영상
 
 [안드로이드 시연 영상](https://youtu.be/q0Ugg9oJQJ8)
+
 [아이폰 시연 영상](https://youtu.be/RT6HO9mhY6w)
+
 [리액트(PC) 시연 영상](https://youtu.be/FsEHbaUkvWA)
+
 [리액트(모바일) 시연 영상](https://youtu.be/gKQLfjE2-Ps)
 
 ## 8. 우리팀 평가
