@@ -14,6 +14,11 @@ dependencies:
 
   # UI & Icons
   cupertino_icons: ^1.0.8
+
+  image_gallery_saver: ^2.0.3   # 갤러리 저장 (iOS/Android)
+  path_provider: ^2.1.2         # 파일 경로 (데스크탑/웹)
+  permission_handler: ^11.3.1   # Android 권한
+  device_info_plus: ^10.1.0
   
   # HTTP & Network
 

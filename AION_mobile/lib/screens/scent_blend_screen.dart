@@ -85,7 +85,6 @@ class _ScentBlendState extends State<ScentBlendScreen> {
   List<Map<String, dynamic>> _mine = [];
   bool _loadMine = false;
 
-  Map<String, dynamic>? _cardBlend;
 
   @override
   void initState() {
@@ -479,11 +478,6 @@ class _ScentBlendState extends State<ScentBlendScreen> {
         _buildBottlePanel(),
         const SizedBox(height: 12),
         _buildSavePanel(),
-        if (_cardBlend != null)
-          ScentCardWidget(
-            blend: _cardBlend!,
-            onClose: () => setState(() => _cardBlend = null),
-          ),
       ],
     );
   }
@@ -590,7 +584,7 @@ class _ScentBlendState extends State<ScentBlendScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => setState(() => _cardBlend = b),
+                      onTap: () => showScentCard(context, b),
                       child: Padding(
                         padding: const EdgeInsets.all(6),
                         child: Row(children: const [
