@@ -83,7 +83,7 @@ App Store: [앱 링크]
 
 [아이폰 시연 영상](https://youtu.be/RT6HO9mhY6w)
 
-[리액트(PC) 시연 영상](https://youtu.be/mU9NqCeTqgs)
+[리액트(PC) 시연 영상](https://youtu.be/3D-cYvSRJ-A)
 
 [리액트(모바일) 시연 영상](https://youtu.be/_RH_KOGz_WQ)
 ## 8. 우리팀 평가
