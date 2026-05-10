@@ -85,7 +85,7 @@ App Store: [앱 링크]
 
 [리액트(PC) 시연 영상](https://youtu.be/_RflzZwsihA)
 
-[리액트(모바일) 시연 영상](https://youtu.be/_RH_KOGz_WQ)
+[리액트(모바일) 시연 영상](https://youtu.be/M8aY0BtzQ8g)
 ## 8. 우리팀 평가
 ## 2025 우수팀 vs AION 비교
 
