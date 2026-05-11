@@ -158,9 +158,9 @@ function MobileInfoPanel({ perfume, notes, loadingNotes, geminiReview, loadingRe
       {/* 버튼 */}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button
-          onClick={() => navigate(`/perfumes/${perfume.perfume_id}`)}
+          onClick={() => onDetail(perfume)}
           style={{ flex: 1, padding: '12px 0', background: 'transparent', border: '1px solid rgba(201,169,97,0.4)', color: '#c9a961', fontSize: '0.72rem', letterSpacing: '0.2em', cursor: 'pointer' }}
-          >
+        >
           상세보기
         </button>
         <button
@@ -479,13 +479,7 @@ function LayoutEditor({ layout, bgUrl, bgRatio, onSave, onClose }) {
 // ─── PerfumeImage: 타원형 클리핑 + 테두리 그라데이션 블렌딩 ──────────────────
 function PerfumeImage({ perfume, layout: l }) {
   const strength = parseFloat(l.imgBlendStrength || 0);
-
-  // 향수병은 세로로 긴 형태 → 타원의 X반경 < Y반경
-  // imgBlendStrength 값으로 페이드 시작점 조절 (강도가 클수록 더 많이 블렌딩)
-  const fadeStart = Math.max(20, 80 - strength * 1.2); // 불투명 유지 구간 (%)
-
-  // CSS mask로 타원형 클리핑 + 가장자리 그라데이션 처리
-  // ellipse 48% 50% → X반경 48%, Y반경 50% → 세로로 살짝 긴 타원
+  const fadeStart = Math.max(20, 80 - strength * 1.2);
   const ellipseMask = `radial-gradient(ellipse 48% 50% at 50% 50%, black ${fadeStart}%, transparent 100%)`;
 
   return (
@@ -509,7 +503,6 @@ function PerfumeImage({ perfume, layout: l }) {
             objectFit: 'contain',
             display: 'block',
             transition: 'opacity 0.3s',
-            // 타원형 클리핑 + 테두리 그라데이션 블렌딩
             WebkitMaskImage: ellipseMask,
             maskImage: ellipseMask,
           }}
@@ -569,7 +562,6 @@ function SpineBook({ perfume, isSelected, onClick, globalIdx }) {
         </div>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px', background: pal.accent, opacity: 0.7 }} />
         {isSelected && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: '#c9a961' }} />}
-        {/* 품절 오버레이 */}
         {isSoldOut && (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <p style={{ writingMode: 'vertical-rl', fontSize: '7px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.7)', fontWeight: '600', margin: 0 }}>SOLD</p>
@@ -646,6 +638,10 @@ export default function Collections() {
     } catch (error) { console.error('구매 에러:', error); }
   };
 
+  const handleGoDetail = (perfume) => {
+    navigate(`/perfumes/${perfume.perfume_id}`);
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -670,7 +666,7 @@ export default function Collections() {
   const saveBgUrl = async (url) => {
     setBgUrl(url);
     try {
-      const { data: ex } = await supabase.from('Signature_config').select('id').eq('key', 'collections_bg_image').maybeSingle();
+      const { ex } = await supabase.from('Signature_config').select('id').eq('key', 'collections_bg_image').maybeSingle();
       if (ex) await supabase.from('Signature_config').update({ value: url }).eq('key', 'collections_bg_image');
       else     await supabase.from('Signature_config').insert({ key: 'collections_bg_image', value: url });
     } catch (e) { console.error('배경 저장 실패:', e); }
@@ -679,7 +675,7 @@ export default function Collections() {
   const handleSaveLayout = async (l) => {
     setLayout(l);
     try {
-      const { data: ex } = await supabase.from('Signature_config').select('id').eq('key', 'collections_layout_v6').maybeSingle();
+      const { ex } = await supabase.from('Signature_config').select('id').eq('key', 'collections_layout_v6').maybeSingle();
       if (ex) await supabase.from('Signature_config').update({ value: JSON.stringify(l) }).eq('key', 'collections_layout_v6');
       else     await supabase.from('Signature_config').insert({ key: 'collections_layout_v6', value: JSON.stringify(l) });
     } catch (e) { console.error('레이아웃 저장 실패:', e); }
@@ -690,13 +686,13 @@ export default function Collections() {
     (async () => {
       setLoading(true);
       try {
-        const { data: perfumes } = await supabase.from('Perfumes').select('perfume_id, name, name_en, description, price, sale_price, sale_rate, brand_id, total_stock').eq('is_active', true).order('name');
+        const { perfumes } = await supabase.from('Perfumes').select('perfume_id, name, name_en, description, price, sale_price, sale_rate, brand_id, total_stock').eq('is_active', true).order('name');
         if (!perfumes?.length) { setAllPerfumes([]); setLoading(false); return; }
         const brandIds = [...new Set(perfumes.map(p => p.brand_id).filter(Boolean))];
-        const { data: brands } = await supabase.from('Brands').select('brand_id, brand_name').in('brand_id', brandIds);
+        const { brands } = await supabase.from('Brands').select('brand_id, brand_name').in('brand_id', brandIds);
         const brandMap = Object.fromEntries((brands || []).map(b => [b.brand_id, b.brand_name]));
         const pIds = perfumes.map(p => p.perfume_id);
-        const { data: imgs } = await supabase.from('Perfume_Images').select('perfume_id, image_url').in('perfume_id', pIds).eq('is_thumbnail', true);
+        const { imgs } = await supabase.from('Perfume_Images').select('perfume_id, image_url').in('perfume_id', pIds).eq('is_thumbnail', true);
         const imgMap = Object.fromEntries((imgs || []).map(i => [i.perfume_id, i.image_url]));
         setAllPerfumes(perfumes.map(p => ({ ...p, brand_name: brandMap[p.brand_id] || '', thumbnail: imgMap[p.perfume_id] || null })));
       } catch (e) { console.error('향수 로드 실패:', e); }
@@ -812,7 +808,7 @@ export default function Collections() {
         backgroundPosition: 'center',
       };
 
-  // ─── 모바일 향수 이미지용 타원 마스크 (동일 로직) ────────────────────────
+  // ─── 모바일 향수 이미지용 타원 마스크 ────────────────────────
   const mobileBlendStrength = parseFloat(l.imgBlendStrength || 0);
   const mobileFadeStart = Math.max(20, 80 - mobileBlendStrength * 1.2);
   const mobileEllipseMask = `radial-gradient(ellipse 48% 50% at 50% 50%, black ${mobileFadeStart}%, transparent 100%)`;
@@ -946,7 +942,6 @@ export default function Collections() {
                     maxHeight: '100%',
                     objectFit: 'contain',
                     display: 'block',
-                    // 타원형 클리핑 + 테두리 그라데이션 블렌딩 (모바일)
                     WebkitMaskImage: mobileEllipseMask,
                     maskImage: mobileEllipseMask,
                   }}
@@ -1009,6 +1004,7 @@ export default function Collections() {
           onWish={handleAddToWishlist}
           onBuy={handleBuyNow}
           isAddingToWish={isAddingToWish}
+          onDetail={handleGoDetail}
         />
       )}
 
