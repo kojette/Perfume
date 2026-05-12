@@ -10,7 +10,7 @@ import '../config/api_config.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -144,7 +144,6 @@ Future<void> _download() async {
 }
 
 Future<void> _saveToGallery(Uint8List bytes, String fileName) async {
-  // Android 권한 요청
   if (Platform.isAndroid) {
     final sdkInt = await _getAndroidSdkInt();
     if (sdkInt < 33) {
@@ -156,17 +155,11 @@ Future<void> _saveToGallery(Uint8List bytes, String fileName) async {
     }
   }
 
-  final result = await ImageGallerySaver.saveImage(
-    bytes,
-    name: fileName.replaceAll('.png', ''),
-    quality: 100,
-  );
-
-  debugPrint('[ScentCard] 갤러리 저장 결과: $result');
-
-  if (result != null && result['isSuccess'] == true) {
-    _snack('📸 갤러리에 저장되었습니다!');
-  } else {
+  try {
+    await Gal.putImageBytes(bytes);
+    _snack('갤러리에 저장되었습니다!');
+  } catch (e) {
+    debugPrint('[ScentCard] 갤러리 저장 오류: $e');
     _snack('갤러리 저장 실패. 다시 시도해주세요.');
   }
 }

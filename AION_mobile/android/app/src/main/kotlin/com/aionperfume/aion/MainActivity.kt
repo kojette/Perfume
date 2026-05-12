@@ -1,4 +1,4 @@
-﻿package com.aion.perfume
+package com.aionperfume.aion
 
 import io.flutter.embedding.android.FlutterActivity
 
