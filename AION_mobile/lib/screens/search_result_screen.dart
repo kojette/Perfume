@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service_extended.dart';
 import '../models/perfume.dart';
@@ -19,6 +20,7 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
 
   String _searchText = '';
   List<String> _selectedTags = [];
+  Timer? _debounce;
 
   static const _gold = Color(0xFFC9A961);
   static const _dark = Color(0xFF2A2620);
@@ -57,6 +59,12 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
     }
 
     setState(() => _searchText = value.startsWith('#') ? '' : value);
+
+    // 타이핑 중 자동 검색 (디바운스 400ms)
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _performSearch();
+    });
   }
 
   void _onSubmitted(String value) {

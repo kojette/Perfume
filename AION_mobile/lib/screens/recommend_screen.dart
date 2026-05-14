@@ -539,12 +539,17 @@ void _handleQF(_QF f) {
             style: TextStyle(color: Color(0xFFC0B8A8), fontSize: 11)),
       ]),
     );
-    return ListView.separated(
-      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-      itemCount: _perfumes.length,
-      separatorBuilder: (_, __) => Divider(height: 1, color: _cream),
-      itemBuilder: (_, i) => _PerfumeCard(
-          perfume: _perfumes[i], onTap: () => _goToCollections(_perfumes[i])),
+    return Column(
+      children: List.generate(_perfumes.length * 2 - 1, (i) {
+        if (i.isOdd) {
+          return Divider(height: 1, color: _cream);
+        }
+        final idx = i ~/ 2;
+        return _PerfumeCard(
+          perfume: _perfumes[idx],
+          onTap: () => _goToCollections(_perfumes[idx]),
+        );
+      }),
     );
   }
 
@@ -640,11 +645,21 @@ class _PerfumeCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14), color: Colors.white,
         child: Row(children: [
-          Container(width: 56, height: 56,
+          Container(
+            width: 56, height: 56,
             decoration: const BoxDecoration(color: Color(0xFFF5F0E8)),
             child: imageUrl != null
-                ? Image.network(imageUrl, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _ph(name))
+                ? Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    width: 56,
+                    height: 56,
+                    loadingBuilder: (ctx, child, progress) {
+                      if (progress == null) return child;
+                      return _ph(name);
+                    },
+                    errorBuilder: (_, __, ___) => _ph(name),
+                  )
                 : _ph(name),
           ),
           const SizedBox(width: 14),
