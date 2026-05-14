@@ -355,7 +355,9 @@ const CustomerInquiry = () => {
                               <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                             )}
                           </div>
-                          <p className="text-xs text-[#8b8278]">{new Date(inquiry.createdAt).toLocaleString('ko-KR')}</p>
+                          <p className="text-xs text-[#8b8278]">
+                            {new Date(inquiry.createdAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                            </p>
                         </div>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-[10px] font-medium flex items-center gap-1.5 ${statusConfig.color}`}>

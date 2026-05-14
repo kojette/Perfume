@@ -189,9 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     _drawerItem(Icons.local_florist_outlined, '향수 추천', '/recommend'),
-                    _drawerItem(Icons.menu_book_outlined, '컬렉션', null, onTap: () {
-                      Navigator.pop(context);
-                    }),
+                    _drawerItem(Icons.menu_book_outlined, '컬렉션', '/collections'),
                     _drawerItem(Icons.water_drop_outlined, '나만의 향 조합', '/custom'),
                     _drawerItem(Icons.store_outlined, '매장 안내', '/store'),
                     const SizedBox(height: 8),
