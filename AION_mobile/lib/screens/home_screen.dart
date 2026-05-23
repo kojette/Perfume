@@ -4,6 +4,7 @@ import '../services/api_service_extended.dart';
 import '../models/hero_data.dart';
 import '../models/perfume.dart';
 import '../widgets/event_banner_widget.dart';
+import '../utils/auth_guard.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -143,18 +144,30 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: const Icon(Icons.search, color: _dark, size: 22),
           onPressed: () => Navigator.pushNamed(context, '/search'),
         ),
-
+        // AppBar 액션
         IconButton(
           icon: const Icon(Icons.favorite_border, color: _dark, size: 22),
-          onPressed: () => Navigator.pushNamed(context, '/wishlist'),
+          onPressed: () => AuthGuard.require(
+            context,
+            reason: '위시리스트를 사용하려면',
+            onAuthorized: () => Navigator.pushNamed(context, '/wishlist'),
+          ),
         ),
         IconButton(
           icon: const Icon(Icons.shopping_bag_outlined, color: _dark, size: 22),
-          onPressed: () => Navigator.pushNamed(context, '/cart'),
+          onPressed: () => AuthGuard.require(
+            context,
+            reason: '장바구니를 사용하려면',
+            onAuthorized: () => Navigator.pushNamed(context, '/cart'),
+          ),
         ),
         IconButton(
           icon: const Icon(Icons.person_outline, color: _dark, size: 22),
-          onPressed: () => Navigator.pushNamed(context, '/mypage'),
+          onPressed: () => AuthGuard.require(
+            context,
+            reason: '마이페이지를 보려면',
+            onAuthorized: () => Navigator.pushNamed(context, '/mypage'),
+          ),
         ),
       ],
       bottom: PreferredSize(
@@ -190,7 +203,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _drawerItem(Icons.local_florist_outlined, '향수 추천', '/recommend'),
                     _drawerItem(Icons.menu_book_outlined, '컬렉션', '/collections'),
-                    _drawerItem(Icons.water_drop_outlined, '나만의 향 조합', '/custom'),
+                    _drawerItem(Icons.water_drop_outlined, '나만의 향 조합', null, onTap: () {
+                      Navigator.pop(context);
+                      AuthGuard.require(
+                        context,
+                        reason: '나만의 향 조합 기능을 사용하려면',
+                        onAuthorized: () => Navigator.pushNamed(context, '/custom'),
+                      );
+                    }),
                     _drawerItem(Icons.store_outlined, '매장 안내', '/store'),
                     const SizedBox(height: 8),
                     Padding(
@@ -198,8 +218,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Container(height: 0.5, color: _gold.withOpacity(0.15)),
                     ),
                     const SizedBox(height: 8),
-                    _drawerItem(Icons.favorite_border, '위시리스트', '/wishlist'),
-                    _drawerItem(Icons.shopping_bag_outlined, '장바구니', '/cart'),
+                    _drawerItem(Icons.favorite_border, '위시리스트', null, onTap: () {
+                      Navigator.pop(context);
+                      AuthGuard.require(
+                        context,
+                        reason: '위시리스트를 사용하려면',
+                        onAuthorized: () => Navigator.pushNamed(context, '/wishlist'),
+                      );
+                    }),
+                    _drawerItem(Icons.shopping_bag_outlined, '장바구니', null, onTap: () {
+                      Navigator.pop(context);
+                      AuthGuard.require(
+                        context,
+                        reason: '장바구니를 사용하려면',
+                        onAuthorized: () => Navigator.pushNamed(context, '/cart'),
+                      );
+                    }),
                     const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -362,8 +396,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Widget menuItem(Map item) => GestureDetector(
       onTap: () {
-        final route = item['route'] as String?;
-        if (route != null) Navigator.pushNamed(context, route);
+    final route = item['route'] as String?;
+    if (route == null) return;
+    
+    // 로그인 필요 메뉴
+    const protectedRoutes = {'/custom'};
+        if (protectedRoutes.contains(route)) {
+          AuthGuard.require(
+            context,
+            reason: '${item['label']} 기능을 사용하려면',
+            onAuthorized: () => Navigator.pushNamed(context, route),
+          );
+        } else {
+          Navigator.pushNamed(context, route);
+        }
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,

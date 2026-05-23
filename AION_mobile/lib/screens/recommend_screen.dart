@@ -638,7 +638,8 @@ class _PerfumeCard extends StatelessWidget {
     final price    = perfume['price'] ?? 0;
     final origPrice= perfume['originalPrice'];
     final discRate = (perfume['discountRate'] ?? perfume['saleRate'] ?? 0) as int;
-    final tags     = (perfume['tags'] as List? ?? []).cast<String>();
+    final tags = (perfume['tags'] as List? ?? []).cast<String>();
+    //final tags     = (perfume['tags'] as List? ?? []).cast<String>();
 
     return GestureDetector(
       onTap: onTap,

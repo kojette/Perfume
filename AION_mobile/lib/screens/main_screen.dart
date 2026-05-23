@@ -4,6 +4,7 @@ import 'collections_screen.dart';
 import 'signature_screen.dart';
 import 'mypage_screen.dart';
 import 'story_screen.dart';
+import '../utils/auth_guard.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -28,7 +29,17 @@ class _MainScreenState extends State<MainScreen> {
     const MyPageScreen(),
   ];
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async {
+    const protectedIndices = {4}; //  MY PAGE
+    
+    if (protectedIndices.contains(index)) {
+      await AuthGuard.require(
+        context,
+        reason: '마이페이지를 보려면',
+        onAuthorized: () => setState(() => _currentIndex = index),
+      );
+      return;
+    }
     setState(() => _currentIndex = index);
   }
 

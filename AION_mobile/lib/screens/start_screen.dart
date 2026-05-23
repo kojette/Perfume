@@ -42,7 +42,7 @@ class _StartScreenState extends State<StartScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) =>  MainScreen()),
       );
     }
   }

@@ -68,21 +68,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final userName = userData?['name'] ?? '사용자';
       if (mounted) {
-        if (isAdmin) {
-          _showAlert('$userName님, 관리자 페이지로 접속합니다.', () {
+        // AuthGuard 경유로 들어왔는지 확인 (이전 화면이 있으면 pop으로 결과 반환)
+        final canPop = Navigator.of(context).canPop();
+        _showAlert('$userName님, 환영합니다!', () {
+          if (canPop) {
+            // 가드 경유 → 호출한 화면으로 true 반환
+            Navigator.pop(context, true);
+          } else {
+            // 직접 진입 → 메인으로
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) =>  MainScreen()),
+              MaterialPageRoute(builder: (_) => MainScreen()),
             );
-          });
-        } else {
-          _showAlert('$userName님, 환영합니다!', () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) =>  MainScreen()),
-            );
-          });
-        }
+          }
+        });
       }
     } catch (err) {
       print('로그인 오류: $err');

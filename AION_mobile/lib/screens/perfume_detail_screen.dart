@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart'; // pubspec에 없으면 Clipboard fallback 사용
 import 'package:aion_perfume_app/config/api_config.dart';
+import '../utils/auth_guard.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // 상수 & 헬퍼
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,7 +88,15 @@ class _PerfumeDetailScreenState extends State<PerfumeDetailScreen> {
     super.initState();
     _initSession();
   }
-
+  Future<void> _refreshSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn  = prefs.getBool('isLoggedIn') ?? false;
+        _accessToken = prefs.getString('accessToken');
+      });
+    }
+  }
   Future<void> _initSession() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -306,7 +315,14 @@ class _PerfumeDetailScreenState extends State<PerfumeDetailScreen> {
     'Content-Type':  'application/json',
   };
 
-  void _goLogin() => Navigator.pushNamed(context, '/login');
+  //void _goLogin() => Navigator.pushNamed(context, '/login');
+  Future<void> _goLogin() async {
+    await AuthGuard.require(
+      context,
+      reason: '이 기능을 사용하려면',
+      onAuthorized: () => _refreshSession(),
+    );
+  }
 
   void _showToast(String msg) {
     setState(() => _toast = msg);
