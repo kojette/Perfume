@@ -87,6 +87,7 @@ const uploadToSupabase = async (file) => {
 
 // ─── 모바일 전용 하단 정보 패널 ───────────────────────────────────────────────
 function MobileInfoPanel({ perfume, notes, loadingNotes, geminiReview, loadingReview, layout: l, onWish, onBuy, isAddingToWish, onDetail }) {
+  const navigate = useNavigate(); 
   if (!perfume) return null;
 
   return (
