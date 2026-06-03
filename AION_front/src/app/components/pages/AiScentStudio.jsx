@@ -711,7 +711,18 @@ function ClaudePanel() {
           messages:   messages
             .filter(m => !m.isStatus && !m.isEval)
             .concat([userMsg])
-            .map(m => ({ role: m.role, content: m.content })),
+            .map((m, index, array) => ({
+              role: m.role,
+              content: m.role === 'assistant'
+                ? (() => {
+                    // 마지막 assistant 메시지면 <recipe> 유지, 그 이전은 제거
+                    const lastAssistantIdx = array.map(x => x.role).lastIndexOf('assistant');
+                    return index === lastAssistantIdx
+                      ? m.content
+                      : m.content.replace(/<recipe>[\s\S]*?<\/recipe>/g, '').trim();
+                  })()
+                : m.content
+            })),
         }),
         signal: abortRef.current.signal,
       });
