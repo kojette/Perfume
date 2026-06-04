@@ -175,7 +175,7 @@ public class AiPerfumeService {
         }
 
         log.info("키워드 {} 개 → 매칭 재료 {} 개", keywords.size(), result.size());
-        return result;
+        return result.stream().limit(50).collect(Collectors.toList());//수정함.제한result;
     }
 
     // ══════════════════════════════════════════════════════════════
