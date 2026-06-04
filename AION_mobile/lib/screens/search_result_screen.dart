@@ -113,18 +113,18 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
       if (mounted) {
         setState(() {
           _results = results.map((p) => Perfume(
-            id: p['id'] ?? p['perfumeId'] ?? 0,
-            name: p['name'] ?? '',
-            nameEn: p['nameEn'],
-            brandName: p['brandName'],
-            imageUrl: p['imageUrl'] ?? p['thumbnail'],
-            price: (p['originalPrice'] ?? p['price'] ?? 0) as int,
-            salePrice: p['salePrice'] as int?,
-            saleRate: (p['saleRate'] ?? 0) as int,
-            tags: (p['tags'] as List?)?.cast<String>(),
-            gender: p['gender'],
-            description: p['description'],
-            concentration: p['concentration'],
+            id: _toInt(p['id'] ?? p['perfumeId']),
+            name: (p['name'] ?? '').toString(),
+            nameEn: p['nameEn']?.toString(),
+            brandName: p['brandName']?.toString(),
+            imageUrl: (p['imageUrl'] ?? p['thumbnail'])?.toString(),
+            price: _toInt(p['originalPrice'] ?? p['price']),     // ✅
+            salePrice: p['salePrice'] == null ? null : _toInt(p['salePrice']), // ✅
+            saleRate: _toInt(p['saleRate']),                     // ✅
+            tags: (p['tags'] as List?)?.map((e) => e.toString()).toList(),
+            gender: p['gender']?.toString(),
+            description: p['description']?.toString(),
+            concentration: p['concentration']?.toString(),
           )).toList();
         });
       }
@@ -137,6 +137,17 @@ class _SearchResultScreenState extends State<SearchResultScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // ✅ 클래스 안 아무 곳에나 추가 (static 메서드)
+  static int _toInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) 
+        ?? double.tryParse(v.toString())?.toInt() 
+        ?? 0;
   }
 
   @override

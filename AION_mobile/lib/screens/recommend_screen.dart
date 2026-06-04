@@ -623,23 +623,39 @@ class _PerfumeCard extends StatelessWidget {
   final VoidCallback onTap;
   const _PerfumeCard({required this.perfume, required this.onTap});
 
+  // ✅ double/int/String 모두 안전하게 int로 변환
+  static int _toInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) ?? double.tryParse(v.toString())?.toInt() ?? 0;
+  }
+
   static String _fmt(dynamic v) {
-    final n = (v is int) ? v : int.tryParse(v.toString()) ?? 0;
+    final n = _toInt(v);
     return n.toString().replaceAllMapped(
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
   }
 
+  // ✅ 이미지 URL 유효성 검증 (http/https만 허용)
+  bool _isValidNetworkUrl(String? url) {
+    if (url == null || url.isEmpty) return false;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    return uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final name     = perfume['name'] ?? '';
-    final nameEn   = perfume['nameEn'] ?? '';
-    final brand    = perfume['brandName'] ?? '';
-    final imageUrl = perfume['imageUrl'] ?? perfume['thumbnail'];
-    final price    = perfume['price'] ?? 0;
+    final name     = (perfume['name'] ?? '').toString();
+    final nameEn   = (perfume['nameEn'] ?? '').toString();
+    final brand    = (perfume['brandName'] ?? '').toString();
+    final imageUrl = (perfume['imageUrl'] ?? perfume['thumbnail'])?.toString();
+    final price    = _toInt(perfume['price']);
     final origPrice= perfume['originalPrice'];
-    final discRate = (perfume['discountRate'] ?? perfume['saleRate'] ?? 0) as int;
-    final tags = (perfume['tags'] as List? ?? []).cast<String>();
-    //final tags     = (perfume['tags'] as List? ?? []).cast<String>();
+    final discRate = _toInt(perfume['discountRate'] ?? perfume['saleRate']); // ✅ 안전 변환
+    final tags = (perfume['tags'] as List? ?? []).map((e) => e.toString()).toList();
 
     return GestureDetector(
       onTap: onTap,
@@ -649,9 +665,9 @@ class _PerfumeCard extends StatelessWidget {
           Container(
             width: 56, height: 56,
             decoration: const BoxDecoration(color: Color(0xFFF5F0E8)),
-            child: imageUrl != null
+            child: _isValidNetworkUrl(imageUrl)
                 ? Image.network(
-                    imageUrl,
+                    imageUrl!,
                     fit: BoxFit.cover,
                     width: 56,
                     height: 56,
