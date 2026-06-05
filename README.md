@@ -6,7 +6,6 @@
 - [5. 코드 (Source Code)](#5-code---aion_front-aion_back-aion_mobile)
 - [6. 앱 등록 및 설치](#6-앱-등록)
 - [7. 시연 동영상](#7-시연-동영상)
-- [8. 프로젝트 평가 및 비교](#8-우리팀-평가)
 
 ## 2. 사용 클라우드 및 서비스
 | AWS | [http://aion-perfume.kro.kr](http://aion-frontend-967283278741-ap-northeast-2-an.s3-website.ap-northeast-2.amazonaws.com/) |
@@ -86,22 +85,3 @@ App Store: [앱 링크]
 [리액트(PC) 시연 영상](https://youtu.be/_RflzZwsihA)
 
 [리액트(모바일) 시연 영상](https://youtu.be/M8aY0BtzQ8g)
-## 8. 우리팀 평가
-## 2025 우수팀 vs AION 비교
-
-| 항목 | 🌟 AION | 🏆 최우수 | 🥈 우수 1 | 🥉 우수 2 | 🏅 우수 3 |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Code** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Doc** | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **영상** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **화면** | iOS / Android / Web | Web | Web | Web | Web |
-| **AppStore/GooglePlay** | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-최우수: 황치즈https://github.com/HwangCheese/VideoSummary
-
-우수1: 황금토끼 https://github.com/GolddBunny/Domain_QA_Gen
-
-우수2: 초신성 https://github.com/kola0709/2025Capstone/tree/master
-
-우수3: Prism https://github.com/hsu-capstone-prism/DamSeol
-
